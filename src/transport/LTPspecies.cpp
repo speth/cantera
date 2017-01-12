@@ -1,9 +1,12 @@
 /**
  *  @file LTPspecies.cpp \
- *     definitions for the  LTPspecies objects and its children, which is the virtual base class
+ *     definitions for the LTPspecies objects and its children, which is the virtual base class
  *     for describing temperature dependence of submodels for transport parameters
  *    (see \ref tranprops and \link Cantera::LTPspecies LTPspecies \endlink) .
  */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/transport/LTPspecies.h"
 #include "cantera/base/ctml.h"
@@ -16,7 +19,6 @@ namespace Cantera
 class LTPError : public CanteraError
 {
 public:
-
     //! Constructor is a wrapper around CanteraError
     /*!
      *  @param msg    Informative message
@@ -33,21 +35,18 @@ public:
  *         k =  A T^(b) exp (-E_a / RT)
  *    \f]
  *
- *   @param    node       XML_Node to be read
- *   @param    A          Output pre-exponential factor. The units are variable.
- *   @param    b          output temperature power
- *   @param    E          Output activation energy in units of Kelvin
+ * @param node  XML_Node to be read
+ * @param A     Output pre-exponential factor. The units are variable.
+ * @param b     output temperature power
+ * @param E     Output activation energy in units of Kelvin
  */
 static void getArrhenius(const XML_Node& node,
                          doublereal& A, doublereal& b, doublereal& E)
 {
-    /* parse the children for the A, b, and E components.
-     */
+    // parse the children for the A, b, and E components.
     A = getFloat(node, "A", "toSI");
     b = getFloat(node, "b");
-    E = getFloat(node, "E", "actEnergy");
-    E /= GasConstant;
-
+    E = getFloat(node, "E", "actEnergy") / GasConstant;
 }
 
 LTPspecies::LTPspecies(const XML_Node* const propNode, const std::string name,
@@ -58,30 +57,9 @@ LTPspecies::LTPspecies(const XML_Node* const propNode, const std::string name,
     m_thermo(thermo),
     m_mixWeight(1.0)
 {
-    if (propNode) {
-        if (propNode->hasChild("mixtureWeighting")) {
-            m_mixWeight = getFloat(*propNode, "mixtureWeighting");
-        }
+    if (propNode && propNode->hasChild("mixtureWeighting")) {
+        m_mixWeight = getFloat(*propNode, "mixtureWeighting");
     }
-}
-
-LTPspecies::LTPspecies(const LTPspecies& right)
-{
-
-    *this = right;
-}
-
-LTPspecies& LTPspecies::operator=(const LTPspecies& right)
-{
-    if (&right != this) {
-        m_speciesName = right.m_speciesName;
-        m_property    = right.m_property;
-        m_model       = right.m_model;
-        m_coeffs      = right.m_coeffs;
-        m_thermo      = right.m_thermo;
-        m_mixWeight   = right.m_mixWeight;
-    }
-    return *this;
 }
 
 LTPspecies* LTPspecies::duplMyselfAsLTPspecies() const
@@ -97,7 +75,6 @@ doublereal LTPspecies::getSpeciesTransProp()
 bool LTPspecies::checkPositive() const
 {
     return (m_coeffs[0] > 0);
-
 }
 
 doublereal LTPspecies::getMixWeight() const
@@ -122,20 +99,6 @@ LTPspecies_Const::LTPspecies_Const(const XML_Node& propNode, const std::string n
     }
 }
 
-LTPspecies_Const::LTPspecies_Const(const LTPspecies_Const& right)
-    : LTPspecies()
-{
-    *this = right; //use assignment operator to do other work
-}
-
-LTPspecies_Const& LTPspecies_Const::operator=(const LTPspecies_Const& right)
-{
-    if (&right != this) {
-        LTPspecies::operator=(right);
-    }
-    return *this;
-}
-
 LTPspecies* LTPspecies_Const::duplMyselfAsLTPspecies() const
 {
     return new LTPspecies_Const(*this);
@@ -144,14 +107,12 @@ LTPspecies* LTPspecies_Const::duplMyselfAsLTPspecies() const
 doublereal LTPspecies_Const::getSpeciesTransProp()
 {
     return m_coeffs[0];
-
 }
 
 LTPspecies_Arrhenius::LTPspecies_Arrhenius(const XML_Node& propNode, const std::string name,
-        TransportPropertyType tp_ind,  const thermo_t* thermo) :
+        TransportPropertyType tp_ind, const thermo_t* thermo) :
     LTPspecies(&propNode, name, tp_ind, thermo)
 {
-
     m_model = LTP_TD_ARRHENIUS;
     m_temp = 0.0;
     m_prop = 0.0;
@@ -165,23 +126,6 @@ LTPspecies_Arrhenius::LTPspecies_Arrhenius(const XML_Node& propNode, const std::
     m_coeffs.push_back(n_k);
     m_coeffs.push_back(Tact_k);
     m_coeffs.push_back(log(A_k));
-}
-
-LTPspecies_Arrhenius::LTPspecies_Arrhenius(const LTPspecies_Arrhenius& right)
-{
-    *this = right;
-}
-
-LTPspecies_Arrhenius& LTPspecies_Arrhenius::operator=(const LTPspecies_Arrhenius& right)
-{
-    if (&right != this) {
-        LTPspecies::operator=(right);
-        m_temp    = right.m_temp;
-        m_logt    = right.m_logt;
-        m_prop    = right.m_prop;
-        m_logProp = right.m_logProp;
-    }
-    return *this;
 }
 
 LTPspecies* LTPspecies_Arrhenius::duplMyselfAsLTPspecies() const
@@ -203,9 +147,9 @@ doublereal LTPspecies_Arrhenius::getSpeciesTransProp()
         m_logt = log(m_temp);
         //For viscosity the sign convention on positive activation energy is swithced
         if (m_property == TP_VISCOSITY) {
-            m_logProp = m_coeffs[3] + m_coeffs[1] * m_logt + m_coeffs[2] / m_temp ;
+            m_logProp = m_coeffs[3] + m_coeffs[1] * m_logt + m_coeffs[2] / m_temp;
         } else {
-            m_logProp = m_coeffs[3] + m_coeffs[1] * m_logt - m_coeffs[2] / m_temp ;
+            m_logProp = m_coeffs[3] + m_coeffs[1] * m_logt - m_coeffs[2] / m_temp;
         }
         m_prop = exp(m_logProp);
     }
@@ -220,22 +164,6 @@ LTPspecies_Poly::LTPspecies_Poly(const XML_Node& propNode, const std::string nam
 {
     m_model = LTP_TD_POLY;
     getFloatArray(propNode, m_coeffs, "true", "toSI");
-}
-
-LTPspecies_Poly::LTPspecies_Poly(const LTPspecies_Poly& right)
-    : LTPspecies()
-{
-    *this = right;
-}
-
-LTPspecies_Poly& LTPspecies_Poly::operator=(const LTPspecies_Poly& right)
-{
-    if (&right != this) {
-        LTPspecies::operator=(right);
-        m_temp    = right.m_temp;
-        m_prop    = right.m_prop;
-    }
-    return *this;
 }
 
 LTPspecies* LTPspecies_Poly::duplMyselfAsLTPspecies() const
@@ -267,22 +195,6 @@ LTPspecies_ExpT::LTPspecies_ExpT(const XML_Node& propNode, const std::string nam
 {
     m_model = LTP_TD_EXPT;
     getFloatArray(propNode, m_coeffs, "true", "toSI");
-}
-
-LTPspecies_ExpT::LTPspecies_ExpT(const LTPspecies_ExpT& right)
-    : LTPspecies()
-{
-    *this = right; //use assignment operator to do other work
-}
-
-LTPspecies_ExpT& LTPspecies_ExpT::operator=(const LTPspecies_ExpT& right)
-{
-    if (&right != this) {
-        LTPspecies::operator=(right);
-        m_temp    = right.m_temp;
-        m_prop    = right.m_prop;
-    }
-    return *this;
 }
 
 LTPspecies* LTPspecies_ExpT::duplMyselfAsLTPspecies() const

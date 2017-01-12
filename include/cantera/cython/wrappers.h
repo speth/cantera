@@ -1,3 +1,6 @@
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #include "cantera/base/logger.h"
 #include "cantera/thermo/ThermoPhase.h"
 #include "cantera/transport/TransportBase.h"
@@ -25,10 +28,12 @@ public:
         for (size_t i = 0; i < s.size(); i+=N) {
             PySys_WriteStdout("%s", s.substr(i, N).c_str());
         }
+        std::cout.flush();
     }
 
     virtual void writeendl() {
         PySys_WriteStdout("%s", "\n");
+        std::cout.flush();
     }
 
     virtual void error(const std::string& msg) {

@@ -3,19 +3,14 @@
  *  Source code for liquid mixture transport property evaluations.
  */
 
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #include "cantera/transport/LiquidTransportParams.h"
 using namespace std;
 
 namespace Cantera
 {
-//! Exception thrown if an error is encountered while reading the transport database.
-class LTPmodelError : public CanteraError
-{
-public:
-    explicit LTPmodelError(const std::string& msg) :
-        CanteraError("LTPspecies", "error parsing transport data: " + msg + "\n") {
-    }
-};
 
 LiquidTransportParams::LiquidTransportParams() :
     viscosity(0),
@@ -55,7 +50,7 @@ LiquidTransportParams::LiquidTransportParams(const LiquidTransportParams& right)
     operator=(right);
 }
 
-LiquidTransportParams&  LiquidTransportParams::operator=(const LiquidTransportParams& right)
+LiquidTransportParams& LiquidTransportParams::operator=(const LiquidTransportParams& right)
 {
     if (&right != this) {
         return *this;
@@ -103,7 +98,6 @@ LiquidTransportParams&  LiquidTransportParams::operator=(const LiquidTransportPa
     compositionDepTypeDefault_ = right.compositionDepTypeDefault_;
 
     throw CanteraError("LiquidTransportParams(const LiquidTransportParams &right)", "not tested");
-
     return *this;
 }
 

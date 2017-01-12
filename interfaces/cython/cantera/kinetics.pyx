@@ -1,3 +1,6 @@
+# This file is part of Cantera. See License.txt in the top-level directory or
+# at http://www.cantera.org/license.txt for license and copyright information.
+
 # NOTE: These cdef functions cannot be members of Kinetics because they would
 # cause "layout conflicts" when creating derived classes with multiple bases,
 # e.g. class Solution. [Cython 0.16]
@@ -96,6 +99,10 @@ cdef class Kinetics(_SolutionBase):
         the reaction.
         """
         self.kinetics.modifyReaction(irxn, rxn._reaction)
+
+    def add_reaction(self, Reaction rxn):
+        """ Add a new reaction to this phase. """
+        self.kinetics.addReaction(rxn._reaction)
 
     def is_reversible(self, int i_reaction):
         """True if reaction `i_reaction` is reversible."""
@@ -336,8 +343,7 @@ cdef class InterfaceKinetics(Kinetics):
     """
     def __init__(self, infile='', phaseid='', phases=(), *args, **kwargs):
         super().__init__(infile, phaseid, phases, *args, **kwargs)
-        if self.kinetics.type() not in (kinetics_type_interface,
-                                        kinetics_type_edge):
+        if pystr(self.kinetics.kineticsType()) not in ("Surf", "Edge"):
             raise TypeError("Underlying Kinetics class is not of the correct type.")
 
         self._phase_indices = {}

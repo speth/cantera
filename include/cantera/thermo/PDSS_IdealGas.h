@@ -4,11 +4,10 @@
  *    which handles calculations for a single ideal gas species in a phase
  *    (see \ref pdssthermo and class \link Cantera::PDSS_IdealGas PDSS_IdealGas\endlink).
  */
-/*
- * Copyright (2006) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #ifndef CT_PDSS_IDEALGAS_H
 #define CT_PDSS_IDEALGAS_H
 
@@ -35,18 +34,6 @@ public:
      */
     PDSS_IdealGas(VPStandardStateTP* tp, int spindex);
 
-    //! Copy Constructor
-    /*!
-     * @param b Object to be copied
-     */
-    PDSS_IdealGas(const PDSS_IdealGas& b);
-
-    //! Assignment operator
-    /*!
-     * @param b Object to be copied
-     */
-    PDSS_IdealGas& operator=(const PDSS_IdealGas& b);
-
     //! Constructor that initializes the object by examining the input file
     //! of the ThermoPhase object
     /*!
@@ -56,8 +43,9 @@ public:
      *  @param spindex   Species index of the species in the phase
      *  @param inputFile String name of the input file
      *  @param id        String name of the phase in the input file. The default
-     *                   is the empty string, in which case the first phase in the
-     *                   file is used.
+     *                   is the empty string, in which case the first phase in
+     *                   the file is used.
+     * @deprecated To be removed after Cantera 2.3.
      */
     PDSS_IdealGas(VPStandardStateTP* tp, int spindex,
                   const std::string& inputFile, const std::string& id = "");
@@ -77,6 +65,8 @@ public:
     PDSS_IdealGas(VPStandardStateTP* vptp_ptr, size_t spindex, const XML_Node& speciesNode,
                   const XML_Node& phaseRef, bool spInstalled);
 
+    PDSS_IdealGas(const PDSS_IdealGas& b);
+    PDSS_IdealGas& operator=(const PDSS_IdealGas& b);
     virtual PDSS* duplMyselfAsPDSS() const;
 
     //! @}
@@ -125,15 +115,12 @@ public:
      * routine, which does most of the work.
      *
      * @param vptp_ptr    Pointer to the Variable pressure ThermoPhase object
-     *                    This object must have already been malloced.
-     *
      * @param spindex     Species index within the phase
-     *
      * @param inputFile   XML file containing the description of the phase
-     *
      * @param id          Optional parameter identifying the name of the
      *                    phase. If none is given, the first XML
      *                    phase element will be used.
+     * @deprecated To be removed after Cantera 2.3.
      */
     void constructPDSSFile(VPStandardStateTP* vptp_ptr, size_t spindex,
                            const std::string& inputFile, const std::string& id);
@@ -148,13 +135,9 @@ public:
      *   - initThermoXML(phaseNode)     (cascade)
      *
      * @param vptp_ptr   Pointer to the Variable pressure ThermoPhase object
-     *                   This object must have already been malloced.
-     *
      * @param spindex    Species index within the phase
-     *
      * @param phaseNode  Reference to the phase Information for the phase
      *                   that owns this species.
-     *
      * @param id         Optional parameter identifying the name of the
      *                   phase. If none is given, the first XML
      *                   phase element will be used.

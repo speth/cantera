@@ -1,3 +1,6 @@
+# This file is part of Cantera. See License.txt in the top-level directory or
+# at http://www.cantera.org/license.txt for license and copyright information.
+
 import sys
 
 if sys.version_info[0] == 3:
@@ -33,8 +36,8 @@ def plotLimits(ypts, f=0.0, ndiv=5, logscale=0):
 ##             dy = abs(ymax - ymin)
 ##         else:
     else:
-        ymin = ymin - f*dy
-        ymax = ymax + f*dy
+        ymin -= f*dy
+        ymax += f*dy
         dy = abs(ymax - ymin)
 
         try:
@@ -46,7 +49,7 @@ def plotLimits(ypts, f=0.0, ndiv=5, logscale=0):
         i = 0
         while dy/fctr > ndiv:
             fctr = mm[i % 3]*fctr
-            i = i + 1
+            i += 1
         ymin = fctr*math.floor(ymin/fctr)
         ymax = fctr*(math.floor(ymax/fctr+0.999))
 
@@ -212,7 +215,7 @@ class DataGraph(Frame):
             if self.logscale[1]:
                 ytick *= 10.0
                 n = 10
-            else: ytick = ytick + dy
+            else: ytick += dy
             if ytick <= ymax:
                 self.minorTicks(ytick0, ytick, xmin, n, 5, 1)
                 self.minorTicks(ytick0, ytick, xmax, n, -5, 1)
@@ -228,7 +231,7 @@ class DataGraph(Frame):
             if self.logscale[0]:
                 xtick *= 10.0
                 n = 10
-            else: xtick = xtick + dx
+            else: xtick += dx
             if xtick <= xmax:
                 self.minorTicks(xtick - dx, xtick, ymin, n, 5, 0)
                 self.minorTicks(xtick - dx, xtick, ymax, n, -5, 0)

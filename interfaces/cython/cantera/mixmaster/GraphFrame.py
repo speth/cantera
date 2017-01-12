@@ -1,3 +1,6 @@
+# This file is part of Cantera. See License.txt in the top-level directory or
+# at http://www.cantera.org/license.txt for license and copyright information.
+
 import sys
 if sys.version_info[0] == 3:
     from tkinter import *
@@ -76,7 +79,7 @@ class Graph(Frame):
                 last_x, last_y, last_color = pt
             else:
                 last_x, last_y, last_color = self.last_points[i]
-            i = i + 1
+            i += 1
             xpt = (x - self.minX)/(float(self.maxX - self.minX)/self.graph_w) + 1.5
             ypt = (self.maxY-y)/(float(self.maxY - self.minY)/self.graph_h) - 1.5
             last_xpt = (last_x - self.minX)/(float(self.maxX - self.minX)/self.graph_w) + 1.5

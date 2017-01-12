@@ -3,18 +3,23 @@
  * Driver for the system call to the python executable that converts
  * cti files to ctml files (see \ref inputfiles).
  */
-// Copyright 2001-2005  California Institute of Technology
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/base/ctml.h"
 #include "cantera/base/stringUtils.h"
 #include "../../ext/libexecstream/exec-stream.h"
 
+#include <cstdio>
 #include <fstream>
 #include <sstream>
 #include <functional>
 
 #ifdef _WIN32
 #include <windows.h>
+#else
+#include <unistd.h>
 #endif
 
 using namespace std;
@@ -27,16 +32,14 @@ namespace Cantera
  * Use the environment variable PYTHON_CMD if it is set. If not, return
  * the string 'python'.
  *
- * Note, there are hidden problems here that really direct us to use
- * a full pathname for the location of python. Basically the system
- * call will use the shell /bin/sh, in order to launch python.
- * This default shell may not be the shell that the user is employing.
- * Therefore, the default path to python may be different during
- * a system call than during the default user shell environment.
- * This is quite a headache. The answer is to always set the
- * PYTHON_CMD environmental variable in the user environment to
- * an absolute path to locate the python executable. Then this
- * issue goes away.
+ * Note, there are hidden problems here that really direct us to use a full
+ * pathname for the location of python. Basically the system call will use the
+ * shell /bin/sh, in order to launch python. This default shell may not be the
+ * shell that the user is employing. Therefore, the default path to python may
+ * be different during a system call than during the default user shell
+ * environment. This is quite a headache. The answer is to always set the
+ * PYTHON_CMD environmental variable in the user environment to an absolute path
+ * to locate the python executable. Then this issue goes away.
  */
 static string pypath()
 {
@@ -44,7 +47,7 @@ static string pypath()
     const char* py = getenv("PYTHON_CMD");
 
     if (py) {
-        string sp = stripws(string(py));
+        string sp = ba::trim_copy(string(py));
         if (sp.size() > 0) {
             s = sp;
         }
@@ -60,7 +63,7 @@ void ct2ctml(const char* file, const int debug)
     // For Windows, make the path POSIX compliant so code looking for directory
     // separators is simpler.  Just look for '/' not both '/' and '\\'
     std::replace_if(out_name.begin(), out_name.end(),
-                    std::bind2nd(std::equal_to<char>(), '\\'), '/') ;
+                    std::bind2nd(std::equal_to<char>(), '\\'), '/');
 #endif
     size_t idir = out_name.rfind('/');
     if (idir != npos) {
@@ -72,13 +75,22 @@ void ct2ctml(const char* file, const int debug)
     } else {
         out_name += ".xml";
     }
-    std::ofstream out(out_name.c_str());
+    std::ofstream out(out_name);
     out << xml;
 }
 
 static std::string call_ctml_writer(const std::string& text, bool isfile)
 {
     std::string file, arg;
+    bool temp_file_created = false;
+    std::string temp_cti_file_name = std::tmpnam(nullptr);
+
+    if (temp_cti_file_name.find('\\') == 0) {
+        // Some versions of MinGW give paths in the root directory. Using the
+        // current directory is more likely to succeed.
+        temp_cti_file_name = "." + temp_cti_file_name;
+    }
+
     if (isfile) {
         file = text;
         arg = "r'" + text + "'";
@@ -87,11 +99,47 @@ static std::string call_ctml_writer(const std::string& text, bool isfile)
         arg = "text=r'''" + text + "'''";
     }
 
+    // If the user wants to convert a mechanism using a text passed via the
+    //       source="""..."""
+    // argument in python, then we have to make sure that it is short enough
+    // to fit in the command line when routed to python as:
+    //       python -c ...
+    // statement downstream in the code
+
+    // So, check the max size of a string that can be passed on the command line
+    // This is OS Specific. *nix systems have the sysconf() function that tells
+    // us the largest argument we can pass. Since such a function does not exist
+    // for Windows, we set a safe limit of 32 kB
+
+#ifdef _WIN32
+    long int max_argv_size = 32768;
+#else
+    long int max_argv_size = sysconf(_SC_ARG_MAX);
+#endif
+
+    if (text.size() > static_cast<size_t>(max_argv_size) - 500) {
+        // If the file is too big to be passed as a command line argument later
+        // in the file, then create a temporary file and execute this function
+        // as though an input file was specified as the source.
+        // We assume the text passed + 500 chars = total size of argv
+
+        ofstream temp_cti_file(temp_cti_file_name);
+
+        if (temp_cti_file) {
+            temp_cti_file << text;
+            file = temp_cti_file_name;
+            arg = "r'" + file + "'";
+            temp_file_created = true;
+        } else {
+            // If we are here, then a temp file could not be created
+            throw CanteraError("call_ctml_writer", "Very long source argument. "
+                               "Error creating temporary file '{}'", temp_cti_file_name);
+        }
+    }
+
 #ifdef HAS_NO_PYTHON
-    /*
-     *  Section to bomb out if python is not
-     *  present in the computation environment.
-     */
+    //! Section to bomb out if python is not present in the computation
+    //! environment.
     throw CanteraError("ct2ctml",
                        "python cti to ctml conversion requested for file, " + file +
                        ", but not available in this computational environment");
@@ -136,7 +184,7 @@ static std::string call_ctml_writer(const std::string& text, bool isfile)
         }
         python.close();
         python_exit_code = python.exit_code();
-        error_output = stripws(error_stream.str());
+        error_output = ba::trim_copy(error_stream.str());
         python_output = output_stream.str();
     } catch (std::exception& err) {
         // Report failure to execute Python
@@ -172,6 +220,15 @@ static std::string call_ctml_writer(const std::string& text, bool isfile)
         message << "--------------- end of converter log ---------------\n";
         writelog(message.str());
     }
+
+    if (temp_file_created) {
+        // A temp file was created and has to be removed
+        bool status = std::remove(temp_cti_file_name.c_str());
+        if (status) {
+            writelog("WARNING: Error removing tmp file {}\n", temp_cti_file_name);
+        }
+    }
+
     return python_output;
 }
 
@@ -189,10 +246,8 @@ void ck2cti(const std::string& in_file, const std::string& thermo_file,
             const std::string& transport_file, const std::string& id_tag)
 {
 #ifdef HAS_NO_PYTHON
-    /*
-     *  Section to bomb out if python is not
-     *  present in the computation environment.
-     */
+    //! Section to bomb out if python is not present in the computation
+    //! environment.
     string ppath = in_file;
     throw CanteraError("ct2ctml",
                        "python ck to cti conversion requested for file, " + ppath +
@@ -237,7 +292,7 @@ void ck2cti(const std::string& in_file, const std::string& thermo_file,
         }
         python.close();
         python_exit_code = python.exit_code();
-        python_output = stripws(output_stream.str());
+        python_output = ba::trim_copy(output_stream.str());
     } catch (std::exception& err) {
         // Report failure to execute Python
         stringstream message;
@@ -272,24 +327,6 @@ void ck2cti(const std::string& in_file, const std::string& thermo_file,
         message << "--------------- end of converter log ---------------\n";
         writelog(message.str());
     }
-}
-
-void get_CTML_Tree(XML_Node* rootPtr, const std::string& file, const int debug)
-{
-    warn_deprecated("get_CTML_Tree", "To be removed after Cantera 2.2. "
-            "Use get_XML_File instead.");
-    XML_Node* src = get_XML_File(file);
-    src->copy(rootPtr);
-}
-
-XML_Node getCtmlTree(const std::string& file)
-{
-    warn_deprecated("getCtmlTree", "To be removed after Cantera 2.2. "
-            "Use get_XML_File instead.");
-    XML_Node root;
-    XML_Node* src = get_XML_File(file);
-    src->copy(&root);
-    return root;
 }
 
 }

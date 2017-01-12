@@ -1,6 +1,7 @@
-/**
- *  @file IdealGasReactor.cpp A zero-dimensional reactor
- */
+//! @file IdealGasReactor.cpp A zero-dimensional reactor
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/zeroD/IdealGasReactor.h"
 #include "cantera/zeroD/FlowDevice.h"
@@ -15,7 +16,7 @@ void IdealGasReactor::setThermoMgr(ThermoPhase& thermo)
 {
     //! @TODO: Add a method to ThermoPhase that indicates whether a given
     //! subclass is compatible with this reactor model
-    if (thermo.eosType() != cIdealGas) {
+    if (thermo.type() != "IdealGas") {
         throw CanteraError("IdealGasReactor::setThermoMgr",
                            "Incompatible phase type provided");
     }
@@ -24,9 +25,16 @@ void IdealGasReactor::setThermoMgr(ThermoPhase& thermo)
 
 void IdealGasReactor::getInitialConditions(double t0, size_t leny, double* y)
 {
+    warn_deprecated("IdealGasReactor::getInitialConditions",
+        "Use getState instead. To be removed after Cantera 2.3.");
+    getState(y);
+}
+
+void IdealGasReactor::getState(double* y)
+{
     if (m_thermo == 0) {
-        cout << "Error: reactor is empty." << endl;
-        return;
+        throw CanteraError("getState",
+                           "Error: reactor is empty.");
     }
     m_thermo->restoreState(m_state);
 
@@ -56,11 +64,6 @@ void IdealGasReactor::initialize(doublereal t0)
 
 void IdealGasReactor::updateState(doublereal* y)
 {
-    for (size_t i = 0; i < m_nv; i++) {
-        AssertFinite(y[i], "IdealGasReactor::updateState",
-                     "y[" + int2str(i) + "] is not finite");
-    }
-
     // The components of y are [0] the total mass, [1] the total volume,
     // [2] the temperature, [3...K+3] are the mass fractions of each species,
     // and [K+3...] are the coverages of surface species on each wall.
@@ -102,7 +105,7 @@ void IdealGasReactor::evalEqs(doublereal time, doublereal* y,
     mcvdTdt += - m_pressure * m_vdot - m_Q;
 
     for (size_t n = 0; n < m_nsp; n++) {
-        // heat release from gas phase and surface reations
+        // heat release from gas phase and surface reactions
         mcvdTdt -= m_wdot[n] * m_uk[n] * m_vol;
         mcvdTdt -= m_sdot[n] * m_uk[n];
         // production in gas phase and from surfaces
@@ -128,7 +131,7 @@ void IdealGasReactor::evalEqs(doublereal time, doublereal* y,
             // flow of species into system and dilution by other species
             dYdt[n] += (mdot_spec - mdot_in * Y[n]) / m_mass;
 
-            // In combintion with h_in*mdot_in, flow work plus thermal
+            // In combination with h_in*mdot_in, flow work plus thermal
             // energy carried with the species
             mcvdTdt -= m_uk[n] / mw[n] * mdot_spec;
         }
@@ -142,11 +145,6 @@ void IdealGasReactor::evalEqs(doublereal time, doublereal* y,
         ydot[2] = 0;
     }
 
-    for (size_t i = 0; i < m_nv; i++) {
-        AssertFinite(ydot[i], "IdealGasReactor::evalEqs",
-                     "ydot[" + int2str(i) + "] is not finite");
-    }
-
     resetSensitivity(params);
 }
 
@@ -156,14 +154,38 @@ size_t IdealGasReactor::componentIndex(const string& nm) const
     if (k != npos) {
         return k + 3;
     } else if (nm == "m" || nm == "mass") {
+        if (nm == "m") {
+            warn_deprecated("IdealGasReactor::componentIndex(\"m\")",
+                "Using the name 'm' for mass is deprecated, and will be "
+                "disabled after Cantera 2.3. Use 'mass' instead.");
+        }
         return 0;
     } else if (nm == "V" || nm == "volume") {
+        if (nm == "V") {
+            warn_deprecated("IdealGasReactor::componentIndex(\"V\")",
+                "Using the name 'V' for volume is deprecated, and will be "
+                "disabled after Cantera 2.3. Use 'volume' instead.");
+        }
         return 1;
     } else if (nm == "T" || nm == "temperature") {
+        if (nm == "T") {
+            warn_deprecated("IdealGasReactor::componentIndex(\"T\")",
+                "Using the name 'T' for temperature is deprecated, and will be "
+                "disabled after Cantera 2.3. Use 'temperature' instead.");
+        }
         return 2;
     } else {
         return npos;
     }
 }
+
+std::string IdealGasReactor::componentName(size_t k) {
+    if (k == 2) {
+        return "temperature";
+    } else {
+        return Reactor::componentName(k);
+    }
+}
+
 
 }

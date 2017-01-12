@@ -6,11 +6,9 @@
  *  but slow way (see \ref thermoprops and
  *  class \link Cantera::VPSSMgr_General VPSSMgr_General\endlink).
  */
-/*
- * Copyright (2005) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/thermo/VPSSMgr_General.h"
 #include "cantera/base/ctml.h"
@@ -21,8 +19,7 @@
 #include "cantera/thermo/PDSS_SSVol.h"
 #include "cantera/thermo/PDSS_HKFT.h"
 #include "cantera/thermo/PDSS_IonsFromNeutral.h"
-#include "cantera/thermo/GeneralSpeciesThermo.h"
-#include "cantera/base/vec_functions.h"
+#include "cantera/base/utilities.h"
 
 using namespace std;
 
@@ -30,7 +27,7 @@ namespace Cantera
 {
 
 VPSSMgr_General::VPSSMgr_General(VPStandardStateTP* vp_ptr,
-                                 SpeciesThermo* spth) :
+                                 MultiSpeciesThermo* spth) :
     VPSSMgr(vp_ptr, spth)
 {
     // Might want to do something other than holding this true.
@@ -54,12 +51,12 @@ VPSSMgr_General& VPSSMgr_General::operator=(const VPSSMgr_General& b)
         return *this;
     }
     VPSSMgr::operator=(b);
-    /*
-     *  Must fill in the shallow pointers. These must have already been transfered
-     *  and stored in the owning VPStandardStateTP class.  Note we are aware that at this point
-     *  m_vptr_ptr may refer back to the wrong ThermoPhase object. However, the shallow copy
-     *  performed here is consistent with the assignment operator's general functionality.
-     */
+
+    // Must fill in the shallow pointers. These must have already been
+    // transfered and stored in the owning VPStandardStateTP class.  Note we are
+    // aware that at this point m_vptr_ptr may refer back to the wrong
+    // ThermoPhase object. However, the shallow copy performed here is
+    // consistent with the assignment operator's general functionality.
     m_PDSS_ptrs.resize(m_kk);
     for (size_t k = 0; k < m_kk; k++) {
         m_PDSS_ptrs[k] = m_vptp_ptr->providePDSS(k);
@@ -72,13 +69,12 @@ VPSSMgr* VPSSMgr_General::duplMyselfAsVPSSMgr() const
     return new VPSSMgr_General(*this);
 }
 
-void VPSSMgr_General::initAllPtrs(VPStandardStateTP* vp_ptr, SpeciesThermo* sp_ptr)
+void VPSSMgr_General::initAllPtrs(VPStandardStateTP* vp_ptr, MultiSpeciesThermo* sp_ptr)
 {
     VPSSMgr::initAllPtrs(vp_ptr, sp_ptr);
-    /*
-     *  Must fill in the shallow pointers. These must have already been transfered
-     *  and stored in the owning VPStandardStateTP class.
-     */
+
+    // Must fill in the shallow pointers. These must have already been
+    // transfered and stored in the owning VPStandardStateTP class.
     m_PDSS_ptrs.resize(m_kk);
     for (size_t k = 0; k < m_kk; k++) {
         m_PDSS_ptrs[k] = m_vptp_ptr->providePDSS(k);
@@ -92,10 +88,10 @@ void VPSSMgr_General::_updateRefStateThermo() const
             PDSS* kPDSS = m_PDSS_ptrs[k];
             kPDSS->setState_TP(m_tlast, m_plast);
             m_h0_RT[k] = kPDSS->enthalpy_RT_ref();
-            m_s0_R[k]  = kPDSS->entropy_R_ref();
+            m_s0_R[k] = kPDSS->entropy_R_ref();
             m_g0_RT[k] = m_h0_RT[k] - m_s0_R[k];
             m_cp0_R[k] = kPDSS->cp_R_ref();
-            m_V0[k]    = kPDSS->molarVolume_ref();
+            m_V0[k] = kPDSS->molarVolume_ref();
         }
     }
 }
@@ -106,10 +102,10 @@ void VPSSMgr_General::_updateStandardStateThermo()
         PDSS* kPDSS = m_PDSS_ptrs[k];
         kPDSS->setState_TP(m_tlast, m_plast);
         m_hss_RT[k] = kPDSS->enthalpy_RT();
-        m_sss_R[k]  = kPDSS->entropy_R();
+        m_sss_R[k] = kPDSS->entropy_R();
         m_gss_RT[k] = m_hss_RT[k] - m_sss_R[k];
         m_cpss_R[k] = kPDSS->cp_R();
-        m_Vss[k]    = kPDSS->molarVolume();
+        m_Vss[k] = kPDSS->molarVolume();
     }
 }
 
@@ -128,26 +124,17 @@ void VPSSMgr_General::getGibbs_ref(doublereal* g) const
             PDSS* kPDSS = m_PDSS_ptrs[k];
             kPDSS->setState_TP(m_tlast, m_plast);
             double h0_RT = kPDSS->enthalpy_RT_ref();
-            double s0_R  = kPDSS->entropy_R_ref();
+            double s0_R = kPDSS->entropy_R_ref();
             g[k] = GasConstant * m_tlast * (h0_RT - s0_R);
         }
     }
 }
 
-void
-VPSSMgr_General::initThermoXML(XML_Node& phaseNode, const std::string& id)
-{
-    VPSSMgr::initThermoXML(phaseNode, id);
-}
-
-PDSS*
-VPSSMgr_General::returnPDSS_ptr(size_t k, const XML_Node& speciesNode,
-                                const XML_Node* const phaseNode_ptr, bool& doST)
+PDSS* VPSSMgr_General::returnPDSS_ptr(size_t k, const XML_Node& speciesNode,
+        const XML_Node* const phaseNode_ptr, bool& doST)
 {
     PDSS* kPDSS = 0;
     doST = true;
-    GeneralSpeciesThermo* genSpthermo = dynamic_cast<GeneralSpeciesThermo*>(m_spthermo);
-
 
     const XML_Node* const ss = speciesNode.findByName("standardState");
     if (!ss) {
@@ -164,34 +151,20 @@ VPSSMgr_General::returnPDSS_ptr(size_t k, const XML_Node& speciesNode,
         }
     } else if (model == "waterIAPWS" || model == "waterPDSS") {
         kPDSS = new PDSS_Water(m_vptp_ptr, 0);
-        if (!genSpthermo) {
-            throw CanteraError("VPSSMgr_General::returnPDSS_ptr",
-                               "failed dynamic cast");
-        }
-        genSpthermo->installPDSShandler(k, kPDSS, this);
+        m_spthermo->installPDSShandler(k, kPDSS, this);
         m_useTmpRefStateStorage = false;
     } else if (model == "HKFT") {
         doST = false;
         kPDSS = new PDSS_HKFT(m_vptp_ptr, k, speciesNode, *phaseNode_ptr, true);
-        if (!genSpthermo) {
-            throw CanteraError("VPSSMgr_General::returnPDSS_ptr",
-                               "failed dynamic cast");
-        }
-        genSpthermo->installPDSShandler(k, kPDSS, this);
-
+        m_spthermo->installPDSShandler(k, kPDSS, this);
     } else if (model == "IonFromNeutral") {
-        if (!genSpthermo) {
-            throw CanteraError("VPSSMgr_General::returnPDSS_ptr",
-                               "failed dynamic cast");
-        }
         doST = false;
         kPDSS = new PDSS_IonsFromNeutral(m_vptp_ptr, k, speciesNode, *phaseNode_ptr, true);
         if (!kPDSS) {
             throw CanteraError("VPSSMgr_General::returnPDSS_ptr",
                                "new PDSS_IonsFromNeutral failed");
         }
-        genSpthermo->installPDSShandler(k, kPDSS, this);
-
+        m_spthermo->installPDSShandler(k, kPDSS, this);
     } else if (model == "constant" || model == "temperature_polynomial" || model == "density_temperature_polynomial") {
         VPSSMgr::installSTSpecies(k, speciesNode, phaseNode_ptr);
         kPDSS = new PDSS_SSVol(m_vptp_ptr, k, speciesNode, *phaseNode_ptr, true);
@@ -205,9 +178,8 @@ VPSSMgr_General::returnPDSS_ptr(size_t k, const XML_Node& speciesNode,
     return kPDSS;
 }
 
-PDSS*
-VPSSMgr_General::createInstallPDSS(size_t k, const XML_Node& speciesNode,
-                                   const XML_Node* const phaseNode_ptr)
+PDSS* VPSSMgr_General::createInstallPDSS(size_t k, const XML_Node& speciesNode,
+                                         const XML_Node* const phaseNode_ptr)
 {
     bool doST;
     PDSS* kPDSS = returnPDSS_ptr(k, speciesNode, phaseNode_ptr, doST);
@@ -218,7 +190,6 @@ VPSSMgr_General::createInstallPDSS(size_t k, const XML_Node& speciesNode,
     m_kk = std::max(m_kk, k+1);
     m_minTemp = std::max(m_minTemp, kPDSS->minTemp());
     m_maxTemp = std::min(m_maxTemp, kPDSS->maxTemp());
-
     doublereal p0 = kPDSS->refPressure();
     if (k == 0) {
         m_p0 = p0;
@@ -228,11 +199,15 @@ VPSSMgr_General::createInstallPDSS(size_t k, const XML_Node& speciesNode,
 
 PDSS_enumType VPSSMgr_General::reportPDSSType(int k) const
 {
-    return  m_PDSS_ptrs[k]->reportPDSSType();
+    warn_deprecated("VPSSMgr_General::reportPDSSType",
+        "To be removed after Cantera 2.3.");
+    return m_PDSS_ptrs[k]->reportPDSSType();
 }
 
-VPSSMgr_enumType  VPSSMgr_General::reportVPSSMgrType() const
+VPSSMgr_enumType VPSSMgr_General::reportVPSSMgrType() const
 {
+    warn_deprecated("VPSSMgr_General::reportVPSSMgrType",
+        "To be removed after Cantera 2.3.");
     return cVPSSMGR_GENERAL;
 }
 }

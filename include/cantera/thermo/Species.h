@@ -1,10 +1,12 @@
 //! @file Species.h Declaration for class Cantera::Species.
 
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #ifndef CT_SPECIES_H
 #define CT_SPECIES_H
 
 #include "cantera/base/ct_defs.h"
-#include "cantera/base/smart_ptr.h"
 
 namespace Cantera
 {
@@ -27,7 +29,9 @@ public:
     Species(const std::string& name, const compositionMap& comp,
             double charge=0.0, double size=1.0);
 
+    //! @deprecated To be removed after Cantera 2.3.
     Species(const Species& other);
+    //! @deprecated To be removed after Cantera 2.3.
     Species& operator=(const Species& other);
     ~Species();
 
@@ -41,7 +45,8 @@ public:
     //! The electrical charge on the species, in units of the elementary charge.
     double charge;
 
-    //! The effective size [m] of the species
+    //! The effective size of the species. Currently used only for surface
+    //! species, where it represents the number of sites occupied.
     double size;
 
     shared_ptr<TransportData> transport;

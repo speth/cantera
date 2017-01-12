@@ -8,18 +8,16 @@
  * \link Cantera::VPSSMgr_Water_HKFT VPSSMgr_Water_HKFT\endlink).
  */
 
-/*
- * Copyright (2005) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/thermo/VPSSMgr_Water_HKFT.h"
 #include "cantera/thermo/PDSS_Water.h"
 #include "cantera/thermo/PDSS_HKFT.h"
 #include "cantera/thermo/VPStandardStateTP.h"
-#include "cantera/thermo/GeneralSpeciesThermo.h"
+#include "cantera/thermo/MultiSpeciesThermo.h"
 #include "cantera/base/xml.h"
+#include "cantera/base/stringUtils.h"
 
 using namespace std;
 
@@ -27,12 +25,12 @@ namespace Cantera
 {
 
 VPSSMgr_Water_HKFT::VPSSMgr_Water_HKFT(VPStandardStateTP* vp_ptr,
-                                       SpeciesThermo* spth) :
+                                       MultiSpeciesThermo* spth) :
     VPSSMgr(vp_ptr, spth),
     m_waterSS(0),
     m_tlastRef(-1.0)
 {
-    m_useTmpRefStateStorage      = true;
+    m_useTmpRefStateStorage = true;
     m_useTmpStandardStateStorage = true;
 }
 
@@ -46,41 +44,35 @@ VPSSMgr_Water_HKFT::VPSSMgr_Water_HKFT(const VPSSMgr_Water_HKFT& right) :
     *this = right;
 }
 
-
-VPSSMgr_Water_HKFT&
-VPSSMgr_Water_HKFT::operator=(const VPSSMgr_Water_HKFT& b)
+VPSSMgr_Water_HKFT& VPSSMgr_Water_HKFT::operator=(const VPSSMgr_Water_HKFT& b)
 {
     if (&b == this) {
         return *this;
     }
     VPSSMgr::operator=(b);
-    m_waterSS = dynamic_cast<PDSS_Water*>(m_vptp_ptr->providePDSS(0));
+    m_waterSS = &dynamic_cast<PDSS_Water&>(*m_vptp_ptr->providePDSS(0));
     m_tlastRef = -1.0;
     return *this;
 }
 
-VPSSMgr*
-VPSSMgr_Water_HKFT::duplMyselfAsVPSSMgr() const
+VPSSMgr* VPSSMgr_Water_HKFT::duplMyselfAsVPSSMgr() const
 {
     return new VPSSMgr_Water_HKFT(*this);
 }
 
-void
-VPSSMgr_Water_HKFT::getEnthalpy_RT_ref(doublereal* hrt) const
+void VPSSMgr_Water_HKFT::getEnthalpy_RT_ref(doublereal* hrt) const
 {
     updateRefStateThermo();
     copy(m_h0_RT.begin(), m_h0_RT.end(), hrt);
 }
 
-void
-VPSSMgr_Water_HKFT::getGibbs_RT_ref(doublereal* grt) const
+void VPSSMgr_Water_HKFT::getGibbs_RT_ref(doublereal* grt) const
 {
     updateRefStateThermo();
     copy(m_g0_RT.begin(), m_g0_RT.end(), grt);
 }
 
-void
-VPSSMgr_Water_HKFT::getGibbs_ref(doublereal* g) const
+void VPSSMgr_Water_HKFT::getGibbs_ref(doublereal* g) const
 {
     getGibbs_RT_ref(g);
     for (size_t k = 0; k < m_kk; k++) {
@@ -88,22 +80,19 @@ VPSSMgr_Water_HKFT::getGibbs_ref(doublereal* g) const
     }
 }
 
-void
-VPSSMgr_Water_HKFT::getEntropy_R_ref(doublereal* sr) const
+void VPSSMgr_Water_HKFT::getEntropy_R_ref(doublereal* sr) const
 {
     updateRefStateThermo();
     copy(m_s0_R.begin(), m_s0_R.end(), sr);
 }
 
-void
-VPSSMgr_Water_HKFT::getCp_R_ref(doublereal* cpr) const
+void VPSSMgr_Water_HKFT::getCp_R_ref(doublereal* cpr) const
 {
     updateRefStateThermo();
     copy(m_cp0_R.begin(), m_cp0_R.end(), cpr);
 }
 
-void
-VPSSMgr_Water_HKFT::getStandardVolumes_ref(doublereal* vol) const
+void VPSSMgr_Water_HKFT::getStandardVolumes_ref(doublereal* vol) const
 {
     updateRefStateThermo();
     copy(m_V0.begin(), m_V0.end(), vol);
@@ -150,25 +139,19 @@ void VPSSMgr_Water_HKFT::_updateRefStateThermo() const
     m_p0 = m_waterSS->pref_safe(m_tlast);
     m_waterSS->setState_TP(m_tlast, m_p0);
     m_h0_RT[0] = (m_waterSS->enthalpy_mole()) / (GasConstant * m_tlast);
-    m_s0_R[0]  = (m_waterSS->entropy_mole()) / GasConstant;
+    m_s0_R[0] = (m_waterSS->entropy_mole()) / GasConstant;
     m_cp0_R[0] = (m_waterSS->cp_mole()) / GasConstant;
     m_g0_RT[0] = (m_hss_RT[0] - m_sss_R[0]);
-    m_V0[0]    = (m_waterSS->density()) / m_vptp_ptr->molecularWeight(0);
+    m_V0[0] = (m_waterSS->density()) / m_vptp_ptr->molecularWeight(0);
     PDSS* ps;
     for (size_t k = 1; k < m_kk; k++) {
         ps = m_vptp_ptr->providePDSS(k);
         ps->setState_TP(m_tlast, m_p0);
-        m_cp0_R[k]  = ps->cp_R();
-        m_s0_R[k]   = ps->entropy_mole() / GasConstant;
-        m_g0_RT[k]  = ps->gibbs_RT();
-        m_h0_RT[k]  = m_g0_RT[k] + m_s0_R[k];
-#ifdef DEBUG_MODE_NOT
-        double h = ps->enthalpy_RT();
-        if (fabs(m_h0_RT[k] - h) > 1.0E-4) {
-            printf(" VPSSMgr_Water_HKFT::_updateRefStateThermo:: we have a discrepancy\n");
-        }
-#endif
-        m_V0[k]     = ps->molarVolume();
+        m_cp0_R[k] = ps->cp_R();
+        m_s0_R[k] = ps->entropy_mole() / GasConstant;
+        m_g0_RT[k] = ps->gibbs_RT();
+        m_h0_RT[k] = m_g0_RT[k] + m_s0_R[k];
+        m_V0[k] = ps->molarVolume();
 
     }
     m_waterSS->setState_TP(m_tlast, m_plast);
@@ -183,38 +166,31 @@ void VPSSMgr_Water_HKFT::_updateStandardStateThermo()
     // Do the water
     m_waterSS->setState_TP(m_tlast, m_plast);
     m_hss_RT[0] = (m_waterSS->enthalpy_mole()) / (GasConstant * m_tlast);
-    m_sss_R[0]  = (m_waterSS->entropy_mole()) / GasConstant;
-    m_cpss_R[0] = (m_waterSS->cp_mole())      / GasConstant;
+    m_sss_R[0] = (m_waterSS->entropy_mole()) / GasConstant;
+    m_cpss_R[0] = (m_waterSS->cp_mole()) / GasConstant;
     m_gss_RT[0] = (m_hss_RT[0] - m_sss_R[0]);
-    m_Vss[0]    = (m_vptp_ptr->molecularWeight(0)) / (m_waterSS->density());
+    m_Vss[0] = (m_vptp_ptr->molecularWeight(0)) / (m_waterSS->density());
 
     for (size_t k = 1; k < m_kk; k++) {
         PDSS* ps = m_vptp_ptr->providePDSS(k);
         ps->setState_TP(m_tlast, m_plast);
-        m_cpss_R[k]  = ps->cp_R();
-        m_sss_R[k]   = ps->entropy_R();
-        m_gss_RT[k]  = ps->gibbs_RT();
-        m_hss_RT[k]  = m_gss_RT[k] + m_sss_R[k];
-        m_Vss[k]     = ps->molarVolume();
+        m_cpss_R[k] = ps->cp_R();
+        m_sss_R[k] = ps->entropy_R();
+        m_gss_RT[k] = ps->gibbs_RT();
+        m_hss_RT[k] = m_gss_RT[k] + m_sss_R[k];
+        m_Vss[k] = ps->molarVolume();
     }
 }
 
-void VPSSMgr_Water_HKFT::initThermo()
-{
-    VPSSMgr::initThermo();
-}
-
-
-void
-VPSSMgr_Water_HKFT::initThermoXML(XML_Node& phaseNode, const std::string& id)
+void VPSSMgr_Water_HKFT::initThermoXML(XML_Node& phaseNode,
+                                       const std::string& id)
 {
     VPSSMgr::initThermoXML(phaseNode, id);
-
     XML_Node& speciesList = phaseNode.child("speciesArray");
     XML_Node* speciesDB = get_XML_NameID("speciesData", speciesList["datasrc"],
                                          &phaseNode.root());
     m_waterSS->setState_TP(300., OneAtm);
-    m_Vss[0] = (m_waterSS->density())      / m_vptp_ptr->molecularWeight(0);
+    m_Vss[0] = (m_waterSS->density()) / m_vptp_ptr->molecularWeight(0);
 
     for (size_t k = 1; k < m_kk; k++) {
         string name = m_vptp_ptr->speciesName(k);
@@ -228,8 +204,7 @@ VPSSMgr_Water_HKFT::initThermoXML(XML_Node& phaseNode, const std::string& id)
             throw CanteraError("VPSSMgr_Water_HKFT::initThermoXML",
                                "No standardState Node for species " + name);
         }
-        std::string model = lowercase(ss->attrib("model"));
-        if (model != "hkft") {
+        if (!ba::iequals(ss->attrib("model"), "hkft")) {
             throw CanteraError("VPSSMgr_Water_HKFT::initThermoXML",
                                "Standard state model for a solute species isn't "
                                "the HKFT standard state model: " + name);
@@ -237,12 +212,10 @@ VPSSMgr_Water_HKFT::initThermoXML(XML_Node& phaseNode, const std::string& id)
     }
 }
 
-PDSS*
-VPSSMgr_Water_HKFT::createInstallPDSS(size_t k, const XML_Node& speciesNode,
-                                      const XML_Node* const phaseNode_ptr)
+PDSS* VPSSMgr_Water_HKFT::createInstallPDSS(size_t k,
+        const XML_Node& speciesNode, const XML_Node* const phaseNode_ptr)
 {
     PDSS* kPDSS = 0;
-
     const XML_Node* ss = speciesNode.findByName("standardState");
     if (!ss) {
         throw CanteraError("VPSSMgr_Water_HKFT::installSpecies",
@@ -262,17 +235,9 @@ VPSSMgr_Water_HKFT::createInstallPDSS(size_t k, const XML_Node& speciesNode,
             throw CanteraError("VPSSMgr_Water_HKFT::installSpecies",
                                "wrong SS mode: " + model);
         }
-        //VPSSMgr::installSTSpecies(k, speciesNode, phaseNode_ptr);
         delete m_waterSS;
         m_waterSS = new PDSS_Water(m_vptp_ptr, 0);
-
-        GeneralSpeciesThermo* genSpthermo = dynamic_cast<GeneralSpeciesThermo*>(m_spthermo);
-        if (!genSpthermo) {
-            throw CanteraError("VPSSMgr_Water_HKFT::installSpecies",
-                               "failed dynamic cast");
-        }
-        genSpthermo->installPDSShandler(k, m_waterSS, this);
-
+        m_spthermo->installPDSShandler(k, m_waterSS, this);
         kPDSS = m_waterSS;
     } else {
         if (ss->attrib("model") != "HKFT") {
@@ -282,20 +247,13 @@ VPSSMgr_Water_HKFT::createInstallPDSS(size_t k, const XML_Node& speciesNode,
         }
 
         kPDSS = new PDSS_HKFT(m_vptp_ptr, k, speciesNode, *phaseNode_ptr, true);
-
-        GeneralSpeciesThermo* genSpthermo = dynamic_cast<GeneralSpeciesThermo*>(m_spthermo);
-        if (!genSpthermo) {
-            throw CanteraError("VPSSMgr_Water_HKFT::installSpecies",
-                               "failed dynamic cast");
-        }
-        genSpthermo->installPDSShandler(k, kPDSS, this);
+        m_spthermo->installPDSShandler(k, kPDSS, this);
     }
     return kPDSS;
 }
 
-void
-VPSSMgr_Water_HKFT::initAllPtrs(VPStandardStateTP* vp_ptr,
-                                    SpeciesThermo* sp_ptr)
+void VPSSMgr_Water_HKFT::initAllPtrs(VPStandardStateTP* vp_ptr,
+                                     MultiSpeciesThermo* sp_ptr)
 {
     VPSSMgr::initAllPtrs(vp_ptr, sp_ptr);
     m_waterSS = dynamic_cast<PDSS_Water*>(m_vptp_ptr->providePDSS(0));
@@ -307,11 +265,15 @@ VPSSMgr_Water_HKFT::initAllPtrs(VPStandardStateTP* vp_ptr,
 
 PDSS_enumType VPSSMgr_Water_HKFT::reportPDSSType(int k) const
 {
+    warn_deprecated("VPSSMgr_Water_HKFT::reportPDSSType",
+        "To be removed after Cantera 2.3.");
     return cPDSS_UNDEF;
 }
 
 VPSSMgr_enumType VPSSMgr_Water_HKFT::reportVPSSMgrType() const
 {
+    warn_deprecated("VPSSMgr_Water_HKFT::reportVPSSMgrType",
+        "To be removed after Cantera 2.3.");
     return cVPSSMGR_WATER_HKFT;
 }
 }

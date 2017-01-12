@@ -1,4 +1,6 @@
 //! @file mix_defs.h
+//! @deprecated All of the constants defined in this header are no longer used.
+//!     To be removed after Cantera 2.3.
 #ifndef CT_MIX_DEFS_H
 #define CT_MIX_DEFS_H
 
@@ -6,9 +8,9 @@ namespace Cantera
 {
 
 /**
- *  This generic id is used as the default in virtual base
- *  classes that employ id's. It is used to indicate the lack
- *  of an inherited class that would define the id.
+ * This generic id is used as the default in virtual base classes that employ
+ * id's. It is used to indicate the lack of an inherited class that would define
+ * the id.
  */
 const int cNone = 0;
 
@@ -21,27 +23,25 @@ const int cHarmonicOsc = 4;
 /**
  * Equation of state types:
  *
- *  These types are used in the member function eosType() of
- *  the virtual base class ThermoPhase. They are used to
- *  distinguish different types of equation of states. Also, they
- *  may be used for upcasting from the ThermoPhase class.  Their
- *  id's should be distinct.
+ * These types are used in the member function eosType() of the virtual base
+ * class ThermoPhase. They are used to distinguish different types of equation
+ * of states. Also, they may be used for upcasting from the ThermoPhase class.
+ * Their id's should be distinct.
  *
- *  Users who wish to define their own equation of states which
- *  derive from ThermoPhase should define a unique id which
- *  doesn't conflict with those listed below. The Cantera Kernel
- *  however, will not be know about the class and will therefore
- *  not be able to initialize the class within its "factory"
- *  routines.
+ * Users who wish to define their own equation of states which derive from
+ * ThermoPhase should define a unique id which doesn't conflict with those
+ * listed below. The Cantera Kernel however, will not be know about the class
+ * and will therefore not be able to initialize the class within its "factory"
+ * routines.
+ * @deprecated To be removed after Cantera 2.3.
  */
-const int cIdealGas = 1;       //  IdealGasPhase in IdealGasPhase.h
-const int cIncompressible = 2; //  ConstDensityThermo in ConstDensityThermo.h
+const int cIdealGas = 1; // IdealGasPhase in IdealGasPhase.h
+const int cIncompressible = 2; // ConstDensityThermo in ConstDensityThermo.h
 /// A surface phase. Used by class SurfPhase.
 const int cSurf = 3;
 
 /// A metal phase.
-const int cMetal = 4;          //  MetalPhase in MetalPhase.h
-//    const int cSolidCompound = 5;  //  SolidCompound in SolidCompound.h
+const int cMetal = 4; // MetalPhase in MetalPhase.h
 const int cStoichSubstance = 5; // StoichSubstance.h
 const int cSemiconductor = 7;
 
@@ -93,31 +93,15 @@ const int cPhaseCombo_Interaction = 305;
 const int cIonsFromNeutral = 2000;
 
 //! Variable Pressure Standard State ThermoPhase objects
-const int cVPSS_IdealGas     = 1001;
-const int cVPSS_ConstVol     = 1002;
-const int cVPSS_PureFluid    = 1010;
-const int cVPSS_HMW          = 1040;
+const int cVPSS_IdealGas = 1001;
+const int cVPSS_ConstVol = 1002;
+const int cVPSS_PureFluid = 1010;
+const int cVPSS_HMW = 1040;
 const int cVPSS_DebyeHuckel = 1050;
-const int cVPSS_MolalSoln   = 1060;
-
-//! Types of general formulations for the specification of the standard state volume
-enum SSVolume_Model_enumType {
-    //! This approximation is for a constant volume
-    cSSVOLUME_CONSTANT = 0,
-    //! This approximation is for a species with a quadratic polynomial in temperature
-    /*!
-     *       V^ss_i = ai + bi T + ci T2
-     */
-    cSSVOLUME_TPOLY,
-    //! This approximation is for a species where the density is expressed as a
-    //! quadratic polynomial in temperature
-    /*!
-     *       V^ss_i = M_i / (ai + bi T + ci T2)
-     */
-    cSSVOLUME_DENSITY_TPOLY
-};
+const int cVPSS_MolalSoln = 1060;
 
 //! Types of PDSS's
+//! @deprecated Unused. To be removed after Cantera 2.3.
 enum PDSS_enumType {
     cPDSS_UNDEF = 100,
     cPDSS_IDEALGAS,
@@ -129,9 +113,9 @@ enum PDSS_enumType {
     cPDSS_IONSFROMNEUTRAL
 };
 
-
 //! enum for VPSSMgr types that are responsible for calculating the species
 //! standard state and reference-state thermodynamic properties.
+//! @deprecated Unused. To be removed after Cantera 2.3.
 enum VPSSMgr_enumType {
     cVPSSMGR_UNDEF = 1000,
     //! Variable pressures SS calculator for ideal gas phases
@@ -153,6 +137,7 @@ enum VPSSMgr_enumType {
 
 
 // kinetic manager types
+// @deprecated To be removed after Cantera 2.3.
 const int cGasKinetics = 2;
 const int cInterfaceKinetics = 4;
 const int cLineKinetics = 5;
@@ -162,4 +147,3 @@ const int cAqueousKinetics = 8;
 }
 
 #endif
-

@@ -72,7 +72,7 @@ General
 **Which Cantera interface should I use?**
 
     If you're new to Cantera, the best interface to get started with is
-    probably the "new" Python interface. It offers most of the features of the
+    probably the Python interface. It offers most of the features of the
     C++ core in a much more flexible environment. Since all of the
     calculations are still done in C++, there is very little performance
     penalty to using the high-level language interfaces.
@@ -81,12 +81,12 @@ General
 
     Cantera is distributed with many examples for the Python and Matlab
     interfaces, and a smaller number of examples for the C++ and Fortran
-    interfaces. The Matlab, C++, and legacy Python examples should be
+    interfaces. The Matlab, C++, and Fortran examples should be
     installed in the ``samples`` subdirectory of the Cantera installation
     directory, or they can be found in the ``samples`` subdirectory of the
     Cantera source directory.
 
-    Examples for the new Python interface can be found in the ``examples``
+    Examples for the Python interface can be found in the ``examples``
     subdirectory of the Cantera Python module installation directory, or in
     the ``interfaces/cython/cantera/examples`` subdirectory of the Cantera
     source directory.
@@ -97,7 +97,8 @@ General
 
     David G. Goodwin, Harry K. Moffat, and Raymond L. Speth. *Cantera: An object-
     oriented software toolkit for chemical kinetics, thermodynamics, and
-    transport processes*. http://www.cantera.org, 2015. Version 2.2.0.
+    transport processes*. http://www.cantera.org, 2017. Version 2.3.0.
+    doi:10.5281/zenodo.170284
 
     The following BibTeX entry may also be used::
 
@@ -105,9 +106,10 @@ General
            author = "David G. Goodwin and Harry K. Moffat and Raymond L. Speth",
            title = "Cantera: An Object-oriented Software Toolkit for Chemical
                     Kinetics, Thermodynamics, and Transport Processes",
-           year = 2015,
-           note = "Version 2.2.0",
+           year = 2017,
+           note = "Version 2.3.0",
            howpublished = "\url{http://www.cantera.org}"
+           doi = {10.5281/zenodo.170284}
         }
 
     If you are using a different version of Cantera, update the ``version`` and
@@ -124,8 +126,8 @@ Support and Bug Reporting
     - Check the `Issue Tracker
       <https://github.com/Cantera/cantera/issues>`_ to see if the issue
       has already been reported.
-    - Try to generate a complete, minimal example that demonstrates the
-      observed bug.
+    - Try to generate a `minimal, complete, and verifiable example
+      <http://stackoverflow.com/help/mcve>`_ that demonstrates the observed bug.
     - Create a new issue on the tracker. Include as much information as
       possible about your system configuration (operating system, compiler
       versions, Python versions, installation method, etc.)

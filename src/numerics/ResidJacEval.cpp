@@ -1,13 +1,7 @@
-/**
- *  @file ResidJacEval.cpp
- */
+//! @file ResidJacEval.cpp
 
-/*
- * Copyright 2004 Sandia Corporation. Under the terms of Contract
- * DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government
- * retains certain rights in this software.
- * See file License.txt for licensing information.
- */
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/base/ct_defs.h"
 #include "cantera/numerics/ResidJacEval.h"
@@ -23,11 +17,15 @@ ResidJacEval::ResidJacEval(doublereal atol) :
 
 ResidJacEval::ResidJacEval(const ResidJacEval& right)
 {
+    warn_deprecated("ResidJacEval copy constructor",
+                    "To be removed after Cantera 2.3.");
     *this = right;
 }
 
 ResidJacEval& ResidJacEval::operator=(const ResidJacEval& right)
 {
+    warn_deprecated("ResidJacEval assignment operator",
+                    "To be removed after Cantera 2.3.");
     if (this == &right) {
         return *this;
     }
@@ -35,7 +33,7 @@ ResidJacEval& ResidJacEval::operator=(const ResidJacEval& right)
     ResidEval::operator=(right);
 
     m_atol = right.m_atol;
-    neq_   = right.neq_;
+    neq_ = right.neq_;
 
     return *this;
 }
@@ -85,7 +83,7 @@ void ResidJacEval::user_out(const int ifunc, const doublereal t,
     user_out2(ifunc, t, 0.0, y, ydot);
 }
 
-int ResidJacEval::evalTimeTrackingEqns(const doublereal t, 
+int ResidJacEval::evalTimeTrackingEqns(const doublereal t,
                                        const doublereal delta_t,
                                        const doublereal* y,
                                        const doublereal* ydot)
@@ -93,7 +91,7 @@ int ResidJacEval::evalTimeTrackingEqns(const doublereal t,
     return 1;
 }
 
-int ResidJacEval::calcDeltaSolnVariables(const doublereal t, 
+int ResidJacEval::calcDeltaSolnVariables(const doublereal t,
                                          const doublereal* const ySoln,
                                          const doublereal* const ySolnDot,
                                          doublereal* const deltaYSoln,
@@ -111,16 +109,14 @@ int ResidJacEval::calcDeltaSolnVariables(const doublereal t,
     return 1;
 }
 
-void ResidJacEval::calcSolnScales(const doublereal t, 
+void ResidJacEval::calcSolnScales(const doublereal t,
                                   const doublereal* const ysoln,
                                   const doublereal* const ysolnOld,
                                   doublereal* const ysolnScales)
 {
-    if (ysolnScales) {
-        if (ysolnScales[0] == 0.0) {
-            for (int i = 0; i < neq_; i++) {
-                ysolnScales[i] = 1.0;
-            }
+    if (ysolnScales && ysolnScales[0] == 0.0) {
+        for (int i = 0; i < neq_; i++) {
+            ysolnScales[i] = 1.0;
         }
     }
 }
@@ -151,7 +147,7 @@ int ResidJacEval::matrixConditioning(doublereal* const matrix, const int nrows,
 
 int ResidJacEval::evalResidNJ(const doublereal t, const doublereal deltaT,
                               const doublereal* y, const doublereal* ydot,
-                              doublereal* const resid, 
+                              doublereal* const resid,
                               const ResidEval_Type_Enum evalType,
                               const int id_x, const doublereal delta_x)
 {
@@ -168,7 +164,7 @@ int ResidJacEval::eval(const doublereal t, const doublereal* const y, const doub
 
 int ResidJacEval::evalJacobian(const doublereal t, const doublereal delta_t,
                                doublereal cj, const doublereal* const y,
-                               const doublereal* const ydot, GeneralMatrix& J,
+                               const doublereal* const ydot, DenseMatrix& J,
                                doublereal* const resid)
 {
     doublereal* const* jac_colPts = J.colPts();
@@ -176,7 +172,7 @@ int ResidJacEval::evalJacobian(const doublereal t, const doublereal delta_t,
 }
 
 int ResidJacEval::evalJacobianDP(const doublereal t, const doublereal delta_t,
-                                 const doublereal c_j, 
+                                 const doublereal c_j,
                                  const doublereal* const y,
                                  const doublereal* const ydot,
                                  doublereal* const* jac_colPts,

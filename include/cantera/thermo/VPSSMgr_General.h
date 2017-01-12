@@ -6,11 +6,9 @@
  * but slow way (see \ref mgrpdssthermocalc and
  * class \link Cantera::VPSSMgr_General VPSSMgr_General\endlink).
  */
-/*
- * Copyright (2007) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #ifndef CT_VPSSMGR_GENERAL_H
 #define CT_VPSSMGR_GENERAL_H
@@ -35,20 +33,15 @@ class VPSSMgr_General : public VPSSMgr
 public:
     //! Constructor
     /*!
-     *  @param vp_ptr Pointer to the owning VPStandardStateTP  object for the
-     *                phase. It's a requirement that this be already malloced.
-     *  @param spth   Pointer to the SpeciesThermo object for the phase. It's
-     *                a requirement that this be already malloced.
+     *  @param vp_ptr Pointer to the owning VPStandardStateTP object for the
+     *                phase.
+     *  @param spth   Pointer to the MultiSpeciesThermo object for the phase.
      */
     VPSSMgr_General(VPStandardStateTP* vp_ptr,
-                    SpeciesThermo* spth);
+                    MultiSpeciesThermo* spth);
 
-    //! Copy Constructor
     VPSSMgr_General(const VPSSMgr_General& right);
-
-    //! Assignment operator
     VPSSMgr_General& operator=(const VPSSMgr_General& right);
-
     virtual VPSSMgr* duplMyselfAsVPSSMgr() const;
 
 protected:
@@ -73,18 +66,17 @@ protected:
      * the routine _updateRefStateThermo().
      */
     //@{
-    virtual void getGibbs_ref(doublereal* g) const ;
+    virtual void getGibbs_ref(doublereal* g) const;
     //@}
 
     /*! @name Initialization Methods - For Internal use
      * The following methods are used in the process of constructing the phase
      * and setting its parameters from a specification in an input file. They
      * are not normally used in application programs. To see how they are
-     * used, see #importPhase.
+     * used, see importPhase().
      */
     //@{
     virtual void initThermo();
-    virtual void initThermoXML(XML_Node& phaseNode, const std::string& id);
     //@}
 
 private:
@@ -101,10 +93,10 @@ private:
      * @param k  Species number
      * @param phaseNode_ptr   pointer to the phase XML node
      * @param doST  output variable indicating whether the
-     *           instantiation has resulted in a SpeciesThermo object
-     *           being created and registered with the SpeciesThermo
+     *           instantiation has resulted in a MultiSpeciesThermo object
+     *           being created and registered with the MultiSpeciesThermo
      *           manager class.
-     * @return  Returns the pointer to a malloced PDSS object
+     * @returns the pointer to a newly created PDSS object
      */
     PDSS* returnPDSS_ptr(size_t k, const XML_Node& speciesNode,
                          const XML_Node* const phaseNode_ptr, bool& doST);
@@ -124,15 +116,14 @@ public:
      * @param k  Species number
      * @param speciesNode XML node for the standard state of the species
      * @param phaseNode_ptr   pointer to the phase XML node
-     * @return  Returns the pointer to the malloced PDSS object
+     * @return the pointer to the newly created PDSS object
      */
-    virtual  PDSS* createInstallPDSS(size_t k, const XML_Node& speciesNode,
+    virtual PDSS* createInstallPDSS(size_t k, const XML_Node& speciesNode,
                                      const XML_Node* const phaseNode_ptr);
 
-
-    virtual PDSS_enumType reportPDSSType(int index = -1) const ;
-    virtual VPSSMgr_enumType reportVPSSMgrType() const ;
-    virtual void initAllPtrs(VPStandardStateTP* vp_ptr, SpeciesThermo* sp_ptr);
+    virtual PDSS_enumType reportPDSSType(int index = -1) const;
+    virtual VPSSMgr_enumType reportVPSSMgrType() const;
+    virtual void initAllPtrs(VPStandardStateTP* vp_ptr, MultiSpeciesThermo* sp_ptr);
 
 private:
     //! Shallow pointers containing the PDSS objects for the species

@@ -5,11 +5,9 @@
  *    (see \ref spthermo and class
  *    \link Cantera::VPSSMgrFactory VPSSMgrFactory\endlink);
  */
-/*
- * Copyright (2005) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "VPSSMgrFactory.h"
 #include "cantera/thermo/VPStandardStateTP.h"
@@ -20,7 +18,7 @@
 #include "cantera/thermo/VPSSMgr_General.h"
 
 #include "cantera/thermo/SpeciesThermoFactory.h"
- #include "cantera/thermo/GeneralSpeciesThermo.h"
+#include "cantera/thermo/MultiSpeciesThermo.h"
 #include "cantera/base/stringUtils.h"
 #include "cantera/base/ctml.h"
 
@@ -32,23 +30,33 @@ namespace Cantera
 VPSSMgrFactory* VPSSMgrFactory::s_factory = 0;
 
 // Defn of the static mutex variable that locks the VPSSMgr factory singleton
-mutex_t VPSSMgrFactory::vpss_species_thermo_mutex;
+std::mutex VPSSMgrFactory::vpss_species_thermo_mutex;
 
-//! Examine the types of species thermo parameterizations, and return a flag indicating the type of parameterization
-//! needed by the species.
+//! Examine the types of species thermo parameterizations, and return a flag
+//! indicating the type of parameterization needed by the species.
 /*!
  *  @param spDataNodeList            Species Data XML node. This node contains a list
  *                                     of species XML nodes underneath it.
- *  @param has_nasa_idealGas         Boolean indicating that one species has a NASA ideal gas standard state
- *  @param has_nasa_constVol         Boolean indicating that one species has a NASA ideal solution standard state
- *  @param has_shomate_idealGas      Boolean indicating that one species has a Shomate ideal gas standard state
- *  @param has_shomate_constVol      Boolean indicating that one species has a Shomate ideal solution standard state
- *  @param has_simple_idealGas       Boolean indicating that one species has a simple ideal gas standard state
- *  @param has_simple_constVol       Boolean indicating that one species has a simple ideal solution standard state
- *  @param has_water                 Boolean indicating that one species has a water standard state
- *  @param has_tpx                   Boolean indicating that one species has a tpx standard state
- *  @param has_hptx                  Boolean indicating that one species has a htpx standard state
- *  @param has_other                 Boolean indicating that one species has different standard state than the ones listed above
+ *  @param has_nasa_idealGas         Boolean indicating that one species has a
+ *      NASA ideal gas standard state
+ *  @param has_nasa_constVol         Boolean indicating that one species has a
+ *      NASA ideal solution standard state
+ *  @param has_shomate_idealGas      Boolean indicating that one species has a
+ *      Shomate ideal gas standard state
+ *  @param has_shomate_constVol      Boolean indicating that one species has a
+ *      Shomate ideal solution standard state
+ *  @param has_simple_idealGas       Boolean indicating that one species has a
+ *      simple ideal gas standard state
+ *  @param has_simple_constVol       Boolean indicating that one species has a
+ *      simple ideal solution standard state
+ *  @param has_water                 Boolean indicating that one species has a
+ *      water standard state
+ *  @param has_tpx                   Boolean indicating that one species has a
+ *      tpx standard state
+ *  @param has_hptx                  Boolean indicating that one species has a
+ *      htpx standard state
+ *  @param has_other                 Boolean indicating that one species has
+ *      different standard state than the ones listed above
  *
  * @todo Make sure that spDadta_node is species Data XML node by checking
  *      its name is speciesData
@@ -65,7 +73,6 @@ static void getVPSSMgrTypes(std::vector<XML_Node*> & spDataNodeList,
                             int& has_hptx,
                             int& has_other)
 {
-
     string ssModel = "idealGas";
     for (size_t n = 0; n < spDataNodeList.size(); n++) {
         bool ifound = false;
@@ -94,12 +101,13 @@ static void getVPSSMgrTypes(std::vector<XML_Node*> & spDataNodeList,
                                ssModel == "constantVolume") {
                         has_nasa_constVol++;
                     } else if (ssModel == "temperature_polynomial" ||
-                               ssModel == "density_temperature_polynomial"  ||
+                               ssModel == "density_temperature_polynomial" ||
                                ssModel == "constant") {
                         has_other++;
                     } else {
-                        throw UnknownVPSSMgrModel("getVPSSMgrTypes:",
-                                                  spNode->attrib("name"));
+                        throw CanteraError("getVPSSMgrTypes",
+                            "Specified VPSSMgr model {} does not match any known type.",
+                            spNode->attrib("name"));
                     }
                     ifound = true;
                 }
@@ -110,12 +118,13 @@ static void getVPSSMgrTypes(std::vector<XML_Node*> & spDataNodeList,
                                ssModel == "constantVolume") {
                         has_shomate_constVol++;
                     } else if (ssModel == "temperature_polynomial" ||
-                               ssModel == "density_temperature_polynomial"  ||
+                               ssModel == "density_temperature_polynomial" ||
                                ssModel == "constant") {
                         has_other++;
                     } else {
-                        throw UnknownVPSSMgrModel("getVPSSMgrTypes:",
-                                                  spNode->attrib("name"));
+                        throw CanteraError("getVPSSMgrTypes",
+                            "Specified VPSSMgr model {} does not match any known type.",
+                            spNode->attrib("name"));
                     }
                     ifound = true;
                 }
@@ -126,12 +135,13 @@ static void getVPSSMgrTypes(std::vector<XML_Node*> & spDataNodeList,
                                ssModel == "constantVolume") {
                         has_simple_constVol++;
                     } else if (ssModel == "temperature_polynomial" ||
-                               ssModel == "density_temperature_polynomial"  ||
+                               ssModel == "density_temperature_polynomial" ||
                                ssModel == "constant") {
                         has_other++;
                     } else {
-                        throw UnknownVPSSMgrModel("getVPSSMgrTypes:",
-                                                  spNode->attrib("name"));
+                        throw CanteraError("getVPSSMgrTypes",
+                            "Specified VPSSMgr model {} does not match any known type.",
+                            spNode->attrib("name"));
                     }
                     ifound = true;
                 }
@@ -163,16 +173,36 @@ static void getVPSSMgrTypes(std::vector<XML_Node*> & spDataNodeList,
                     ifound = true;
                 }
             } else {
-                throw UnknownVPSSMgrModel("getVPSSMgrTypes:",
-                                          spNode->attrib("name"));
+                throw CanteraError("getVPSSMgrTypes",
+                    "Specified VPSSMgr model {} does not match any known type.",
+                    spNode->attrib("name"));
             }
         }
     }
 }
 
+VPSSMgrFactory::VPSSMgrFactory()
+{
+    reg("idealgas",
+        [] (VPStandardStateTP* tp, MultiSpeciesThermo* st) {
+            return new VPSSMgr_IdealGas(tp, st); });
+    reg("constvol",
+        [] (VPStandardStateTP* tp, MultiSpeciesThermo* st) {
+            return new VPSSMgr_ConstVol(tp, st); });
+    reg("water_constvol",
+        [] (VPStandardStateTP* tp, MultiSpeciesThermo* st) {
+            return new VPSSMgr_Water_ConstVol(tp, st); });
+    reg("water_hkft",
+        [] (VPStandardStateTP* tp, MultiSpeciesThermo* st) {
+            return new VPSSMgr_Water_HKFT(tp, st); });
+    reg("general",
+        [] (VPStandardStateTP* tp, MultiSpeciesThermo* st) {
+            return new VPSSMgr_General(tp, st); });
+}
+
 void VPSSMgrFactory::deleteFactory()
 {
-    ScopedLock lock(vpss_species_thermo_mutex);
+    std::unique_lock<std::mutex> lock(vpss_species_thermo_mutex);
     delete s_factory;
     s_factory = 0;
 }
@@ -180,7 +210,9 @@ void VPSSMgrFactory::deleteFactory()
 VPSSMgr_enumType
 VPSSMgrFactory::VPSSMgr_StringConversion(const std::string& ssModel) const
 {
-    std::string lssModel = lowercase(ssModel);
+    warn_deprecated("VPSSMgrFactory::VPSSMgr_StringConversion",
+        "To be removed after Cantera 2.3.");
+    std::string lssModel = ba::to_lower_copy(ssModel);
     VPSSMgr_enumType type;
     if (lssModel == "idealgas") {
         type = cVPSSMGR_IDEALGAS;
@@ -200,50 +232,35 @@ VPSSMgrFactory::VPSSMgr_StringConversion(const std::string& ssModel) const
     return type;
 }
 
-VPSSMgr*
-VPSSMgrFactory::newVPSSMgr(VPStandardStateTP* vp_ptr,
-                           XML_Node* phaseNode_ptr,
-                           std::vector<XML_Node*> & spDataNodeList)
+VPSSMgr* VPSSMgrFactory::newVPSSMgr(VPStandardStateTP* vp_ptr,
+                                    XML_Node* phaseNode_ptr,
+                                    std::vector<XML_Node*> & spDataNodeList)
 {
-
     std::string ssManager;
     std::string vpssManager;
 
-    // First look for any explicit instructions within the XML Database
-    // for the standard state manager and the variable pressure
-    // standard state manager
-    if (phaseNode_ptr) {
-        if (phaseNode_ptr->hasChild("thermo")) {
-            const XML_Node& thermoNode = phaseNode_ptr->child("thermo");
-            if (thermoNode.hasChild("standardStateManager")) {
-                const XML_Node& ssNode = thermoNode.child("standardStateManager");
-                ssManager = ssNode["model"];
-            }
-            if (thermoNode.hasChild("variablePressureStandardStateManager")) {
-                const XML_Node& vpssNode = thermoNode.child("variablePressureStandardStateManager");
-                vpssManager = vpssNode["model"];
-            }
+    // First look for any explicit instructions within the XML Database for the
+    // standard state manager and the variable pressure standard state manager
+    if (phaseNode_ptr && phaseNode_ptr->hasChild("thermo")) {
+        const XML_Node& thermoNode = phaseNode_ptr->child("thermo");
+        if (thermoNode.hasChild("standardStateManager")) {
+            const XML_Node& ssNode = thermoNode.child("standardStateManager");
+            ssManager = ssNode["model"];
+        }
+        if (thermoNode.hasChild("variablePressureStandardStateManager")) {
+            const XML_Node& vpssNode = thermoNode.child("variablePressureStandardStateManager");
+            vpssManager = ba::to_lower_copy(vpssNode["model"]);
         }
     }
 
     // first get the reference state handler.
-    SpeciesThermo* spth = new GeneralSpeciesThermo();
-    vp_ptr->setSpeciesThermo(spth);
+    MultiSpeciesThermo* spth = &vp_ptr->speciesThermo();
 
     // Next, if we have specific directions, use them to get the VPSSSMgr object
     // and return immediately
     if (vpssManager != "") {
-        VPSSMgr_enumType type = VPSSMgr_StringConversion(vpssManager);
-        return newVPSSMgr(type, vp_ptr);
+        return create(vpssManager, vp_ptr, spth);
     }
-
-    // Handle special cases based on the VPStandardState types
-    if (vp_ptr->eosType() == cVPSS_IdealGas) {
-        return new VPSSMgr_IdealGas(vp_ptr, spth);
-    } else if (vp_ptr->eosType() == cVPSS_ConstVol) {
-        return new VPSSMgr_ConstVol(vp_ptr, spth);
-    }
-
 
     int inasaIG = 0, inasaCV = 0, ishomateIG = 0, ishomateCV = 0,
         isimpleIG = 0, isimpleCV = 0, iwater = 0, itpx = 0, iother = 0;
@@ -252,74 +269,63 @@ VPSSMgrFactory::newVPSSMgr(VPStandardStateTP* vp_ptr,
     try {
         getVPSSMgrTypes(spDataNodeList, inasaIG, inasaCV, ishomateIG, ishomateCV,
                         isimpleIG, isimpleCV, iwater, itpx, ihptx, iother);
-    } catch (UnknownSpeciesThermoModel) {
+    } catch (CanteraError) {
         iother = 1;
-        popError();
     }
 
     if (iwater == 1) {
         if (ihptx == 0) {
-            if (inasaIG ||  ishomateIG || isimpleIG) {
+            if (inasaIG || ishomateIG || isimpleIG) {
                 throw CanteraError("newVPSSMgr", "Ideal gas with liquid water");
             } else {
                 return new VPSSMgr_Water_ConstVol(vp_ptr, spth);
             }
         } else {
-            if (inasaIG ||  ishomateIG || isimpleIG) {
+            if (inasaIG || ishomateIG || isimpleIG) {
                 throw CanteraError("newVPSSMgr", "Ideal gas with liquid water");
-            } else if (inasaCV || ishomateCV ||  isimpleCV) {
+            } else if (inasaCV || ishomateCV || isimpleCV) {
                 return new VPSSMgr_General(vp_ptr, spth);
             } else {
                 return new VPSSMgr_Water_HKFT(vp_ptr, spth);
             }
         }
     }
-    if (inasaCV || ishomateCV || isimpleCV) {
-        if (!inasaIG && !ishomateIG && !isimpleIG && !itpx && !ihptx && !iother) {
-            return new VPSSMgr_ConstVol(vp_ptr, spth);
-        }
+    if ((inasaCV || ishomateCV || isimpleCV) &&
+        !inasaIG && !ishomateIG && !isimpleIG && !itpx && !ihptx && !iother) {
+        return new VPSSMgr_ConstVol(vp_ptr, spth);
     }
-
     return new VPSSMgr_General(vp_ptr, spth);
 }
 
 // I don't think this is currently used. However, this is a virtual
 // function where additional capabilities may be added.
-VPSSMgr*
-VPSSMgrFactory::newVPSSMgr(VPSSMgr_enumType type, VPStandardStateTP* vp_ptr)
+VPSSMgr* VPSSMgrFactory::newVPSSMgr(VPSSMgr_enumType type,
+                                    VPStandardStateTP* vp_ptr)
 {
-    SpeciesThermo& spthermoRef = vp_ptr->speciesThermo();
-    switch (type) {
-    case cVPSSMGR_IDEALGAS:
-        return new VPSSMgr_IdealGas(vp_ptr, &spthermoRef);
-    case cVPSSMGR_CONSTVOL:
-        return new VPSSMgr_ConstVol(vp_ptr, &spthermoRef);
-    case cVPSSMGR_PUREFLUID:
-        throw CanteraError("VPSSMgrFactory::newVPSSMgr",
-                           "unimplemented");
-    case cVPSSMGR_WATER_CONSTVOL:
-        return new VPSSMgr_Water_ConstVol(vp_ptr, &spthermoRef);
-    case cVPSSMGR_WATER_HKFT:
-        return new VPSSMgr_Water_HKFT(vp_ptr, &spthermoRef);
-    case cVPSSMGR_GENERAL:
-        return new VPSSMgr_General(vp_ptr, &spthermoRef);
-    case cVPSSMGR_UNDEF:
-    default:
-        throw UnknownVPSSMgrModel("VPSSMgrFactory::newVPSSMgr", int2str(type));
-        return 0;
-    }
+    warn_deprecated("VPSSMgrFactory::newVPSSMgr(VPSSMgr_enumType, VPStandardStateTP*)",
+        "To be removed after Cantera 2.3.");
+    static unordered_map<int, std::string> types {
+        {cVPSSMGR_IDEALGAS, "idealgas"},
+        {cVPSSMGR_CONSTVOL, "constvol"},
+        {cVPSSMGR_WATER_CONSTVOL, "water_constvol"},
+        {cVPSSMGR_WATER_HKFT, "water_hkft"},
+        {cVPSSMGR_GENERAL, "general"}
+    };
+    MultiSpeciesThermo& spthermoRef = vp_ptr->speciesThermo();
+    return create(types.at(type), vp_ptr, &spthermoRef);
 }
 
 // I don't think this is currently used
 VPSSMgr* newVPSSMgr(VPSSMgr_enumType type, VPStandardStateTP* vp_ptr,
                     Cantera::VPSSMgrFactory* f)
 {
+    warn_deprecated("newVPSSMgr(VPSSMgr_enumType, VPStandardStateTP*, VPSSMgrFactory*)",
+        "To be removed after Cantera 2.3.");
     if (f == 0) {
         f = VPSSMgrFactory::factory();
     }
     return f->newVPSSMgr(type, vp_ptr);
 }
-
 
 VPSSMgr* newVPSSMgr(VPStandardStateTP* tp_ptr,
                     XML_Node* phaseNode_ptr,
@@ -328,6 +334,10 @@ VPSSMgr* newVPSSMgr(VPStandardStateTP* tp_ptr,
 {
     if (f == 0) {
         f = VPSSMgrFactory::factory();
+    } else {
+        warn_deprecated("newVPSSMgr(VPStandardStateTP*, XML_Node*, vector<XML_Node*>, VPSSMgrFactory*)",
+            "The `VPSSMgrFactory*` argument to this function is deprecated and"
+            " will be removed after Cantera 2.3.");
     }
     return f->newVPSSMgr(tp_ptr, phaseNode_ptr, spDataNodeList);
 }

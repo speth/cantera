@@ -1,5 +1,8 @@
 //! @file lk.cpp Lee-Kesler equation of state
 
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #include "lk.h"
 #include <math.h>
 
@@ -26,7 +29,7 @@ double leekesler::W(int n, double egrho, double Gamma)
 
 double leekesler::up()
 {
-    return -(8314.3/Mw)*T*(1.0 + T*I()/Tcr);                   // + h_0(T)
+    return -(8314.3/Mw)*T*(1.0 + T*I()/Tcr); // + h_0(T)
 }
 
 double leekesler::hdep()
@@ -48,12 +51,12 @@ double leekesler::sp()
     return rgas*(log(Pref/(Rho*rgas*T)) - (T/Tcr)*I() - J());
 }
 
-double leekesler::I()   // \int_0^\rho_r (1/\rho_r)(dZ/dT_r) d\rho_r
+double leekesler::I() // \int_0^\rho_r (1/\rho_r)(dZ/dT_r) d\rho_r
 {
     double Bp, Cp, Dp;
     double rtr = Tcr/T;
     double rtr2 = rtr*rtr;
-    double rvr = 8314.3*Tcr*Rho/(Pcr*Mw);  //   1/v_r^\prime
+    double rvr = 8314.3*Tcr*Rho/(Pcr*Mw); // 1/v_r^\prime
     double rvr2 = rvr*rvr;
     double egrho;
 
@@ -67,12 +70,12 @@ double leekesler::I()   // \int_0^\rho_r (1/\rho_r)(dZ/dT_r) d\rho_r
     return r;
 }
 
-double leekesler::J()    // \int_0^\rho_r (1/\rho_r)(Z - 1) d\rho_r
+double leekesler::J() // \int_0^\rho_r (1/\rho_r)(Z - 1) d\rho_r
 {
     double BB, CC, DD;
     double rtr = Tcr/T;
     double rtr2 = rtr*rtr;
-    double rvr = 8314.3*Tcr*Rho/(Pcr*Mw);  //   1/v_r^\prime
+    double rvr = 8314.3*Tcr*Rho/(Pcr*Mw); // 1/v_r^\prime
     double rvr2 = rvr*rvr;
     double egrho;
 
@@ -90,7 +93,7 @@ double leekesler::J()    // \int_0^\rho_r (1/\rho_r)(Z - 1) d\rho_r
 double leekesler::z()
 {
     double zz, rvr2, BB, CC, DD, EE;
-    double rtr = Tcr/T;             //   1/T_r
+    double rtr = Tcr/T; // 1/T_r
     double rvr = Rho*8314.3*Tcr/(Pcr*Mw);
     rvr2 = rvr*rvr;
     BB = b[Isr][0] - rtr*(b[Isr][1]
@@ -104,7 +107,6 @@ double leekesler::z()
          (beta[Isr] + gamma[Isr]*rvr2)*EE;
     return zz;
 }
-
 
 double leekesler::Pp()
 {

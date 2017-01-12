@@ -7,6 +7,13 @@ else
 fi
 export LD_LIBRARY_PATH
 
+if [ -z $PKG_CONFIG_PATH ]; then
+    PKG_CONFIG_PATH=@ct_libdir@/pkgconfig
+else
+    PKG_CONFIG_PATH=@ct_libdir@/pkgconfig:$PKG_CONFIG_PATH
+fi
+export PKG_CONFIG_PATH
+
 PYTHON_CMD=@python_cmd@
 export PYTHON_CMD
 
@@ -39,11 +46,3 @@ if [ "@python_array_home@" != "" ]; then
 fi
 
 export PYTHONPATH
-
-## Uncomment this if you want to specify the tmp dir location where
-## Cantera writes temporary files. The default is:
-##     (1) getenv("TMP")
-##     (2) getenv("TEMP")
-##     (3) "."
-# CANTERA_TMPDIR=/fill/in
-# export CANTERA_TMPDIR

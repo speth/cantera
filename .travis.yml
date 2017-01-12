@@ -1,0 +1,37 @@
+language: cpp
+sudo: false
+os:
+  - linux
+  - osx
+addons:
+  apt:
+    packages:
+      - python-dev
+      - python-numpy
+      - python-pip
+      - python3-dev
+      - python3-numpy
+      - python3-setuptools
+      - gfortran
+      - libsundials-serial-dev
+      - liblapack-dev
+      - libblas-dev
+      - libboost-dev
+before_script: |
+  pip install --user --install-option="--no-cython-compile" cython
+  pip install --user 3to2
+  if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+      brew update
+      brew install scons
+      brew install boost
+      brew install python3
+      pip3 install numpy
+  fi
+  rm -f cantera.conf
+script:
+  - scons build -j2 VERBOSE=y python_package=full python3_package=y blas_lapack_libs=lapack,blas optimize=n coverage=y
+  - scons test
+after_success: |
+  if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+      bash <(curl -s https://codecov.io/bash)
+  fi

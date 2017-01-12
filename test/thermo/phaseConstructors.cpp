@@ -1,6 +1,6 @@
 #include "gtest/gtest.h"
-#include "cantera/thermo/FixedChemPotSSTP.h"
 #include "cantera/thermo/ThermoFactory.h"
+#include "cantera/thermo/FixedChemPotSSTP.h"
 #include "cantera/thermo/NasaPoly2.h"
 #include "cantera/thermo/IdealGasPhase.h"
 #include "cantera/base/ctml.h"
@@ -17,12 +17,11 @@ class FixedChemPotSstpConstructorTest : public testing::Test
 
 TEST_F(FixedChemPotSstpConstructorTest, fromXML)
 {
-    ThermoPhase* p = newPhase("../data/LiFixed.xml");
+    std::unique_ptr<ThermoPhase> p(newPhase("../data/LiFixed.xml"));
     ASSERT_EQ((int) p->nSpecies(), 1);
     double mu;
     p->getChemPotentials(&mu);
     ASSERT_DOUBLE_EQ(-2.3e7, mu);
-    delete p;
 }
 
 TEST_F(FixedChemPotSstpConstructorTest, SimpleConstructor)
@@ -38,16 +37,12 @@ TEST_F(FixedChemPotSstpConstructorTest, SimpleConstructor)
 class CtiConversionTest : public testing::Test
 {
 public:
-    CtiConversionTest() : p1(0), p2(0) {
+    CtiConversionTest() {
         appdelete();
     }
-    ~CtiConversionTest() {
-        delete p1;
-        delete p2;
-    }
 
-    ThermoPhase* p1;
-    ThermoPhase* p2;
+    std::unique_ptr<ThermoPhase> p1;
+    std::unique_ptr<ThermoPhase> p2;
     void compare()
     {
         ASSERT_EQ(p1->nSpecies(), p2->nSpecies());
@@ -59,15 +54,15 @@ public:
 };
 
 TEST_F(CtiConversionTest, ExplicitConversion) {
-    p1 = newPhase("../data/air-no-reactions.xml");
+    p1.reset(newPhase("../data/air-no-reactions.xml"));
     ct2ctml("../data/air-no-reactions.cti");
-    p2 = newPhase("air-no-reactions.xml", "");
+    p2.reset(newPhase("air-no-reactions.xml", ""));
     compare();
 }
 
 TEST_F(CtiConversionTest, ImplicitConversion) {
-    p1 = newPhase("../data/air-no-reactions.xml");
-    p2 = newPhase("../data/air-no-reactions.cti");
+    p1.reset(newPhase("../data/air-no-reactions.xml"));
+    p2.reset(newPhase("../data/air-no-reactions.cti"));
     compare();
 }
 
@@ -75,8 +70,8 @@ class ChemkinConversionTest : public testing::Test {
 public:
     void copyInputFile(const std::string& name) {
         std::string in_name = "../data/" + name;
-        std::ifstream source(in_name.c_str(), std::ios::binary);
-        std::ofstream dest(name.c_str(), std::ios::binary);
+        std::ifstream source(in_name, std::ios::binary);
+        std::ofstream dest(name, std::ios::binary);
         dest << source.rdbuf();
     }
 };
@@ -84,9 +79,8 @@ public:
 TEST_F(ChemkinConversionTest, ValidConversion) {
     copyInputFile("pdep-test.inp");
     ck2cti("pdep-test.inp");
-    ThermoPhase* p = newPhase("pdep-test.cti");
+    std::unique_ptr<ThermoPhase> p(newPhase("pdep-test.cti"));
     ASSERT_GT(p->temperature(), 0.0);
-    delete p;
 }
 
 TEST_F(ChemkinConversionTest, MissingInputFile) {
@@ -185,7 +179,7 @@ TEST_F(ConstructFromScratch, addUndefinedElements)
     ASSERT_EQ((size_t) 4, p.nSpecies());
     ASSERT_EQ((size_t) 3, p.nElements());
     ASSERT_EQ((size_t) 1, p.nAtoms(p.speciesIndex("CO2"), p.elementIndex("C")));
-    ASSERT_EQ((size_t) 2, p.nAtoms(p.speciesIndex("CO2"), p.elementIndex("O")));
+    ASSERT_EQ((size_t) 2, p.nAtoms(p.speciesIndex("co2"), p.elementIndex("O")));
     p.setMassFractionsByName("H2:0.5, CO2:0.5");
     ASSERT_DOUBLE_EQ(0.5, p.massFraction("CO2"));
 }

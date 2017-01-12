@@ -2,6 +2,10 @@
  *  @file LiquidTransportData.h
  *  Header file defining class LiquidTransportData
  */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #ifndef CT_LIQUIDTRANSPORTDATA_H
 #define CT_LIQUIDTRANSPORTDATA_H
 
@@ -22,9 +26,9 @@ namespace Cantera
  * need to be careful about deleting pointers to LTPspecies objects created in
  * the TransportFactory.
  *
- *  All of the pointers in this class are shallow pointers. Therefore, this
- *  is a passthrough class, which keeps track of pointer ownership by zeroing
- *  pointers as we go. Yes, Yes, yes, this is not good.
+ * All of the pointers in this class are shallow pointers. Therefore, this
+ * is a passthrough class, which keeps track of pointer ownership by zeroing
+ * pointers as we go. Yes, Yes, yes, this is not good.
  */
 class LiquidTransportData
 {
@@ -39,51 +43,27 @@ public:
     std::string speciesName;
 
     //! Model type for the hydroradius
-    /*!
-     *  shallow pointer that should be zero during destructor
-     */
     LTPspecies* hydroRadius;
 
     //! Model type for the viscosity
-    /*!
-     *  shallow pointer that should be zero during destructor
-     */
     LTPspecies* viscosity;
 
     //! Model type for the ionic conductivity
-    /*!
-     *  shallow pointer that should be zero during destructor
-     */
     LTPspecies* ionConductivity;
 
     //! Model type for the mobility ratio
-    /*!
-     *  shallow pointers that should be zero during destructor
-     */
     std::vector<LTPspecies*> mobilityRatio;
 
     //! Model type for the self diffusion coefficients
-    /*!
-     *  shallow pointers that should be zero during destructor
-     */
     std::vector<LTPspecies*> selfDiffusion;
 
     //! Model type for the thermal conductivity
-    /*!
-     *  shallow pointer that should be zero during destructor
-     */
     LTPspecies* thermalCond;
 
     //! Model type for the electrical conductivity
-    /*!
-     *  shallow pointer that should be zero during destructor
-     */
     LTPspecies* electCond;
 
     //! Model type for the speciesDiffusivity
-    /*!
-     *  shallow pointer that should be zero during destructor
-     */
     LTPspecies* speciesDiffusivity;
 };
 

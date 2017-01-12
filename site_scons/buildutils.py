@@ -1,5 +1,6 @@
 import os
 from os.path import join as pjoin
+from os.path import normpath
 import sys
 import platform
 import textwrap
@@ -14,7 +15,7 @@ import itertools
 import SCons.Errors
 import SCons
 import SCons.Node.FS
-from distutils.version import LooseVersion
+from distutils.version import LooseVersion, StrictVersion
 import distutils.sysconfig
 
 class DefineDict(object):
@@ -235,15 +236,20 @@ def compareTextFiles(env, file1, file2):
                 # String representations match, so replacement is unnecessary
                 continue
 
-            delta = max(getPrecision(floats1[j][1]), getPrecision(floats2[j][1]))
-            num1 = float(floats1[j][1])
-            num2 = float(floats2[j][1])
-            abserr = abs(num1-num2)
-            relerr = abserr / (0.5 * abs(num1 + num2) + atol)
-            if abserr > (1.1*delta + atol) and relerr > rtol:
-                print 'Values differ: {0: 14g} {1: 14g}; rel. err = {2:.3e}; abs. err = {3:.3e}'.format(num1, num2, relerr, abserr)
-                allMatch = False
-                break
+            try:
+                delta = max(getPrecision(floats1[j][1]), getPrecision(floats2[j][1]))
+                num1 = float(floats1[j][1])
+                num2 = float(floats2[j][1])
+                abserr = abs(num1-num2)
+                relerr = abserr / (0.5 * abs(num1 + num2) + atol)
+                if abserr > (1.1*delta + atol) and relerr > rtol:
+                    print 'Values differ: {0: 14g} {1: 14g}; rel. err = {2:.3e}; abs. err = {3:.3e}'.format(num1, num2, relerr, abserr)
+                    allMatch = False
+                    break
+            except Exception as e:
+                # Something went wrong -- one of the strings isn't actually a number,
+                # so just ignore this line and let the test fail
+                pass
 
         # All the values are sufficiently close, so replace the string
         # so that the diff of this line will succeed
@@ -307,7 +313,6 @@ def compareCsvFiles(env, file1, file2):
     """
     try:
         import numpy as np
-        hasSkipHeader = tuple(np.version.version.split('.')[:2]) >= ('1','4')
     except ImportError:
         print 'WARNING: skipping .csv diff because numpy is not installed'
         return 0
@@ -323,12 +328,8 @@ def compareCsvFiles(env, file1, file2):
             break
 
     try:
-        if hasSkipHeader:
-            data1 = np.genfromtxt(file1, skip_header=headerRows, delimiter=',')
-            data2 = np.genfromtxt(file2, skip_header=headerRows, delimiter=',')
-        else:
-            data1 = np.genfromtxt(file1, skiprows=headerRows, delimiter=',')
-            data2 = np.genfromtxt(file2, skiprows=headerRows, delimiter=',')
+        data1 = np.genfromtxt(file1, skip_header=headerRows, delimiter=',')
+        data2 = np.genfromtxt(file2, skip_header=headerRows, delimiter=',')
     except (IOError, StopIteration) as e:
         print e
         return 1
@@ -510,11 +511,11 @@ def formatOption(env, opt):
 
 def listify(value):
     """
-    Convert an option specified as a string to a list.  Allow both
-    comma and space as delimiters. Passes lists transparently.
+    Convert an option specified as a string to a list, using spaces as
+    delimiters. Passes lists transparently.
     """
     if isinstance(value, types.StringTypes):
-        return value.replace(',', ' ').split()
+        return value.split()
     else:
         # Already a sequence. Return as a list
         return list(value)
@@ -590,24 +591,16 @@ def getSpawn(env):
 
     return ourSpawn
 
+
 def getCommandOutput(cmd, *args):
     """
     Run a command with arguments and return its output.
-    Substitute for subprocess.check_output which is only available
-    in Python >= 2.7
     """
     environ = dict(os.environ)
     if 'PYTHONHOME' in environ:
         # Can cause problems when trying to run a different Python interpreter
         del environ['PYTHONHOME']
-    proc = subprocess.Popen([cmd] + list(args),
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE,
-                            env=environ)
-    data, err = proc.communicate()
-    if proc.returncode:
-        raise OSError(err)
-
+    data = subprocess.check_output([cmd] + list(args), stderr=subprocess.STDOUT, env=environ)
     return data.strip()
 
 # Monkey patch for SCons Cygwin bug

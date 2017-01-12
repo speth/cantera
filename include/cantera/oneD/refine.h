@@ -1,3 +1,6 @@
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #ifndef CT_REFINE_H
 #define CT_REFINE_H
 
@@ -40,6 +43,11 @@ public:
     //! Set the maximum number of points allowed in the domain
     void setMaxPoints(int npmax) {
         m_npmax = npmax;
+    }
+
+    //! Returns the maximum number of points allowed in the domain
+    size_t maxPoints() const {
+        return m_npmax;
     }
 
     //! Set the minimum allowable spacing between adjacent grid points [m].

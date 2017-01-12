@@ -1,3 +1,6 @@
+# This file is part of Cantera. See License.txt in the top-level directory or
+# at http://www.cantera.org/license.txt for license and copyright information.
+
 import sys
 if sys.version_info[0] == 3:
     from tkinter import *
@@ -57,11 +60,11 @@ class UnitVar(Frame):
                             value=each,
                             command=self.update,
                             ).grid(column=c, row=r, sticky=W)
-                r=r+1
+                r += 1
                 if (r>10):
                     r=0
-                    c=c+1
-                    r=r+1
+                    c += 1
+                    r += 1
 
         b=Button(self.new,text='OK',command=self.finished, default=ACTIVE)
         b.grid(column=c, row=r)

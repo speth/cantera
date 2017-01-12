@@ -1,3 +1,6 @@
+# This file is part of Cantera. See License.txt in the top-level directory or
+# at http://www.cantera.org/license.txt for license and copyright information.
+
 from cantera import *
 
 import sys
@@ -40,7 +43,7 @@ class MechManager(Frame):
         i = 1
         #for m in self.mechanisms:
         #    self.mlist.append((m[0], self.setMechanism, 'check', self.mechindx, i))
-        #    i = i + 1
+        #    i += 1
         #self.mlist.append([])
 
         self.mechmenu = make_menu('Mixtures', self, self.mlist)
@@ -76,7 +79,7 @@ class MechManager(Frame):
 ##             Radiobutton(self.mfr, text=name, variable=self.mechindx,
 ##                         value = i,
 ##                         command=self.setMechanism).grid(row=i,column=0)
-##             i = i + 1
+##             i += 1
 ##         print 'end'
 
 

@@ -5,7 +5,9 @@
 \endlink).
  */
 
-//  Copyright 2002 California Institute of Technology
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #include "cantera/thermo/mix_defs.h"
 #include "cantera/thermo/ConstDensityThermo.h"
 #include "cantera/base/ctml.h"
@@ -24,11 +26,10 @@ ConstDensityThermo& ConstDensityThermo::operator=(const ConstDensityThermo& righ
         return *this;
     }
 
-    m_h0_RT         = right.m_h0_RT;
-    m_cp0_R         = right.m_cp0_R;
-    m_g0_RT         = right.m_g0_RT;
-    m_s0_R          = right.m_s0_R;
-    m_pp            = right.m_pp;
+    m_h0_RT = right.m_h0_RT;
+    m_cp0_R = right.m_cp0_R;
+    m_g0_RT = right.m_g0_RT;
+    m_s0_R = right.m_s0_R;
 
     return *this;
 
@@ -41,14 +42,15 @@ ThermoPhase* ConstDensityThermo::duplMyselfAsThermoPhase() const
 
 int ConstDensityThermo::eosType() const
 {
+    warn_deprecated("ConstDensityThermo::eosType",
+                    "To be removed after Cantera 2.3.");
     return cIncompressible;
 }
 
 doublereal ConstDensityThermo::enthalpy_mole() const
 {
     doublereal p0 = m_spthermo->refPressure();
-    return GasConstant * temperature() *
-           mean_X(enthalpy_RT()) + (pressure() - p0)/molarDensity();
+    return RT() * mean_X(enthalpy_RT()) + (pressure() - p0)/molarDensity();
 }
 
 doublereal ConstDensityThermo::entropy_mole() const
@@ -97,11 +99,10 @@ void ConstDensityThermo::getChemPotentials(doublereal* mu) const
 {
     doublereal vdp = (pressure() - m_spthermo->refPressure())/
                      molarDensity();
-    doublereal rt = temperature() * GasConstant;
     const vector_fp& g_RT = gibbs_RT();
     for (size_t k = 0; k < m_kk; k++) {
         double xx = std::max(SmallNumber, moleFraction(k));
-        mu[k] = rt*(g_RT[k] + log(xx)) + vdp;
+        mu[k] = RT()*(g_RT[k] + log(xx)) + vdp;
     }
 }
 
@@ -111,20 +112,16 @@ void ConstDensityThermo::getStandardChemPotentials(doublereal* mu0) const
     getPureGibbs(mu0);
 }
 
-void ConstDensityThermo::initThermo()
+bool ConstDensityThermo::addSpecies(shared_ptr<Species> spec)
 {
-    ThermoPhase::initThermo();
-    m_h0_RT.resize(m_kk);
-    m_g0_RT.resize(m_kk);
-    m_cp0_R.resize(m_kk);
-    m_s0_R.resize(m_kk);
-    m_pp.resize(m_kk);
-}
-
-
-void ConstDensityThermo::setToEquilState(const doublereal* lambda_RT)
-{
-    throw CanteraError("setToEquilState","not yet impl.");
+    bool added = ThermoPhase::addSpecies(spec);
+    if (added) {
+        m_h0_RT.push_back(0.0);
+        m_g0_RT.push_back(0.0);
+        m_cp0_R.push_back(0.0);
+        m_s0_R.push_back(0.0);
+    }
+    return added;
 }
 
 void ConstDensityThermo::_updateThermo() const

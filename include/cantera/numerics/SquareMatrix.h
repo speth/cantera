@@ -1,14 +1,7 @@
-/**
- *  @file SquareMatrix.h
- * Dense, Square (not sparse) matrices.
- */
+//! @file SquareMatrix.h Dense, Square (not sparse) matrices.
 
-/*
- * Copyright 2004 Sandia Corporation. Under the terms of Contract
- * DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government
- * retains certain rights in this software.
- * See file License.txt for licensing information.
- */
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #ifndef CT_SQUAREMATRIX_H
 #define CT_SQUAREMATRIX_H
@@ -20,8 +13,9 @@ namespace Cantera
 {
 
 /**
- *  A class for full (non-sparse) matrices with Fortran-compatible
- *  data storage. Adds matrix inversion operations to this class from DenseMatrix.
+ * A class for full (non-sparse) matrices with Fortran-compatible data storage.
+ * Adds matrix inversion operations to this class from DenseMatrix.
+ * @deprecated Use class DenseMatrix instead. To be removed after Cantera 2.3.
  */
 class SquareMatrix: public DenseMatrix, public GeneralMatrix
 {
@@ -38,10 +32,7 @@ public:
      */
     SquareMatrix(size_t n, doublereal v = 0.0);
 
-    //! Copy Constructor
     SquareMatrix(const SquareMatrix& right);
-
-    //! Assignment operator
     SquareMatrix& operator=(const SquareMatrix& right);
 
     int solve(doublereal* b, size_t nrhs=1, size_t ldb=0);
@@ -63,7 +54,8 @@ public:
 
     virtual doublereal oneNorm() const;
 
-    //! Solves the linear problem Ax=b using the QR algorithm returning x in the b spot
+    //! Solves the linear problem Ax=b using the QR algorithm returning x in the
+    //! b spot
     /*!
      *  @param b  RHS to be solved.
      */
@@ -89,9 +81,6 @@ public:
         return Array2D::operator()(i, j);
     }
 
-    //! @deprecated To be removed after Cantera 2.2.
-    virtual void copyData(const GeneralMatrix& y);
-
     virtual doublereal operator()(size_t i, size_t j) const {
         return Array2D::operator()(i, j);
     }
@@ -102,16 +91,17 @@ public:
     /*!
      * This is inherited from GeneralMatrix
      *
-     * @param iStruct OUTPUT Pointer to a vector of ints that describe the structure of the matrix.
-     *    not used
+     * @param iStruct OUTPUT Pointer to a vector of ints that describe the
+     *    structure of the matrix. not used
      *
-     * @return  returns the number of rows and columns in the matrix.
+     * @returns the number of rows and columns in the matrix.
+     * @deprecated Unused. To be removed after Cantera 2.3.
      */
     size_t nRowsAndStruct(size_t* const iStruct = 0) const;
 
     virtual GeneralMatrix* duplMyselfAsGeneralMatrix() const;
 
-    virtual  vector_fp::iterator begin();
+    virtual vector_fp::iterator begin();
     virtual vector_fp::const_iterator begin() const;
 
     virtual doublereal* const* colPts();
@@ -126,12 +116,13 @@ public:
     vector_fp work;
 
     //! Integer work vector for QR algorithms
-    std::vector<int> iwork_;
+    vector_int iwork_;
 protected:
-    //! 1-norm of the matrix. This is determined immediately before every factorization
+    //! 1-norm of the matrix. This is determined immediately before every
+    //! factorization
     doublereal a1norm_;
 
-    //!  Use the QR algorithm to factor and invert the matrix
+    //! Use the QR algorithm to factor and invert the matrix
     int useQR_;
 };
 }

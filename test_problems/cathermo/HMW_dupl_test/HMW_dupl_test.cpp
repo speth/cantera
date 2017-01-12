@@ -14,7 +14,7 @@ using namespace Cantera;
 
 int main(int argc, char** argv)
 {
-
+    suppress_deprecation_warnings();
     int retn = 0;
     size_t i;
 
@@ -27,7 +27,7 @@ int main(int argc, char** argv)
         /*
          * Load in and initialize the
          */
-        Cantera::ThermoPhase* solid = newPhase("NaCl_Solid.xml","NaCl(S)");
+        ThermoPhase* solid = newPhase("NaCl_Solid.xml","NaCl(S)");
 
 
         size_t nsp = HMW->nSpecies();
@@ -47,7 +47,6 @@ int main(int argc, char** argv)
 
         size_t i1 = HMW->speciesIndex("Na+");
         size_t i2 = HMW->speciesIndex("Cl-");
-        //int i3 = HMW->speciesIndex("H2O(L)");
         for (i = 0; i < nsp; i++) {
             moll[i] = 0.0;
         }
@@ -73,7 +72,6 @@ int main(int argc, char** argv)
         ThermoPhase* hmwtb = (ThermoPhase*)HMW;
 
         ThermoPhase* hmwtbDupl = hmwtb->duplMyselfAsThermoPhase();
-        //ThermoPhase *hmwtbDupl = 0;
         HMWSoln* HMW1 = HMW;
         HMWSoln* HMW2 = dynamic_cast<HMWSoln*>(hmwtbDupl);
 
@@ -92,15 +90,6 @@ int main(int argc, char** argv)
             double Cp0_NaCl = 0.0, Cp0_Naplus = 0.0, Cp0_Clminus = 0.0, Delta_Cp0s = 0.0, Cp0_H2O = 0.0;
             double Cp_NaCl = 0.0, Cp_Naplus = 0.0, Cp_Clminus = 0.0, Cp_H2O = 0.0;
             double molarCp0;
-#ifdef DEBUG_HKM
-            FILE* ttt;
-            if (itherms ==0) {
-                ttt = fopen("table1.csv","w");
-            } else {
-                ttt = fopen("table2.csv","w");
-            }
-
-#endif
             printf("A_J/R: Comparison to Pitzer's book, p. 99, can be made.\n");
             printf("        Agreement is within 12 pc \n");
             printf("\n");
@@ -133,22 +122,12 @@ int main(int argc, char** argv)
                    "   kJ/gmolSalt,"
                    "   kJ/gmolSalt,   kJ/gmolSoln,   kJ/gmolSalt,"
                    "       kJ/gmol,    kJ/gmol\n");
-#ifdef DEBUG_HKM
-            fprintf(ttt,"T, Pres, A_J/R, Delta_Cp0, Delta_Cps, J, phiJ\n");
-            fprintf(ttt,"Kelvin, bar, sqrt(kg/gmol), kJ/gmolSalt, kJ/gmolSalt, kJ/gmolSoln,"
-                    "kJ/gmolSalt\n");
-#endif
             for (i = 0; i < TTable.NPoints + 1; i++) {
                 if (i == TTable.NPoints) {
                     T = 323.15;
                 } else {
                     T = TTable.T[i];
                 }
-                /*
-                 * RT is in units of J/kmolK
-                 */
-                //double RT = GasConstant * T;
-
                 /*
                  * Make sure we are at the saturation pressure or above.
                  */
@@ -167,7 +146,7 @@ int main(int argc, char** argv)
 
 
                 HMW->getCp_R(Cp0_R);
-                Cp0_H2O    = Cp0_R[0] * GasConstant * 1.0E-6;
+                Cp0_H2O = Cp0_R[0] * GasConstant * 1.0E-6;
                 Cp0_Naplus = Cp0_R[i1] * GasConstant * 1.0E-6;
                 Cp0_Clminus = Cp0_R[i2] * GasConstant * 1.0E-6;
                 /*
@@ -184,8 +163,8 @@ int main(int argc, char** argv)
 
 
                 HMW->getPartialMolarCp(pmCp);
-                Cp_H2O     = pmCp[0]  * 1.0E-6;
-                Cp_Naplus  = pmCp[i1] * 1.0E-6;
+                Cp_H2O = pmCp[0] * 1.0E-6;
+                Cp_Naplus = pmCp[i1] * 1.0E-6;
                 Cp_Clminus = pmCp[i2] * 1.0E-6;
 
                 //double Delta_Cp_Salt = Cp_NaCl - (Cp_Naplus + Cp_Clminus);
@@ -196,7 +175,7 @@ int main(int argc, char** argv)
                  * Calculate the heat capacity of solution for the reaction
                  * NaCl(s) -> Na+ + Cl-
                  */
-                double Delta_Cps = (Xmol[0]  * Cp_H2O +
+                double Delta_Cps = (Xmol[0] * Cp_H2O +
                                     Xmol[i1] * Cp_Naplus +
                                     Xmol[i2] * Cp_Clminus
                                     - Xmol[0] * Cp0_H2O
@@ -208,7 +187,7 @@ int main(int argc, char** argv)
                  * Calculate the relative heat capacity, J, from the
                  * partial molar quantities, units J/gmolSolutionK
                  */
-                double J = (Xmol[0]  * (Cp_H2O    - Cp0_H2O) +
+                double J = (Xmol[0] * (Cp_H2O - Cp0_H2O) +
                             Xmol[i1] * (Cp_Naplus - Cp0_Naplus) +
                             Xmol[i2] * (Cp_Clminus - Cp0_Clminus));
 
@@ -220,7 +199,6 @@ int main(int argc, char** argv)
 
 
                 double Aphi = HMW->A_Debye_TP(T, pres) / 3.0;
-                //double AL = HMW->ADebye_L(T,pres);
                 double AJ = HMW->ADebye_J(T, pres);
 
                 for (size_t k = 0; k < nsp; k++) {
@@ -237,10 +215,6 @@ int main(int argc, char** argv)
                            "%13.5f, %13.5f, %13.5f, %13.5f\n",
                            T, pres*1.0E-5,  Aphi, AJ/GasConstant, Delta_Cp0s, Delta_Cps,
                            J, phiJ, molarCp , molarCp0);
-#ifdef DEBUG_HKM
-                    fprintf(ttt,"%g, %g, %g, %g, %g, %g, %g\n",
-                            T, pres*1.0E-5, AJ/GasConstant, Delta_Cp0s, Delta_Cps, J, phiJ);
-#endif
                 }
 
             }
@@ -250,21 +224,17 @@ int main(int argc, char** argv)
             printf(" Species     MoleFrac        Molal          Cp0      "
                    "    partCp     (partCp - Cp0)\n");
             printf("  H2O(L)");
-            printf("%13.5f %13.5f %13.5f %13.5f %13.5f\n", Xmol[0], moll[0], Cp0_H2O , Cp_H2O,  Cp_H2O-Cp0_H2O);
+            printf("%13.5f %13.5f %13.5f %13.5f %13.5f\n", Xmol[0], moll[0], Cp0_H2O, Cp_H2O, Cp_H2O-Cp0_H2O);
             printf("  Na+   ");
             printf("%13.5f %13.5f %13.5f %13.5f %13.5f\n", Xmol[i1], moll[i1],
-                   Cp0_Naplus , Cp_Naplus,  Cp_Naplus -Cp0_Naplus);
+                   Cp0_Naplus, Cp_Naplus, Cp_Naplus-Cp0_Naplus);
             printf("  Cl-   ");
             printf("%13.5f %13.5f %13.5f %13.5f %13.5f\n", Xmol[i2], moll[i2],
-                   Cp0_Clminus , Cp_Clminus,  Cp_Clminus - Cp0_Clminus);
+                   Cp0_Clminus, Cp_Clminus, Cp_Clminus-Cp0_Clminus);
 
             printf(" NaCl(s)");
             printf("%13.5f               %13.5f %13.5f %13.5f\n", 1.0,
-                   Cp0_NaCl , Cp_NaCl,  Cp_NaCl - Cp0_NaCl);
-
-#ifdef DEBUG_HKM
-            fclose(ttt);
-#endif
+                   Cp0_NaCl, Cp_NaCl, Cp_NaCl-Cp0_NaCl);
 
         }
 
@@ -274,14 +244,14 @@ int main(int argc, char** argv)
         hmwtbDupl = 0;
         delete solid;
         solid = 0;
-        Cantera::appdelete();
+        appdelete();
 
 
         return retn;
 
     } catch (CanteraError& err) {
         std::cout << err.what() << std::endl;
-        Cantera::appdelete();
+        appdelete();
         return -1;
     }
 }

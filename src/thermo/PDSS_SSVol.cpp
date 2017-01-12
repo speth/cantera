@@ -3,16 +3,13 @@
  * Implementation of a pressure dependent standard state
  * virtual function.
  */
-/*
- * Copyright (2006) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #include "cantera/base/ctml.h"
 #include "cantera/thermo/PDSS_SSVol.h"
 #include "cantera/thermo/VPStandardStateTP.h"
-
-#include <fstream>
 
 using namespace std;
 
@@ -20,7 +17,7 @@ namespace Cantera
 {
 PDSS_SSVol::PDSS_SSVol(VPStandardStateTP* tp, size_t spindex) :
     PDSS(tp, spindex),
-    volumeModel_(cSSVOLUME_CONSTANT),
+    volumeModel_(SSVolume_Model::constant),
     m_constMolarVolume(-1.0)
 {
     m_pdssType = cPDSS_SSVOL;
@@ -32,10 +29,11 @@ PDSS_SSVol::PDSS_SSVol(VPStandardStateTP* tp, size_t spindex) :
 PDSS_SSVol::PDSS_SSVol(VPStandardStateTP* tp,
                        size_t spindex, const std::string& inputFile, const std::string& id) :
     PDSS(tp, spindex),
-    volumeModel_(cSSVOLUME_CONSTANT),
+    volumeModel_(SSVolume_Model::constant),
     m_constMolarVolume(-1.0)
 {
-
+    warn_deprecated("PDSS_SSVol constructor from XML input file",
+                    "To be removed after Cantera 2.3.");
     m_pdssType = cPDSS_SSVOL;
     constructPDSSFile(tp, spindex, inputFile, id);
 }
@@ -45,22 +43,20 @@ PDSS_SSVol::PDSS_SSVol(VPStandardStateTP* tp, size_t spindex,
                        const XML_Node& phaseRoot,
                        bool spInstalled) :
     PDSS(tp, spindex),
-    volumeModel_(cSSVOLUME_CONSTANT),
+    volumeModel_(SSVolume_Model::constant),
     m_constMolarVolume(-1.0)
 {
     m_pdssType = cPDSS_SSVOL;
-    constructPDSSXML(tp, spindex, speciesNode,  phaseRoot, spInstalled) ;
+    constructPDSSXML(tp, spindex, speciesNode, phaseRoot, spInstalled);
 }
 
 PDSS_SSVol::PDSS_SSVol(const PDSS_SSVol& b) :
     PDSS(b),
-    volumeModel_(cSSVOLUME_CONSTANT),
+    volumeModel_(SSVolume_Model::constant),
     m_constMolarVolume(-1.0)
 {
-    /*
-     * Use the assignment operator to do the brunt
-     * of the work for the copy constructor.
-     */
+    // Use the assignment operator to do the brunt of the work for the copy
+    // constructor.
     *this = b;
 }
 
@@ -99,17 +95,17 @@ void PDSS_SSVol::constructPDSSXML(VPStandardStateTP* tp, size_t spindex,
     }
     std::string model = ss->attrib("model");
     if (model == "constant_incompressible" || model == "constant") {
-        volumeModel_ = cSSVOLUME_CONSTANT;
+        volumeModel_ = SSVolume_Model::constant;
         m_constMolarVolume = getFloat(*ss, "molarVolume", "toSI");
     } else if (model == "temperature_polynomial") {
-        volumeModel_ = cSSVOLUME_TPOLY;
+        volumeModel_ = SSVolume_Model::tpoly;
         size_t num = getFloatArray(*ss, TCoeff_, true, "toSI", "volumeTemperaturePolynomial");
         if (num != 4) {
             throw CanteraError("PDSS_SSVol::constructPDSSXML",
                                " Didn't get 4 density polynomial numbers for species " + speciesNode.name());
         }
     } else if (model == "density_temperature_polynomial") {
-        volumeModel_ = cSSVOLUME_DENSITY_TPOLY;
+        volumeModel_ = SSVolume_Model::density_tpoly;
         size_t num = getFloatArray(*ss, TCoeff_, true, "toSI", "densityTemperaturePolynomial");
         if (num != 4) {
             throw CanteraError("PDSS_SSVol::constructPDSSXML",
@@ -124,23 +120,17 @@ void PDSS_SSVol::constructPDSSXML(VPStandardStateTP* tp, size_t spindex,
 void PDSS_SSVol::constructPDSSFile(VPStandardStateTP* tp, size_t spindex,
                                    const std::string& inputFile, const std::string& id)
 {
+    warn_deprecated("PDSS_SSVol::constructPDSSFile",
+                    "To be removed after Cantera 2.3.");
     if (inputFile.size() == 0) {
         throw CanteraError("PDSS_SSVol::initThermo",
                            "input file is null");
     }
-    std::string path = findInputFile(inputFile);
-    ifstream fin(path.c_str());
-    if (!fin) {
-        throw CanteraError("PDSS_SSVol::initThermo","could not open "
-                           +path+" for reading.");
-    }
-    /*
-     * The phase object automatically constructs an XML object.
-     * Use this object to store information.
-     */
 
+    // The phase object automatically constructs an XML object. Use this object
+    // to store information.
     XML_Node fxml;
-    fxml.build(fin);
+    fxml.build(findInputFile(inputFile));
     XML_Node* fxml_phase = findXMLPhase(&fxml, id);
     if (!fxml_phase) {
         throw CanteraError("PDSS_SSVol::initThermo",
@@ -150,9 +140,8 @@ void PDSS_SSVol::constructPDSSFile(VPStandardStateTP* tp, size_t spindex,
 
     XML_Node& speciesList = fxml_phase->child("speciesArray");
     XML_Node* speciesDB = get_XML_NameID("speciesData", speciesList["datasrc"],
-                                         &(fxml_phase->root()));
+                                         &fxml_phase->root());
     const XML_Node* s = speciesDB->findByAttr("name", tp->speciesName(spindex));
-
     constructPDSSXML(tp, spindex, *s, *fxml_phase, true);
 }
 
@@ -173,57 +162,48 @@ void PDSS_SSVol::initThermo()
     m_Vss_ptr[m_spindex] = m_constMolarVolume;
 }
 
-doublereal
-PDSS_SSVol::enthalpy_RT() const
+doublereal PDSS_SSVol::enthalpy_RT() const
 {
     return m_hss_RT_ptr[m_spindex];
 }
 
-doublereal
-PDSS_SSVol::intEnergy_mole() const
+doublereal PDSS_SSVol::intEnergy_mole() const
 {
     doublereal pV = m_pres * m_Vss_ptr[m_spindex];
     return m_h0_RT_ptr[m_spindex] * GasConstant * m_temp - pV;
 }
 
-doublereal
-PDSS_SSVol::entropy_R() const
+doublereal PDSS_SSVol::entropy_R() const
 {
     return m_sss_R_ptr[m_spindex];
 }
 
-doublereal
-PDSS_SSVol::gibbs_RT() const
+doublereal PDSS_SSVol::gibbs_RT() const
 {
     return m_gss_RT_ptr[m_spindex];
 }
 
-doublereal
-PDSS_SSVol::cp_R() const
+doublereal PDSS_SSVol::cp_R() const
 {
     return m_cpss_R_ptr[m_spindex];
 }
 
-doublereal
-PDSS_SSVol::cv_mole() const
+doublereal PDSS_SSVol::cv_mole() const
 {
-    return (cp_mole() -  m_V0_ptr[m_spindex]);
+    return (cp_mole() - m_V0_ptr[m_spindex]);
 }
 
-doublereal
-PDSS_SSVol::molarVolume() const
+doublereal PDSS_SSVol::molarVolume() const
 {
     return m_Vss_ptr[m_spindex];
 }
 
-doublereal
-PDSS_SSVol::density() const
+doublereal PDSS_SSVol::density() const
 {
     return m_mw / m_Vss_ptr[m_spindex];
 }
 
-doublereal
-PDSS_SSVol::gibbs_RT_ref() const
+doublereal PDSS_SSVol::gibbs_RT_ref() const
 {
     return m_g0_RT_ptr[m_spindex];
 }
@@ -250,19 +230,19 @@ doublereal PDSS_SSVol::molarVolume_ref() const
 
 void PDSS_SSVol::calcMolarVolume() const
 {
-    if (volumeModel_ == cSSVOLUME_CONSTANT) {
+    if (volumeModel_ == SSVolume_Model::constant) {
         m_Vss_ptr[m_spindex] = m_constMolarVolume;
-    } else if (volumeModel_ == cSSVOLUME_TPOLY) {
+    } else if (volumeModel_ == SSVolume_Model::tpoly) {
         m_Vss_ptr[m_spindex] = TCoeff_[0] + m_temp * (TCoeff_[1] + m_temp * (TCoeff_[2] + m_temp * TCoeff_[3]));
-        dVdT_   = TCoeff_[1] + 2.0 * m_temp * TCoeff_[2] + 3.0 * m_temp * m_temp * TCoeff_[3];
-        d2VdT2_ =  2.0 * TCoeff_[2] + 6.0 * m_temp * TCoeff_[3];
-    } else  if (volumeModel_ == cSSVOLUME_DENSITY_TPOLY) {
-        doublereal dens =  TCoeff_[0] + m_temp * (TCoeff_[1] + m_temp * (TCoeff_[2] + m_temp * TCoeff_[3]));
+        dVdT_ = TCoeff_[1] + 2.0 * m_temp * TCoeff_[2] + 3.0 * m_temp * m_temp * TCoeff_[3];
+        d2VdT2_ = 2.0 * TCoeff_[2] + 6.0 * m_temp * TCoeff_[3];
+    } else if (volumeModel_ == SSVolume_Model::density_tpoly) {
+        doublereal dens = TCoeff_[0] + m_temp * (TCoeff_[1] + m_temp * (TCoeff_[2] + m_temp * TCoeff_[3]));
         m_Vss_ptr[m_spindex] = m_mw / dens;
         doublereal dens2 = dens * dens;
-        doublereal ddensdT =  TCoeff_[1] + 2.0 * m_temp * TCoeff_[2] + 3.0 * m_temp * m_temp * TCoeff_[3];
+        doublereal ddensdT = TCoeff_[1] + 2.0 * m_temp * TCoeff_[2] + 3.0 * m_temp * m_temp * TCoeff_[3];
         doublereal d2densdT2 = 2.0 * TCoeff_[2] + 6.0 * m_temp * TCoeff_[3];
-        dVdT_   = - m_mw / (dens2) * (ddensdT);
+        dVdT_ = - m_mw / dens2 * ddensdT;
         d2VdT2_ = 2.0 * m_mw / (dens2 * dens) * ddensdT * ddensdT - m_mw / dens2 * d2densdT2;
     } else {
         throw CanteraError("PDSS_SSVol::calcMolarVolume", "unimplemented");
@@ -280,8 +260,8 @@ void PDSS_SSVol::setPressure(doublereal p)
         m_cpss_R_ptr[m_spindex] = m_cp0_R_ptr[m_spindex];
     } else {
         doublereal del_pRT = deltaP / (GasConstant * m_temp);
-        doublereal sV_term =  - deltaP / (GasConstant) * dVdT_;
-        m_hss_RT_ptr[m_spindex] = m_h0_RT_ptr[m_spindex] + sV_term + del_pRT * (m_Vss_ptr[m_spindex]);
+        doublereal sV_term = - deltaP / GasConstant * dVdT_;
+        m_hss_RT_ptr[m_spindex] = m_h0_RT_ptr[m_spindex] + sV_term + del_pRT * m_Vss_ptr[m_spindex];
         m_sss_R_ptr[m_spindex] = m_s0_R_ptr[m_spindex] + sV_term;
         m_gss_RT_ptr[m_spindex] = m_hss_RT_ptr[m_spindex] - m_sss_R_ptr[m_spindex];
         m_cpss_R_ptr[m_spindex] = m_cp0_R_ptr[m_spindex] - m_temp * deltaP * d2VdT2_;
@@ -293,7 +273,7 @@ void PDSS_SSVol::setTemperature(doublereal temp)
     m_temp = temp;
     m_spthermo->update_one(m_spindex, temp, m_cp0_R_ptr, m_h0_RT_ptr, m_s0_R_ptr);
     calcMolarVolume();
-    m_g0_RT_ptr[m_spindex] =  m_h0_RT_ptr[m_spindex] -  m_s0_R_ptr[m_spindex];
+    m_g0_RT_ptr[m_spindex] = m_h0_RT_ptr[m_spindex] - m_s0_R_ptr[m_spindex];
     doublereal deltaP = m_pres - m_p0;
     if (fabs(deltaP) < 1.0E-10) {
         m_hss_RT_ptr[m_spindex] = m_h0_RT_ptr[m_spindex];
@@ -302,8 +282,8 @@ void PDSS_SSVol::setTemperature(doublereal temp)
         m_cpss_R_ptr[m_spindex] = m_cp0_R_ptr[m_spindex];
     } else {
         doublereal del_pRT = deltaP / (GasConstant * m_temp);
-        doublereal sV_term =  - deltaP / (GasConstant) * dVdT_;
-        m_hss_RT_ptr[m_spindex] = m_h0_RT_ptr[m_spindex] + sV_term + del_pRT * (m_Vss_ptr[m_spindex]);
+        doublereal sV_term = - deltaP / GasConstant * dVdT_;
+        m_hss_RT_ptr[m_spindex] = m_h0_RT_ptr[m_spindex] + sV_term + del_pRT * m_Vss_ptr[m_spindex];
         m_sss_R_ptr[m_spindex] = m_s0_R_ptr[m_spindex] + sV_term;
         m_gss_RT_ptr[m_spindex] = m_hss_RT_ptr[m_spindex] - m_sss_R_ptr[m_spindex];
         m_cpss_R_ptr[m_spindex] = m_cp0_R_ptr[m_spindex] - m_temp * deltaP * d2VdT2_;

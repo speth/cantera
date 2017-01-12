@@ -5,11 +5,10 @@
  *    given by an enumerated data type
  *    (see class \ref pdssthermo and \link Cantera::PDSS_SSVol PDSS_SSVol\endlink).
  */
-/*
- * Copyright (2009) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #ifndef CT_PDSS_SSVOL_H
 #define CT_PDSS_SSVOL_H
 
@@ -17,20 +16,28 @@
 
 namespace Cantera
 {
-//! Class for pressure dependent standard states that uses a standard state volume
-//! model of some sort.
+//! Class for pressure dependent standard states that uses a standard state
+//! volume model of some sort.
 /*!
+ * @attention This class currently does not have any test cases or examples. Its
+ *     implementation may be incomplete, and future changes to Cantera may
+ *     unexpectedly cause this class to stop working. If you use this class,
+ *     please consider contributing examples or test cases. In the absence of
+ *     new tests or examples, this class may be deprecated and removed in a
+ *     future version of Cantera. See
+ *     https://github.com/Cantera/cantera/issues/267 for additional information.
+ *
  * Class PDSS_SSVol is an implementation class that compute the properties of a
- * single species in a phase at its standard states, for a range of
- * temperatures and pressures. This particular class assumes that the
- * calculation of the thermodynamics functions can be separated into a
- * temperature polynomial representation for thermo functions that can be
- * handled bey a SimpleThermo object and a separate calculation for the
- * standard state volume. The Models include a cubic polynomial in temperature
- * for either the standard state volume or the standard state density. The
- * manager uses a SimpleThermo object to handle the calculation of the
- * reference state. This object then adds the pressure dependencies and the
- * volume terms to these thermo functions to complete the representation.
+ * single species in a phase at its standard states, for a range of temperatures
+ * and pressures. This particular class assumes that the calculation of the
+ * thermodynamics functions can be separated into a temperature polynomial
+ * representation for thermo functions that can be handled bey a SimpleThermo
+ * object and a separate calculation for the standard state volume. The Models
+ * include a cubic polynomial in temperature for either the standard state
+ * volume or the standard state density. The manager uses a SimpleThermo object
+ * to handle the calculation of the reference state. This object then adds the
+ * pressure dependencies and the volume terms to these thermo functions to
+ * complete the representation.
  *
  * The class includes the following models for the representation of the
  * standard state volume:
@@ -57,16 +64,16 @@ namespace Cantera
  *       {\rho}^o_k(T,P) = \frac{M_k}{V^o_k(T,P)} = a_0 + a_1 T + a_2 T^2 + a_3 T^3 + a_4 T^4
  *    \f]
  *
- * <b> Specification of Species Standard State Properties </b>
+ * ## Specification of Species Standard State Properties
  *
- * The standard molar Gibbs free energy for species <I>k</I> is determined from
+ * The standard molar Gibbs free energy for species *k* is determined from
  * the enthalpy and entropy expressions
  *
  *       \f[
  *            G^o_k(T,P) = H^o_k(T,P) - S^o_k(T,P)
  *       \f]
  *
- * The enthalpy is calculated mostly from the SpeciesThermo object's enthalpy
+ * The enthalpy is calculated mostly from the MultiSpeciesThermo object's enthalpy
  * evaluator. The dependence on pressure originates from the Maxwell relation
  *
  *       \f[
@@ -78,7 +85,7 @@ namespace Cantera
  *            {\left(\frac{dH^o_k}{dP}\right)}_T =  V^o_k -  T  {\left(\frac{dV^o_k}{dT}\right)}_P
  *       \f]
  *
- * The entropy is calculated mostly from the SpeciesThermo objects entropy
+ * The entropy is calculated mostly from the MultiSpeciesThermo objects entropy
  * evaluator. The dependence on pressure originates from the Maxwell relation:
  *
  *       \f[
@@ -94,14 +101,14 @@ namespace Cantera
  *            {\left(\frac{d{C}^o_{p,k}}{dP}\right)}_T =  - T  {\left(\frac{{d}^2{V}^o_k}{{dT}^2}\right)}_T
  *       \f]
  *
- * The standard molar Internal Energy for species <I>k</I> is determined from the following
- * relation.
+ * The standard molar Internal Energy for species *k* is determined from the
+ * following relation.
  *
  *       \f[
  *            U^o_k(T,P) = H^o_k(T,P) - p V^o_k
  *       \f]
  *
- * <b> XML Example </b>
+ * ## XML Example
  *
  * An example of the specification of a standard state for the LiCl molten salt
  * which employs a constant molar volume expression.
@@ -177,6 +184,7 @@ public:
      *  @param id        String name of the phase in the input file. The default
      *                   is the empty string, in which case the first phase in the
      *                   file is used.
+     * @deprecated To be removed after Cantera 2.3.
      */
     PDSS_SSVol(VPStandardStateTP* tp, size_t spindex,
                const std::string& inputFile, const std::string& id = "");
@@ -196,18 +204,8 @@ public:
     PDSS_SSVol(VPStandardStateTP* vptp_ptr, size_t spindex, const XML_Node& speciesNode,
                const XML_Node& phaseRef, bool spInstalled);
 
-    //! Copy Constructor
-    /*!
-     * @param b Object to be copied
-     */
     PDSS_SSVol(const PDSS_SSVol& b);
-
-    //! Assignment operator
-    /*!
-     * @param b Object to be copied
-     */
     PDSS_SSVol& operator=(const PDSS_SSVol& b);
-
     virtual PDSS* duplMyselfAsPDSS() const;
 
     //! @}
@@ -266,15 +264,12 @@ private:
      * routine, which does most of the work.
      *
      * @param vptp_ptr    Pointer to the Variable pressure ThermoPhase object
-     *                    This object must have already been malloced.
-     *
      * @param spindex     Species index within the phase
-     *
      * @param inputFile   XML file containing the description of the phase
-     *
      * @param id          Optional parameter identifying the name of the
      *                    phase. If none is given, the first XML
      *                    phase element will be used.
+     * @deprecated To be removed after Cantera 2.3.
      */
     void constructPDSSFile(VPStandardStateTP* vptp_ptr, size_t spindex,
                            const std::string& inputFile, const std::string& id);
@@ -289,15 +284,10 @@ private:
      *     - initThermoXML(phaseNode)      (cascade)
      *
      * @param vptp_ptr   Pointer to the Variable pressure ThermoPhase object
-     *                   This object must have already been malloced.
-     *
      * @param spindex    Species index within the phase
-     *
      * @param speciesNode XML Node containing the species information
-     *
      * @param phaseNode  Reference to the phase Information for the phase
      *                   that owns this species.
-     *
      * @param spInstalled  Boolean indicating whether the species is
      *                     already installed.
      */
@@ -309,9 +299,28 @@ private:
     //@}
 
 private:
+    //! Types of general formulations for the specification of the standard
+    //! state volume
+    enum class SSVolume_Model {
+        //! This approximation is for a constant volume
+        constant = 0,
+        //! This approximation is for a species with a quadratic polynomial in
+        //! temperature
+        /*!
+         *       V^ss_i = ai + bi T + ci T2
+         */
+        tpoly,
+        //! This approximation is for a species where the density is expressed
+        //! as a quadratic polynomial in temperature
+        /*!
+         *       V^ss_i = M_i / (ai + bi T + ci T2)
+         */
+        density_tpoly
+    };
+
     //! Enumerated data type describing the type of volume model
     //! used to calculate the standard state volume of the species
-    SSVolume_Model_enumType  volumeModel_;
+    SSVolume_Model volumeModel_;
 
     //! Value of the constant molar volume for the species
     /*!

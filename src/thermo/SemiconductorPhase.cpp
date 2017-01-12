@@ -1,4 +1,8 @@
 //! @file SemiconductorPhase.cpp
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #include "cantera/thermo/SemiconductorPhase.h"
 
 using namespace std;
@@ -10,15 +14,17 @@ static doublereal JoyceDixon(doublereal r)
     return log(r) + 1.0/sqrt(8.0)*r - (3.0/16.0 - sqrt(3.0)/9.0)*r*r;
 }
 
-
 SemiconductorPhase::SemiconductorPhase(std::string infile,
-                                       std::string id_) {}
+                                       std::string id_) {
+    warn_deprecated("class SemiconductorPhase",
+                    "To be removed after Cantera 2.3.");
+}
 
 void SemiconductorPhase::getChemPotentials(doublereal* mu) const
 {
-    getActivityConcentrations(DATA_PTR(m_work));
-    mu[0] = ec() + GasConstant*temperature()*(JoyceDixon(m_work[0]/nc()));
-    mu[1] = ev() + GasConstant*temperature()*(log(m_work[1]/nv()));
+    getActivityConcentrations(m_work.data());
+    mu[0] = ec() + RT()*(JoyceDixon(m_work[0]/nc()));
+    mu[1] = ev() + RT()*(log(m_work[1]/nv()));
 }
 
 // units: kmol/m^3
@@ -41,16 +47,10 @@ doublereal SemiconductorPhase::ev() const
     return 0.0;
 }
 
-/**
- * Energy at the top of the conduction band. By default, energies
- * are referenced to this energy, and so this function simply
- * returns zero.
- */
 doublereal SemiconductorPhase::ec() const
 {
     return ev() + bandgap();
 }
-
 
 // private
 void SemiconductorPhase::initLengths()

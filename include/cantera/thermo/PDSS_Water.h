@@ -4,11 +4,10 @@
  * virtual function for a Pure Water Phase
  * (see \ref pdssthermo and class \link Cantera::PDSS_Water PDSS_Water\endlink).
  */
-/*
- * Copyright (2006) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #ifndef CT_PDSS_WATER_H
 #define CT_PDSS_WATER_H
 
@@ -22,29 +21,28 @@ namespace Cantera
 //!  standard state
 /*!
  * Notes:
- *   Base state for thermodynamic properties:
  *
- *   The thermodynamic base state for water is set to the NIST basis here
- *   by specifying constants EW_Offset and SW_Offset. These offsets are
- *   specified so that the following properties hold:
+ * Base state for thermodynamic properties:
  *
- *   Delta_Hfo_gas(298.15) = -241.826 kJ/gmol
- *   So_gas(298.15, 1bar)  = 188.835 J/gmolK
+ * The thermodynamic base state for water is set to the NIST basis here by
+ * specifying constants EW_Offset and SW_Offset. These offsets are specified so
+ * that the following properties hold:
  *
- *   (http://webbook.nist.gov)
+ * Delta_Hfo_gas(298.15) = -241.826 kJ/gmol
+ * So_gas(298.15, 1bar)  = 188.835 J/gmolK
  *
- *   The "o" here refers to a hypothetical ideal gas state. The way
- *   we achieve this in practice is to evaluate at a very low pressure
- *   and then use the theoretical ideal gas results to scale up to
- *   higher pressures:
+ * (http://webbook.nist.gov)
  *
- *   Ho(1bar) = H(P0)
+ * The "o" here refers to a hypothetical ideal gas state. The way we achieve
+ * this in practice is to evaluate at a very low pressure and then use the
+ * theoretical ideal gas results to scale up to higher pressures:
  *
- *   So(1bar) = S(P0) + RT ln(1bar/P0)
+ * Ho(1bar) = H(P0)
  *
- *   The offsets used in the steam tables are different than NIST's.
- *   They assume u_liq(TP) = 0.0, s_liq(TP) = 0.0, where TP is the
- *   triple point conditions.
+ * So(1bar) = S(P0) + RT ln(1bar/P0)
+ *
+ * The offsets used in the steam tables are different than NIST's. They assume
+ * u_liq(TP) = 0.0, s_liq(TP) = 0.0, where TP is the triple point conditions.
  *
  * @ingroup pdssthermo
  */
@@ -65,22 +63,10 @@ public:
     /*!
      *  This function calls the constructPDSS member function.
      *
-     *  @param tp        Pointer to the ThermoPhase object pertaining to the phase
-     *  @param spindex   Species index of the species in the phase
+     * @param tp       Pointer to the ThermoPhase object pertaining to the phase
+     * @param spindex  Species index of the species in the phase
      */
     PDSS_Water(VPStandardStateTP* tp, int spindex);
-
-    //! Copy Constructor
-    /*!
-     * @param b object to be copied
-     */
-    PDSS_Water(const PDSS_Water& b);
-
-    //! Assignment operator
-    /*!
-     * @param b Object to be copied
-     */
-    PDSS_Water& operator=(const PDSS_Water& b);
 
     //! Constructor that initializes the object by examining the input file
     //! of the variable pressure ThermoPhase object
@@ -93,6 +79,7 @@ public:
      *  @param id        String name of the phase in the input file. The default
      *                   is the empty string, in which case the first phase in the
      *                   file is used.
+     * @deprecated To be removed after Cantera 2.3.
      */
     PDSS_Water(VPStandardStateTP* tp, int spindex,
                const std::string& inputFile, const std::string& id = "");
@@ -100,25 +87,19 @@ public:
     //! Constructor that initializes the object by examining the input file
     //! of the variable pressure ThermoPhase object
     /*!
-     *  This function calls the constructPDSSXML member function.
+     * This function calls the constructPDSSXML member function.
      *
-     *  @param tp        Pointer to the ThermoPhase object pertaining to the phase
-     *  @param spindex   Species index of the species in the phase
-     *  @param speciesNode Reference to the species XML tree.
-     *  @param phaseRef  Reference to the XML tree containing the phase information.
-     *  @param spInstalled Is the species already installed.
+     * @param tp        Pointer to the ThermoPhase object pertaining to the phase
+     * @param spindex   Species index of the species in the phase
+     * @param speciesNode Reference to the species XML tree.
+     * @param phaseRef  Reference to the XML tree containing the phase information.
+     * @param spInstalled Is the species already installed.
      */
     PDSS_Water(VPStandardStateTP* tp, int spindex, const XML_Node& speciesNode,
                const XML_Node& phaseRef, bool spInstalled);
 
-    //! Duplication routine for objects which inherit from PDSS
-    /*!
-     *  This virtual routine can be used to duplicate PDSS  objects
-     *  inherited from PDSS even if the application only has
-     *  a pointer to PDSS to work with.
-     *
-     * @return returns a pointer to the base PDSS object type
-     */
+    PDSS_Water(const PDSS_Water& b);
+    PDSS_Water& operator=(const PDSS_Water& b);
     virtual PDSS* duplMyselfAsPDSS() const;
 
     //! @}
@@ -143,8 +124,8 @@ public:
     //! Returns a reference pressure value that can be safely calculated by the
     //! underlying real equation of state for water
     /*!
-     *  Note, this function is needed because trying to calculate a one atm
-     *  value around the critical point will cause a crash
+     * Note, this function is needed because trying to calculate a one atm value
+     * around the critical point will cause a crash
      *
      * @param temp  Temperature (Kelvin)
      */
@@ -168,8 +149,7 @@ public:
 
     //! Set the density of the water phase
     /*!
-     *  This is a non-virtual function because it specific
-     *  to this object.
+     *  This is a non-virtual function because it specific to this object.
      *
      * @param dens Density of the water (kg/m3)
      */
@@ -177,7 +157,8 @@ public:
 
     virtual doublereal thermalExpansionCoeff() const;
 
-    //! Return the derivative of the volumetric thermal expansion coefficient. Units: 1/K2.
+    //! Return the derivative of the volumetric thermal expansion coefficient.
+    //! Units: 1/K2.
     /*!
      * The thermal expansion coefficient is defined as
      * \f[
@@ -186,7 +167,7 @@ public:
      */
     virtual doublereal dthermalExpansionCoeffdT() const;
 
-    //! Returns  the isothermal compressibility. Units: 1/Pa.
+    //! Returns the isothermal compressibility. Units: 1/Pa.
     /*!
      * The isothermal compressibility is defined as
      * \f[
@@ -232,15 +213,12 @@ public:
      * routine, which does most of the work.
      *
      * @param vptp_ptr    Pointer to the Variable pressure ThermoPhase object
-     *                    This object must have already been malloced.
-     *
      * @param spindex     Species index within the phase
-     *
      * @param inputFile   XML file containing the description of the phase
-     *
      * @param id          Optional parameter identifying the name of the
      *                    phase. If none is given, the first XML
      *                    phase element will be used.
+     * @deprecated To be removed after Cantera 2.3.
      */
     void constructPDSSFile(VPStandardStateTP* vptp_ptr, int spindex,
                            const std::string& inputFile, const std::string& id);
@@ -256,13 +234,9 @@ public:
      *     - initThermoXML(phaseNode)      (cascade)
      *
      * @param vptp_ptr   Pointer to the Variable pressure ThermoPhase object
-     *                   This object must have already been malloced.
-     *
      * @param spindex    Species index within the phase
-     *
      * @param phaseNode  Reference to the phase Information for the phase
      *                   that owns this species.
-     *
      * @param id         Optional parameter identifying the name of the
      *                   phase. If none is given, the first XML
      *                   phase element will be used.

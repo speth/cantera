@@ -1,12 +1,13 @@
 /**
  *  @file SpeciesThermoInterpType.cpp
  */
-// Copyright 2007  Sandia National Laboratories
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/thermo/SpeciesThermoInterpType.h"
 #include "cantera/thermo/VPSSMgr.h"
 #include "cantera/thermo/PDSS.h"
-#include "cantera/base/ctexceptions.h"
 
 namespace Cantera
 {
@@ -14,23 +15,8 @@ namespace Cantera
 SpeciesThermoInterpType::SpeciesThermoInterpType() :
     m_lowT(0.0),
     m_highT(0.0),
-    m_Pref(0.0),
-    m_index(0)
+    m_Pref(0.0)
 {
-}
-
-SpeciesThermoInterpType::SpeciesThermoInterpType(size_t n, doublereal tlow,
-                                                 doublereal thigh,
-                                                 doublereal pref) :
-    m_lowT(tlow),
-    m_highT(thigh),
-    m_Pref(pref),
-    m_index(n)
-{
-    warn_deprecated("Constructor SpeciesThermoInterpType(size_t n, ...)",
-        "Use the constructor which does not take a species index."
-        " Applies to all classes derived from SpeciesThermoInterpType."
-        " To be removed after Cantera 2.2.");
 }
 
 SpeciesThermoInterpType::SpeciesThermoInterpType(double tlow,
@@ -38,17 +24,29 @@ SpeciesThermoInterpType::SpeciesThermoInterpType(double tlow,
                                                  double pref) :
     m_lowT(tlow),
     m_highT(thigh),
-    m_Pref(pref),
-    m_index(0)
+    m_Pref(pref)
 {
 }
 
 SpeciesThermoInterpType::SpeciesThermoInterpType(const SpeciesThermoInterpType &b) :
     m_lowT(b.m_lowT),
     m_highT(b.m_highT),
-    m_Pref(b.m_Pref),
-    m_index(b.m_index)
+    m_Pref(b.m_Pref)
 {
+    warn_deprecated("SpeciesThermoInterpType copy constructor",
+                    "To be removed after Cantera 2.3.");
+}
+
+SpeciesThermoInterpType& SpeciesThermoInterpType::operator=(const SpeciesThermoInterpType& b)
+{
+    warn_deprecated("SpeciesThermoInterpType assignment operator",
+                    "To be removed after Cantera 2.3.");
+    if (&b != this) {
+        m_lowT = b.m_lowT;
+        m_highT = b.m_highT;
+        m_Pref = b.m_Pref;
+    }
+    return *this;
 }
 
 void SpeciesThermoInterpType::updateProperties(const doublereal* tempPoly,
@@ -75,15 +73,8 @@ void SpeciesThermoInterpType::modifyOneHf298(const size_t k,
 
 STITbyPDSS::STITbyPDSS()
 {
-    m_index = npos;
-}
-
-STITbyPDSS::STITbyPDSS(size_t k, VPSSMgr* vpssmgr_ptr, PDSS* PDSS_ptr) :
-    SpeciesThermoInterpType(),
-    m_vpssmgr_ptr(vpssmgr_ptr),
-    m_PDSS_ptr(PDSS_ptr)
-{
-    m_index = k;
+    warn_deprecated("STITbyPDSS::STITbyPDSS()",
+        "Default constructor to be removed after Cantera 2.3.");
 }
 
 STITbyPDSS::STITbyPDSS(VPSSMgr* vpssmgr_ptr, PDSS* PDSS_ptr) :
@@ -100,8 +91,7 @@ STITbyPDSS::STITbyPDSS(const STITbyPDSS& b) :
 {
 }
 
-SpeciesThermoInterpType*
-STITbyPDSS::duplMyselfAsSpeciesThermoInterpType() const
+SpeciesThermoInterpType* STITbyPDSS::duplMyselfAsSpeciesThermoInterpType() const
 {
     return new STITbyPDSS(*this);
 }
@@ -109,62 +99,58 @@ STITbyPDSS::duplMyselfAsSpeciesThermoInterpType() const
 void STITbyPDSS::initAllPtrs(size_t speciesIndex, VPSSMgr* vpssmgr_ptr,
                              PDSS* PDSS_ptr)
 {
-    AssertThrow(speciesIndex == m_index,
-                "STITbyPDSS::initAllPtrs internal confusion");
     m_vpssmgr_ptr = vpssmgr_ptr;
     m_PDSS_ptr = PDSS_ptr;
 }
 
-doublereal  STITbyPDSS::minTemp() const
+doublereal STITbyPDSS::minTemp() const
 {
     return m_PDSS_ptr->minTemp();
 }
 
-doublereal  STITbyPDSS::maxTemp() const
+doublereal STITbyPDSS::maxTemp() const
 {
     return m_PDSS_ptr->maxTemp();
 }
 
-doublereal  STITbyPDSS::refPressure() const
+doublereal STITbyPDSS::refPressure() const
 {
     return m_PDSS_ptr->refPressure();
 }
 
-int  STITbyPDSS::reportType() const
+int STITbyPDSS::reportType() const
 {
     return PDSS_TYPE;
 }
 
-void  STITbyPDSS::updateProperties(const doublereal* tempPoly,
-                                   doublereal* cp_R, doublereal* h_RT,
-                                   doublereal* s_R) const
+void STITbyPDSS::updateProperties(const doublereal* tempPoly,
+                                  doublereal* cp_R, doublereal* h_RT,
+                                  doublereal* s_R) const
 {
     doublereal T = tempPoly[0];
     updatePropertiesTemp(T, cp_R, h_RT, s_R);
 }
 
-void  STITbyPDSS::updatePropertiesTemp(const doublereal temp,
-                                       doublereal* cp_R,
-                                       doublereal* h_RT,
-                                       doublereal* s_R) const
+void STITbyPDSS::updatePropertiesTemp(const doublereal temp,
+                                      doublereal* cp_R,
+                                      doublereal* h_RT,
+                                      doublereal* s_R) const
 {
     m_PDSS_ptr->setTemperature(temp);
-    AssertThrowMsg(m_index != npos, "STITbyPDSS::updatePropertiesTemp",
-                   "object was probably not installed correctly");
-    h_RT[m_index] = m_PDSS_ptr->enthalpy_RT_ref();
-    cp_R[m_index] = m_PDSS_ptr->cp_R_ref();
-    s_R[m_index]  = m_PDSS_ptr->entropy_R_ref();
+    *h_RT = m_PDSS_ptr->enthalpy_RT_ref();
+    *cp_R = m_PDSS_ptr->cp_R_ref();
+    *s_R = m_PDSS_ptr->entropy_R_ref();
 }
 
-void  STITbyPDSS::reportParameters(size_t& index, int& type,
-                                   doublereal& minTemp, doublereal& maxTemp,
-                                   doublereal& refPressure,
-                                   doublereal* const coeffs) const
+void STITbyPDSS::reportParameters(size_t& index, int& type,
+                                  doublereal& minTemp, doublereal& maxTemp,
+                                  doublereal& refPressure,
+                                  doublereal* const coeffs) const
 {
-    index = m_index;
+    index = 0;
     type = PDSS_TYPE;
-    minTemp = m_vpssmgr_ptr->minTemp(m_index);
-    maxTemp = m_vpssmgr_ptr->maxTemp(m_index);
+    minTemp = m_vpssmgr_ptr->minTemp();
+    maxTemp = m_vpssmgr_ptr->maxTemp();
     refPressure = m_PDSS_ptr->refPressure();
 }
 

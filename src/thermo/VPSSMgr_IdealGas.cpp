@@ -6,24 +6,22 @@
  * (see \ref thermoprops and
  * class \link Cantera::VPSSMgr_IdealGas VPSSMgr_IdealGas\endlink).
  */
-/*
- * Copyright (2005) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/thermo/VPSSMgr_IdealGas.h"
 #include "cantera/base/ctml.h"
 #include "cantera/thermo/SpeciesThermoFactory.h"
+#include "cantera/thermo/MultiSpeciesThermo.h"
 #include "cantera/thermo/PDSS_IdealGas.h"
-#include "cantera/thermo/SpeciesThermoInterpType.h"
 
 using namespace std;
 
 namespace Cantera
 {
 
-VPSSMgr_IdealGas::VPSSMgr_IdealGas(VPStandardStateTP* vp_ptr, SpeciesThermo* spth) :
+VPSSMgr_IdealGas::VPSSMgr_IdealGas(VPStandardStateTP* vp_ptr, MultiSpeciesThermo* spth) :
     VPSSMgr(vp_ptr, spth)
 {
     m_useTmpRefStateStorage = true;
@@ -67,36 +65,26 @@ void VPSSMgr_IdealGas::getStandardVolumes(doublereal* vol) const
 
 void VPSSMgr_IdealGas::_updateStandardStateThermo()
 {
-
     doublereal pp = log(m_plast / m_p0);
     doublereal v = temperature() *GasConstant /m_plast;
 
     for (size_t k = 0; k < m_kk; k++) {
-        m_hss_RT[k]  = m_h0_RT[k];
+        m_hss_RT[k] = m_h0_RT[k];
         m_cpss_R[k] = m_cp0_R[k];
-        m_sss_R[k]    = m_s0_R[k] - pp;
+        m_sss_R[k] = m_s0_R[k] - pp;
         m_gss_RT[k] = m_hss_RT[k] - m_sss_R[k];
         m_Vss[k] = v;
     }
 }
 
-void
-VPSSMgr_IdealGas::initThermoXML(XML_Node& phaseNode, const std::string& id)
-{
-    VPSSMgr::initThermoXML(phaseNode, id);
-}
-
-PDSS*
-VPSSMgr_IdealGas::createInstallPDSS(size_t k, const XML_Node& speciesNode,
-                                    const XML_Node* const phaseNode_ptr)
+PDSS* VPSSMgr_IdealGas::createInstallPDSS(size_t k, const XML_Node& speciesNode,
+                                          const XML_Node* const phaseNode_ptr)
 {
     const XML_Node* ss = speciesNode.findByName("standardState");
-    if (ss) {
-        if (ss->attrib("model") != "ideal_gas") {
-            throw CanteraError("VPSSMgr_IdealGas::createInstallPDSS",
-                               "standardState model for species isn't "
-                               "ideal_gas: " + speciesNode["name"]);
-        }
+    if (ss && ss->attrib("model") != "ideal_gas") {
+        throw CanteraError("VPSSMgr_IdealGas::createInstallPDSS",
+                           "standardState model for species isn't "
+                           "ideal_gas: " + speciesNode["name"]);
     }
     if (m_Vss.size() < k+1) {
         m_Vss.resize(k+1, 0.0);
@@ -116,11 +104,15 @@ VPSSMgr_IdealGas::createInstallPDSS(size_t k, const XML_Node& speciesNode,
 
 PDSS_enumType VPSSMgr_IdealGas::reportPDSSType(int k) const
 {
+    warn_deprecated("VPSSMgr_IdealGas::reportPDSSType",
+        "To be removed after Cantera 2.3.");
     return cPDSS_IDEALGAS;
 }
 
 VPSSMgr_enumType VPSSMgr_IdealGas::reportVPSSMgrType() const
 {
+    warn_deprecated("VPSSMgr_IdealGas::reportVPSSMgrType",
+        "To be removed after Cantera 2.3.");
     return cVPSSMGR_IDEALGAS;
 }
 

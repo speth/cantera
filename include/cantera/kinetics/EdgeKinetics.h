@@ -4,7 +4,9 @@
  * @ingroup chemkinetics
  * @ingroup electrochem
  */
-// Copyright 2001  California Institute of Technology
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #ifndef CT_EDGEKINETICS_H
 #define CT_EDGEKINETICS_H
@@ -21,7 +23,9 @@ class EdgeKinetics : public InterfaceKinetics
 {
 public:
     //! Constructor
-    EdgeKinetics() : InterfaceKinetics() {}
+    EdgeKinetics() : InterfaceKinetics() {
+        m_nDim = 1;
+    }
 
     EdgeKinetics(const EdgeKinetics& right) :
         InterfaceKinetics(right) {
@@ -42,10 +46,14 @@ public:
     }
 
     virtual int type() const {
+        warn_deprecated("EdgeKinetics::type",
+                        "To be removed after Cantera 2.3.");
         return cEdgeKinetics;
     }
 
-    virtual void finalize();
+    virtual std::string kineticsType() const {
+        return "Edge";
+    }
 };
 }
 

@@ -12,8 +12,10 @@ if localenv['OS'] == 'Linux':
 else:
     cantera_libs = localenv['cantera_libs']
 
-localenv.Prepend(CPPPATH=['#ext/gtest/include', '#include'],
+localenv.Prepend(CPPPATH=['#include'],
                  LIBPATH='#build/lib')
+if not env['system_googletest']:
+    localenv.Prepend(CPPPATH=['#ext/googletest/include'])
 localenv.Append(LIBS=['gtest'] + cantera_libs,
                 CCFLAGS=env['warning_flags'])
 
@@ -28,12 +30,8 @@ localenv['ENV']['CANTERA_DATA'] = Dir('#build/data').abspath
 
 PASSED_FILES = {}
 
-# Needed for Intel runtime libraries when compiling with ICC
 # Add build/lib in order to find Cantera shared library
-if localenv['ENV'].get('LD_LIBRARY_PATH'):
-    localenv['ENV']['LD_LIBRARY_PATH'] += os.pathsep + Dir('#build/lib').abspath
-else:
-    localenv['ENV']['LD_LIBRARY_PATH'] = Dir('#build/lib').abspath
+localenv.PrependENVPath('LD_LIBRARY_PATH', Dir('#build/lib').abspath)
 
 def addTestProgram(subdir, progName, env_vars={}):
     """
@@ -85,7 +83,7 @@ def addTestProgram(subdir, progName, env_vars={}):
     testResults.tests[passedFile.name] = program
     run_program = testenv.Command(passedFile, program, gtestRunner)
     env.Depends(run_program, testenv.get('cantera_shlib', ()))
-    Alias('test', run_program)
+    env.Depends(env['test_results'], run_program)
     Alias('test-%s' % progName, run_program)
     env['testNames'].append(progName)
     if os.path.exists(passedFile.abspath):
@@ -145,7 +143,7 @@ def addPythonTest(testname, subdir, script, interpreter, outfile,
             dep = File(pjoin(subdir, dep))
         testenv.Depends(run_program, dep)
     if not optional:
-        Alias('test', run_program)
+        testenv.Depends(env['test_results'], run_program)
         testResults.tests[passedFile.name] = True
     if os.path.exists(passedFile.abspath):
         Alias('test-reset', testenv.Command('reset-%s%s' % (subdir, testname),
@@ -198,7 +196,7 @@ def addMatlabTest(script, testName, dependencies=None, env_vars=()):
             dep = File(pjoin('matlab', dep))
         testenv.Depends(run_program, dep)
 
-    Alias('test', run_program)
+    testenv.Depends(testenv['test_results'], run_program)
     if os.path.exists(passedFile.abspath):
         Alias('test-reset', testenv.Command('reset-%s%s' % ('matlab', script),
                                             [], [Delete(passedFile.abspath)]))
@@ -218,6 +216,7 @@ else:
 # Instantiate tests
 addTestProgram('general', 'general', env_vars=python_env_vars)
 addTestProgram('thermo', 'thermo', env_vars=python_env_vars)
+addTestProgram('equil', 'equil', env_vars=python_env_vars)
 addTestProgram('kinetics', 'kinetics', env_vars=python_env_vars)
 addTestProgram('transport', 'transport', env_vars=python_env_vars)
 
@@ -254,7 +253,7 @@ if localenv['python3_package'] == 'y':
 if localenv['matlab_toolbox'] == 'y':
     matlabTest = addMatlabTest('runCanteraTests.m', 'matlab',
                                dependencies=mglob(localenv, 'matlab', 'm'),
-			       env_vars=python_env_vars)
+                               env_vars=python_env_vars)
     localenv.Alias('test-matlab', matlabTest)
     env['testNames'].append('matlab')
 

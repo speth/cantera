@@ -1,4 +1,8 @@
 //! @file utils.cpp
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #include "cantera/tpx/utils.h"
 #include "cantera/base/stringUtils.h"
 
@@ -16,7 +20,7 @@ namespace tpx
 {
 Substance* GetSubstanceByName(std::string name)
 {
-    std::string lcname = Cantera::lowercase(name);
+    std::string lcname = boost::algorithm::to_lower_copy(name);
     if (lcname == "water") {
         return new water;
     } else if (lcname == "nitrogen") {

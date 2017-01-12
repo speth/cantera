@@ -6,11 +6,9 @@
  * (see \ref mgrpdssthermocalc and
  * class \link Cantera::VPSSMgr_Water_HKFT VPSSMgr_Water_HKFT\endlink).
  */
-/*
- * Copyright (2006) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #ifndef CT_VPSSMGR_WATER_HKFT_H
 #define CT_VPSSMGR_WATER_HKFT_H
@@ -29,21 +27,15 @@ public:
     //! Constructor
     /*!
      * @param vptp_ptr Pointer to the Variable pressure ThermoPhase object
-     *                 This object must have already been malloced.
-     *
-     * @param spth     Pointer to the optional SpeciesThermo object
+     * @param spth     Pointer to the optional MultiSpeciesThermo object
      *                 that will handle the calculation of the reference
      *                 state thermodynamic coefficients.
      */
     VPSSMgr_Water_HKFT(VPStandardStateTP* vptp_ptr,
-                       SpeciesThermo* spth);
+                       MultiSpeciesThermo* spth);
 
-    //! Copy Constructor
     VPSSMgr_Water_HKFT(const VPSSMgr_Water_HKFT& right);
-
-    //! Assignment operator
     VPSSMgr_Water_HKFT& operator=(const VPSSMgr_Water_HKFT& right);
-
     virtual VPSSMgr* duplMyselfAsVPSSMgr() const;
 
     /*! @name Thermodynamic Values for the Species Reference States
@@ -56,11 +48,11 @@ public:
     //@{
 
     virtual void getEnthalpy_RT_ref(doublereal* hrt) const;
-    virtual void getGibbs_RT_ref(doublereal* grt) const ;
-    virtual void getGibbs_ref(doublereal* g) const ;
-    virtual void getEntropy_R_ref(doublereal* er) const ;
-    virtual void getCp_R_ref(doublereal* cpr) const ;
-    virtual void getStandardVolumes_ref(doublereal* vol) const ;
+    virtual void getGibbs_RT_ref(doublereal* grt) const;
+    virtual void getGibbs_ref(doublereal* g) const;
+    virtual void getEntropy_R_ref(doublereal* er) const;
+    virtual void getCp_R_ref(doublereal* cpr) const;
+    virtual void getStandardVolumes_ref(doublereal* vol) const;
     //@}
 
     virtual void setState_TP(doublereal T, doublereal P);
@@ -97,8 +89,8 @@ public:
      * various states and attributes
      */
     //@{
-    virtual PDSS_enumType reportPDSSType(int index = -1) const ;
-    virtual VPSSMgr_enumType reportVPSSMgrType() const ;
+    virtual PDSS_enumType reportPDSSType(int index = -1) const;
+    virtual VPSSMgr_enumType reportVPSSMgrType() const;
     //@}
 
     /*! @name Initialization Methods - For Internal use (VPStandardState)
@@ -108,7 +100,6 @@ public:
      * To see how they are used, see importPhase().
      */
     //@{
-    virtual void initThermo();
     virtual void initThermoXML(XML_Node& phaseNode, const std::string& id);
     virtual PDSS* createInstallPDSS(size_t k, const XML_Node& speciesNode,
                                     const XML_Node* const phaseNode_ptr);
@@ -117,13 +108,13 @@ public:
     //! Initialize the internal shallow pointers in this object
     /*!
      * There are a bunch of internal shallow pointers that point to the owning
-     * VPStandardStateTP and SpeciesThermo objects. This function reinitializes
+     * VPStandardStateTP and MultiSpeciesThermo objects. This function reinitializes
      * them. This function is called like an onion.
      *
      *  @param vp_ptr   Pointer to the VPStandardStateTP standard state
-     *  @param sp_ptr   Pointer to the SpeciesThermo standard state
+     *  @param sp_ptr   Pointer to the MultiSpeciesThermo standard state
      */
-    virtual void initAllPtrs(VPStandardStateTP* vp_ptr, SpeciesThermo* sp_ptr);
+    virtual void initAllPtrs(VPStandardStateTP* vp_ptr, MultiSpeciesThermo* sp_ptr);
 private:
     //! Shallow pointer to the water object
     PDSS_Water* m_waterSS;

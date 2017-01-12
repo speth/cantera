@@ -1,16 +1,28 @@
+# This file is part of Cantera. See License.txt in the top-level directory or
+# at http://www.cantera.org/license.txt for license and copyright information.
+
 import interrupts
+
+# Need a pure-python class to store weakrefs to
+class _WeakrefProxy(object):
+    pass
 
 cdef class Domain1D:
     def __cinit__(self, *args, **kwargs):
         self.domain = NULL
 
     # The signature of this function causes warnings for Sphinx documentation
-    def __init__(self, *args, name=None, **kwargs):
+    def __init__(self, _SolutionBase phase, *args, name=None, **kwargs):
+        self._weakref_proxy = _WeakrefProxy()
         if self.domain is NULL:
             raise TypeError("Can't instantiate abstract class Domain1D.")
 
         if name is not None:
             self.name = name
+
+        self.gas = phase
+        self.gas._references[self._weakref_proxy] = True
+        self.have_user_tolerances = False
 
     property index:
         """
@@ -60,13 +72,15 @@ cdef class Domain1D:
                 self.domain.setBounds(n, default[0], default[1])
 
         if Y is not None:
-            for n in range(4, self.n_components):
+            k0 = self.component_index(self.gas.species_name(0))
+            for n in range(k0, k0 + self.gas.n_species):
                 self.domain.setBounds(n, Y[0], Y[1])
 
         for name,(lower,upper) in kwargs.items():
-            self.domain.setBounds(self.component_name(name), lower, upper)
+            self.domain.setBounds(self.component_index(name), lower, upper)
 
-    def set_steady_tolerances(self, *, default=None, Y=None, **kwargs):
+    def set_steady_tolerances(self, *, default=None, Y=None, abs=None, rel=None,
+                              **kwargs):
         """
         Set the error tolerances for the steady-state problem.
 
@@ -74,19 +88,29 @@ cdef class Domain1D:
         component names as keywords and (rtol, atol) tuples as the values.
         The keyword *default* may be used to specify default bounds for all
         unspecified components. The keyword *Y* can be used to stand for all
-        species mass fractions in flow domains.
+        species mass fractions in flow domains. Alternatively, the keywords
+        *abs* and *rel* can be used to specify arrays for the absolute and
+        relative tolerances for each solution component.
         """
+        self.have_user_tolerances = True
         if default is not None:
             self.domain.setSteadyTolerances(default[0], default[1])
 
+        if abs is not None and rel is not None:
+            assert len(abs) == len(rel) == self.n_components
+            for n,(r,a) in enumerate(zip(rel,abs)):
+                self.domain.setSteadyTolerances(r,a,n)
+
         if Y is not None:
-            for n in range(4, self.n_components):
+            k0 = self.component_index(self.gas.species_name(0))
+            for n in range(k0, k0 + self.gas.n_species):
                 self.domain.setSteadyTolerances(Y[0], Y[1], n)
 
         for name,(lower,upper) in kwargs.items():
-            self.domain.setSteadyTolerances(lower, upper, self.component_name(name))
+            self.domain.setSteadyTolerances(lower, upper, self.component_index(name))
 
-    def set_transient_tolerances(self, *, default=None, Y=None, **kwargs):
+    def set_transient_tolerances(self, *, default=None, Y=None, abs=None,
+                                 rel=None, **kwargs):
         """
         Set the error tolerances for the steady-state problem.
 
@@ -94,17 +118,26 @@ cdef class Domain1D:
         component names as keywords and (rtol, atol) tuples as the values.
         The keyword *default* may be used to specify default bounds for all
         unspecified components. The keyword *Y* can be used to stand for all
-        species mass fractions in flow domains.
+        species mass fractions in flow domains. Alternatively, the keywords
+        *abs* and *rel* can be used to specify arrays for the absolute and
+        relative tolerances for each solution component.
         """
+        self.have_user_tolerances = True
         if default is not None:
             self.domain.setTransientTolerances(default[0], default[1])
 
+        if abs is not None and rel is not None:
+            assert len(abs) == len(rel) == self.n_components
+            for n,(r,a) in enumerate(zip(rel,abs)):
+                self.domain.setTransientTolerances(r,a,n)
+
         if Y is not None:
-            for n in range(4, self.n_components):
+            k0 = self.component_index(self.gas.species_name(0))
+            for n in range(k0, k0 + self.gas.n_species):
                 self.domain.setTransientTolerances(Y[0], Y[1], n)
 
         for name,(lower,upper) in kwargs.items():
-            self.domain.setTransientTolerances(lower, upper, self.component_name(name))
+            self.domain.setTransientTolerances(lower, upper, self.component_index(name))
 
     def bounds(self, component):
         """
@@ -125,6 +158,50 @@ cdef class Domain1D:
         """
         k = self.component_index(component)
         return self.domain.rtol(k), self.domain.atol(k)
+
+    def steady_reltol(self, component=None):
+        """
+        Return the relative error tolerance for the steady state problem for a
+        specified solution component, or all components if none is specified.
+        """
+        if component is None:
+            return np.array([self.domain.steady_rtol(n)
+                             for n in range(self.n_components)])
+        else:
+            return self.domain.steady_rtol(self.component_index(component))
+
+    def steady_abstol(self, component=None):
+        """
+        Return the absolute error tolerance for the steady state problem for a
+        specified solution component, or all components if none is specified.
+        """
+        if component is None:
+            return np.array([self.domain.steady_atol(n)
+                             for n in range(self.n_components)])
+        else:
+            return self.domain.steady_atol(self.component_index(component))
+
+    def transient_reltol(self, component=None):
+        """
+        Return the relative error tolerance for the transient problem for a
+        specified solution component, or all components if none is specified.
+        """
+        if component is None:
+            return np.array([self.domain.transient_rtol(n)
+                             for n in range(self.n_components)])
+        else:
+            return self.domain.transient_rtol(self.component_index(component))
+
+    def transient_abstol(self, component=None):
+        """
+        Return the absolute error tolerance for the transient problem for a
+        specified solution component, or all components if none is specified.
+        """
+        if component is None:
+            return np.array([self.domain.transient_atol(n)
+                             for n in range(self.n_components)])
+        else:
+            return self.domain.transient_atol(self.component_index(component))
 
     property grid:
         """ The grid for this domain """
@@ -171,12 +248,10 @@ cdef class Boundary1D(Domain1D):
         self.boundary = NULL
 
     # The signature of this function causes warnings for Sphinx documentation
-    def __init__(self, *args, _SolutionBase phase, **kwargs):
+    def __init__(self, *args, **kwargs):
         if self.boundary is NULL:
             raise TypeError("Can't instantiate abstract class Boundary1D.")
         self.domain = <CxxDomain1D*>(self.boundary)
-        self.phase = phase
-
         Domain1D.__init__(self, *args, **kwargs)
 
     property T:
@@ -199,12 +274,12 @@ cdef class Boundary1D(Domain1D):
         or as an array.
         """
         def __get__(self):
-            self.phase.TPY = self.phase.T, self.phase.P, self.Y
-            return self.phase.X
+            self.gas.TPY = self.gas.T, self.gas.P, self.Y
+            return self.gas.X
 
         def __set__(self, X):
-            self.phase.TPX = None, None, X
-            cdef np.ndarray[np.double_t, ndim=1] data = self.phase.X
+            self.gas.TPX = None, None, X
+            cdef np.ndarray[np.double_t, ndim=1] data = self.gas.X
             self.boundary.setMoleFractions(&data[0])
 
     property Y:
@@ -221,8 +296,8 @@ cdef class Boundary1D(Domain1D):
             return Y
 
         def __set__(self, Y):
-            self.phase.TPY = self.phase.T, self.phase.P, Y
-            self.X = self.phase.X
+            self.gas.TPY = self.gas.T, self.gas.P, Y
+            self.X = self.gas.X
 
 
 cdef class Inlet1D(Boundary1D):
@@ -304,8 +379,7 @@ cdef class ReactingSurface1D(Boundary1D):
 
     def set_kinetics(self, Kinetics kin):
         """Set the kinetics manager (surface reaction mechanism object)."""
-        if kin.kinetics.type() not in (kinetics_type_interface,
-                                       kinetics_type_edge):
+        if pystr(kin.kinetics.kineticsType()) not in ("Surf", "Edge"):
             raise TypeError('Kinetics object must be derived from '
                             'InterfaceKinetics.')
         self.surf.setKineticsMgr(<CxxInterfaceKinetics*>kin.kinetics)
@@ -321,12 +395,11 @@ cdef class _FlowBase(Domain1D):
     def __cinit__(self, *args, **kwargs):
         self.flow = NULL
 
-    def __init__(self, _SolutionBase thermo, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         self.domain = <CxxDomain1D*>(self.flow)
         super().__init__(*args, **kwargs)
-        if not thermo.transport_model:
-            thermo.transport_model = 'Mix'
-        self.gas = thermo
+        if self.gas.transport_model == 'Transport':
+            self.gas.transport_model = 'Mix'
         self.flow.setKinetics(deref(self.gas.kinetics))
         self.flow.setTransport(deref(self.gas.transport))
         self.P = self.gas.P
@@ -343,6 +416,8 @@ cdef class _FlowBase(Domain1D):
         """
         Set the `Solution` object used for calculating transport properties.
         """
+        self._weakref_proxy = _WeakrefProxy()
+        self.gas._references[self._weakref_proxy] = True
         self.gas = phase
         self.flow.setTransport(deref(self.gas.transport))
 
@@ -401,7 +476,7 @@ cdef class _FlowBase(Domain1D):
 
 
 cdef CxxIdealGasPhase* getIdealGasPhase(ThermoPhase phase) except *:
-    if phase.thermo.eosType() != thermo_type_ideal_gas:
+    if pystr(phase.thermo.type()) != "IdealGas":
         raise TypeError('ThermoPhase object is not an IdealGasPhase')
     return <CxxIdealGasPhase*>(phase.thermo)
 
@@ -468,6 +543,8 @@ cdef class Sim1D:
         self.domains = tuple(domains)
         self.set_interrupt(interrupts.no_op)
         self._initialized = False
+        self._initial_guess_args = ()
+        self._initial_guess_kwargs = {}
 
     def set_interrupt(self, f):
         """
@@ -480,6 +557,28 @@ cdef class Sim1D:
             f = Func1(f)
         self.interrupt = f
         self.sim.setInterrupt(self.interrupt.func)
+
+    def set_time_step_callback(self, f):
+        """
+        Set a callback function to be called after each successful timestep.
+        The signature of *f* is `float f(float)`. The argument passed to *f* is
+        the size of the timestep. The output is ignored.
+        """
+        if not isinstance(f, Func1):
+            f = Func1(f)
+        self.time_step_callback = f
+        self.sim.setTimeStepCallback(self.time_step_callback.func)
+
+    def set_steady_callback(self, f):
+        """
+        Set a callback function to be called after each successful steady-state
+        solve, before regridding. The signature of *f* is `float f(float)`. The
+        argument passed to *f* is "0" and the output is ignored.
+        """
+        if not isinstance(f, Func1):
+            f = Func1(f)
+        self.steady_callback = f
+        self.sim.setSteadyCallback(self.steady_callback.func)
 
     def domain_index(self, dom):
         """
@@ -647,12 +746,24 @@ cdef class Sim1D:
             data.push_back(n)
         self.sim.setTimeStep(stepsize, data.size(), &data[0])
 
-    def set_initial_guess(self):
+    property max_time_step_count:
+        """
+        Get/Set the maximum number of time steps allowed before reaching the
+        steady-state solution
+        """
+        def __get__(self):
+            return self.sim.maxTimeStepCount()
+        def __set__(self, nmax):
+            self.sim.setMaxTimeStepCount(nmax)
+
+    def set_initial_guess(self, *args, **kwargs):
         """
         Set the initial guess for the solution. Derived classes extend this
         function to set approximations for the temperature and composition
         profiles.
         """
+        self._initial_guess_args = args
+        self._initial_guess_kwargs = kwargs
         self._get_initial_solution()
         self._initialized = True
 
@@ -661,9 +772,17 @@ cdef class Sim1D:
         Load the initial solution from each domain into the global solution
         vector.
         """
+        self.sim.resize()
         self.sim.getInitialSoln()
 
-    def solve(self, loglevel=1, refine_grid=True):
+    def extinct(self):
+        """
+        Method overloaded for some flame types to indicate if the flame has been
+        extinguished. Base class method always returns 'False'
+        """
+        return False
+
+    def solve(self, loglevel=1, refine_grid=True, auto=False):
         """
         Solve the problem.
 
@@ -672,10 +791,134 @@ cdef class Sim1D:
             suppresses all output, and 5 produces very verbose output.
         :param refine_grid:
             if True, enable grid refinement.
+        :param auto: if True, sequentially execute the different solution stages
+            and attempt to automatically recover from errors. Attempts to first
+            solve on the initial grid with energy enabled. If that does not
+            succeed, a fixed-temperature solution will be tried followed by
+            enabling the energy equation, and then with grid refinement enabled.
+            If non-default tolerances have been specified or multicomponent
+            transport is enabled, an additional solution using these options
+            will be calculated.
         """
-        if not self._initialized:
-            self.set_initial_guess()
-        self.sim.solve(loglevel, <cbool>refine_grid)
+
+        if not auto:
+            if not self._initialized:
+                self.set_initial_guess()
+            self.sim.solve(loglevel, <cbool>refine_grid)
+            return
+
+        have_user_tolerances = any(dom.have_user_tolerances for dom in self.domains)
+        if have_user_tolerances:
+            # Save the user-specified tolerances
+            atol_ss_final = [dom.steady_abstol() for dom in self.domains]
+            rtol_ss_final = [dom.steady_reltol() for dom in self.domains]
+            atol_ts_final = [dom.transient_abstol() for dom in self.domains]
+            rtol_ts_final = [dom.transient_reltol() for dom in self.domains]
+
+        for dom in self.domains:
+            dom.set_steady_tolerances(default=(1e-4, 1e-9))
+            dom.set_transient_tolerances(default=(1e-4, 1e-11))
+
+        # Do initial solution steps without multicomponent transport
+        solve_multi = self.gas.transport_model == 'Multi'
+        if solve_multi:
+            self.gas.transport_model = 'Mix'
+            for dom in self.domains:
+                if isinstance(dom, _FlowBase):
+                    dom.set_transport(self.gas)
+
+        def log(msg, *args):
+            if loglevel:
+                print('\n{:*^78s}'.format(' ' + msg.format(*args) + ' '))
+
+        flow_domains = [D for D in self.domains if isinstance(D, _FlowBase)]
+        zmin = [D.grid[0] for D in flow_domains]
+        zmax = [D.grid[-1] for D in flow_domains]
+        nPoints = [len(flow_domains[0].grid), 12, 24, 48]
+
+        for N in nPoints:
+            for i,D in enumerate(flow_domains):
+                if N > self.get_max_grid_points(D):
+                    raise CanteraError('Maximum number of grid points exceeded')
+
+                if N != len(D.grid):
+                    D.grid = np.linspace(zmin[i], zmax[i], N)
+
+            self.set_initial_guess(*self._initial_guess_args,
+                                   **self._initial_guess_kwargs)
+
+            # Try solving with energy enabled, which usually works
+            log('Solving on {} point grid with energy equation enabled', N)
+            self.energy_enabled = True
+            try:
+                self.sim.solve(loglevel, <cbool>False)
+                solved = True
+            except CanteraError as e:
+                log(str(e))
+                solved = False
+
+            # If initial solve using energy equation fails, fall back on the
+            # traditional fixed temperature solve followed by solving the energy
+            # equation
+            if not solved:
+                log('Initial solve failed; Retrying with energy equation disabled')
+                self.energy_enabled = False
+                try:
+                    self.sim.solve(loglevel, <cbool>False)
+                    solved = True
+                except CanteraError as e:
+                    log(str(e))
+                    solved = False
+
+                if solved:
+                    log('Solving on {} point grid with energy equation re-enabled', N)
+                    self.energy_enabled = True
+                    try:
+                        self.sim.solve(loglevel, <cbool>False)
+                        solved = True
+                    except CanteraError as e:
+                        log(str(e))
+                        solved = False
+
+            if solved and not self.extinct():
+                # Found a non-extinct solution on the fixed grid
+                log('Solving with grid refinement enabled')
+                try:
+                    self.sim.solve(loglevel, <cbool>True)
+                    solved = True
+                except CanteraError as e:
+                    log(str(e))
+                    solved = False
+
+                if solved and not self.extinct():
+                    # Found a non-extinct solution on the refined grid
+                    break
+
+            if self.extinct():
+                log('Flame is extinct on {} point grid', N)
+
+        if not solved:
+            raise CanteraError('Could not find a solution for the 1D problem')
+
+        if solve_multi:
+            log('Solving with multicomponent transport')
+            self.gas.transport_model = 'Multi'
+            for dom in self.domains:
+                if isinstance(dom, _FlowBase):
+                    dom.set_transport(self.gas)
+
+        if have_user_tolerances:
+            log('Solving with user-specifed tolerances')
+            for i in range(len(self.domains)):
+                self.domains[i].set_steady_tolerances(abs=atol_ss_final[i],
+                                                      rel=rtol_ss_final[i])
+                self.domains[i].set_transient_tolerances(abs=atol_ts_final[i],
+                                                         rel=rtol_ts_final[i])
+
+        # Final call with expensive options enabled
+        if have_user_tolerances or solve_multi:
+            self.sim.solve(loglevel, <cbool>True)
+
 
     def refine(self, loglevel=1):
         """
@@ -793,6 +1036,22 @@ cdef class Sim1D:
         self.sim.restore(stringify(filename), stringify(name), loglevel)
         self._initialized = True
 
+    def restore_time_stepping_solution(self):
+        """
+        Set the current solution vector to the last successful time-stepping
+        solution. This can be used to examine the solver progress after a failed
+        integration.
+        """
+        self.sim.restoreTimeSteppingSolution()
+
+    def restore_steady_solution(self):
+        """
+        Set the current solution vector to the last successful steady-state
+        solution. This can be used to examine the solver progress after a
+        failure during grid refinement.
+        """
+        self.sim.restoreSteadySolution()
+
     def show_stats(self, print_time=True):
         """
         Show the statistics for the last solution.
@@ -807,6 +1066,116 @@ cdef class Sim1D:
         Clear solver statistics.
         """
         self.sim.clearStats()
+
+    def solve_adjoint(self, perturb, n_params, dgdx, g=None, dp=1e-5):
+        r"""
+        Find the sensitivities of an objective function using an adjoint method.
+
+        For an objective function :math:`g(x, p)` where :math:`x` is the state
+        vector of the system and :math:`p` is a vector of parameters, this
+        computes the vector of sensitivities :math:`dg/dp`. This assumes that
+        the system of equations has already been solved to find :math:`x`.
+
+        :param perturb:
+            A function with the signature ``perturb(sim, i, dp)`` which
+            perturbs parameter ``i`` by a relative factor of ``dp``. To
+            perturb a reaction rate constant, this function could be defined
+            as::
+
+                def perturb(sim, i, dp):
+                    sim.gas.set_multiplier(1+dp, i)
+
+            Calling ``perturb(sim, i, 0)`` should restore that parameter to its
+            default value.
+        :param n_params:
+            The length of the vector of sensitivity parameters
+        :param dgdx:
+            The vector of partial derivatives of the function :math:`g(x, p)`
+            with respect to the system state :math:`x`.
+        :param g:
+            A function with the signature ``value = g(sim)`` which computes the
+            value of :math:`g(x,p)` at the current system state. This is used to
+            compute :math:`\partial g/\partial p`. If this is identically zero
+            (i.e. :math:`g` is independent of :math:`p`) then this argument may
+            be omitted.
+        :param dp:
+            A relative value by which to perturb each parameter
+        """
+        n_vars = self.sim.size()
+        cdef np.ndarray[np.double_t, ndim=1] L = np.empty(n_vars)
+        cdef np.ndarray[np.double_t, ndim=1] gg = \
+                np.ascontiguousarray(dgdx, dtype=np.double)
+
+        self.sim.solveAdjoint(&gg[0], &L[0])
+
+        cdef np.ndarray[np.double_t, ndim=1] dgdp = np.empty(n_params)
+        cdef np.ndarray[np.double_t, ndim=2] dfdp = np.empty((n_vars, n_params))
+        cdef np.ndarray[np.double_t, ndim=1] fplus = np.empty(n_vars)
+        cdef np.ndarray[np.double_t, ndim=1] fminus = np.empty(n_vars)
+        gplus = gminus = 0
+
+        for i in range(n_params):
+            perturb(self, i, dp)
+            if g:
+                gplus = g(self)
+            self.sim.getResidual(0, &fplus[0])
+
+            perturb(self, i, -dp)
+            if g:
+                gminus = g(self)
+            self.sim.getResidual(0, &fminus[0])
+
+            perturb(self, i, 0)
+            dgdp[i] = (gplus - gminus)/(2*dp)
+            dfdp[:,i] = (fplus - fminus) / (2*dp)
+
+        return dgdp - np.dot(L, dfdp)
+
+    property grid_size_stats:
+        """Return total grid size in each call to solve()"""
+        def __get__(self):
+            return self.sim.gridSizeStats()
+
+    property jacobian_time_stats:
+        """Return CPU time spent evaluating Jacobians in each call to solve()"""
+        def __get__(self):
+            return self.sim.jacobianTimeStats()
+
+    property jacobian_count_stats:
+        """Return number of Jacobian evaluations made in each call to solve()"""
+        def __get__(self):
+            return self.sim.jacobianCountStats()
+
+    property eval_time_stats:
+        """
+        Return CPU time spent on non-Jacobian function evaluations in each call
+        to solve()
+        """
+        def __get__(self):
+            return self.sim.evalTimeStats()
+
+    property eval_count_stats:
+        """
+        Return number of non-Jacobian function evaluations made in each call to
+        solve()
+        """
+        def __get__(self):
+            return self.sim.evalCountStats()
+
+    property time_step_stats:
+        """Return number of time steps taken in each call to solve()"""
+        def __get__(self):
+            return self.sim.timeStepStats()
+
+    def set_max_grid_points(self, domain, npmax):
+        """ Set the maximum number of grid points in the specified domain. """
+        idom = self.domain_index(domain)
+        self.sim.setMaxGridPoints(idom, npmax)
+
+    def get_max_grid_points(self, domain):
+        """ Get the maximum number of grid points in the specified domain. """
+        idom = self.domain_index(domain)
+        return self.sim.maxGridPoints(idom)
 
     def __dealloc__(self):
         del self.sim

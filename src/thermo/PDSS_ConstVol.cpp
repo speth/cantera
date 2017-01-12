@@ -3,16 +3,13 @@
  * Implementation of a pressure dependent standard state
  * virtual function.
  */
-/*
- * Copyright (2006) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #include "cantera/base/ctml.h"
 #include "cantera/thermo/PDSS_ConstVol.h"
 #include "cantera/thermo/VPStandardStateTP.h"
-
-#include <fstream>
 
 using namespace std;
 
@@ -28,6 +25,8 @@ PDSS_ConstVol::PDSS_ConstVol(VPStandardStateTP* tp, size_t spindex,
                              const std::string& inputFile, const std::string& id) :
     PDSS(tp, spindex)
 {
+    warn_deprecated("PDSS_ConstVol constructor from XML input file",
+                    "To be removed after Cantera 2.3.");
     m_pdssType = cPDSS_CONSTVOL;
     constructPDSSFile(tp, spindex, inputFile, id);
 }
@@ -39,16 +38,14 @@ PDSS_ConstVol::PDSS_ConstVol(VPStandardStateTP* tp, size_t spindex,
     PDSS(tp, spindex)
 {
     m_pdssType = cPDSS_CONSTVOL;
-    constructPDSSXML(tp, spindex, speciesNode,  phaseRoot, spInstalled) ;
+    constructPDSSXML(tp, spindex, speciesNode, phaseRoot, spInstalled);
 }
 
 PDSS_ConstVol::PDSS_ConstVol(const PDSS_ConstVol& b) :
     PDSS(b)
 {
-    /*
-     * Use the assignment operator to do the brunt
-     * of the work for the copy constructor.
-     */
+    // Use the assignment operator to do the brunt of the work for the copy
+    // constructor.
     *this = b;
 }
 
@@ -58,7 +55,7 @@ PDSS_ConstVol& PDSS_ConstVol::operator=(const PDSS_ConstVol& b)
         return *this;
     }
     PDSS::operator=(b);
-    m_constMolarVolume      = b.m_constMolarVolume;
+    m_constMolarVolume = b.m_constMolarVolume;
     return *this;
 }
 
@@ -95,23 +92,17 @@ void PDSS_ConstVol::constructPDSSFile(VPStandardStateTP* tp, size_t spindex,
                                       const std::string& inputFile,
                                       const std::string& id)
 {
+    warn_deprecated("PDSS_ConstVol::constructPDSSFile",
+                    "To be removed after Cantera 2.3.");
     if (inputFile.size() == 0) {
         throw CanteraError("PDSS_ConstVol::initThermo",
                            "input file is null");
     }
-    std::string path = findInputFile(inputFile);
-    ifstream fin(path.c_str());
-    if (!fin) {
-        throw CanteraError("PDSS_ConstVol::initThermo","could not open "
-                           +path+" for reading.");
-    }
-    /*
-     * The phase object automatically constructs an XML object.
-     * Use this object to store information.
-     */
 
+    // The phase object automatically constructs an XML object. Use this object
+    // to store information.
     XML_Node fxml;
-    fxml.build(fin);
+    fxml.build(findInputFile(inputFile));
     XML_Node* fxml_phase = findXMLPhase(&fxml, id);
     if (!fxml_phase) {
         throw CanteraError("PDSS_ConstVol::initThermo",
@@ -121,9 +112,8 @@ void PDSS_ConstVol::constructPDSSFile(VPStandardStateTP* tp, size_t spindex,
 
     XML_Node& speciesList = fxml_phase->child("speciesArray");
     XML_Node* speciesDB = get_XML_NameID("speciesData", speciesList["datasrc"],
-                                         &(fxml_phase->root()));
-    const XML_Node* s =  speciesDB->findByAttr("name", tp->speciesName(spindex));
-
+                                         &fxml_phase->root());
+    const XML_Node* s = speciesDB->findByAttr("name", tp->speciesName(spindex));
     constructPDSSXML(tp, spindex, *s, *fxml_phase, true);
 }
 
@@ -144,57 +134,48 @@ void PDSS_ConstVol::initThermo()
     m_Vss_ptr[m_spindex] = m_constMolarVolume;
 }
 
-doublereal
-PDSS_ConstVol::enthalpy_RT() const
+doublereal PDSS_ConstVol::enthalpy_RT() const
 {
     return m_hss_RT_ptr[m_spindex];
 }
 
-doublereal
-PDSS_ConstVol::intEnergy_mole() const
+doublereal PDSS_ConstVol::intEnergy_mole() const
 {
     doublereal pV = (m_pres * m_Vss_ptr[m_spindex]);
     return m_h0_RT_ptr[m_spindex] * GasConstant * m_temp - pV;
 }
 
-doublereal
-PDSS_ConstVol::entropy_R() const
+doublereal PDSS_ConstVol::entropy_R() const
 {
     return m_sss_R_ptr[m_spindex];
 }
 
-doublereal
-PDSS_ConstVol::gibbs_RT() const
+doublereal PDSS_ConstVol::gibbs_RT() const
 {
     return m_gss_RT_ptr[m_spindex];
 }
 
-doublereal
-PDSS_ConstVol::cp_R() const
+doublereal PDSS_ConstVol::cp_R() const
 {
     return m_cpss_R_ptr[m_spindex];
 }
 
-doublereal
-PDSS_ConstVol::cv_mole() const
+doublereal PDSS_ConstVol::cv_mole() const
 {
-    return (cp_mole() -  m_V0_ptr[m_spindex]);
+    return (cp_mole() - m_V0_ptr[m_spindex]);
 }
 
-doublereal
-PDSS_ConstVol::molarVolume() const
+doublereal PDSS_ConstVol::molarVolume() const
 {
     return m_Vss_ptr[m_spindex];
 }
 
-doublereal
-PDSS_ConstVol::density() const
+doublereal PDSS_ConstVol::density() const
 {
     return m_mw / m_Vss_ptr[m_spindex];
 }
 
-doublereal
-PDSS_ConstVol::gibbs_RT_ref() const
+doublereal PDSS_ConstVol::gibbs_RT_ref() const
 {
     return m_g0_RT_ptr[m_spindex];
 }
@@ -223,7 +204,7 @@ void PDSS_ConstVol::setPressure(doublereal p)
 {
     m_pres = p;
     doublereal del_pRT = (m_pres - m_p0) / (GasConstant * m_temp);
-    m_hss_RT_ptr[m_spindex]  = m_h0_RT_ptr[m_spindex] + del_pRT * m_Vss_ptr[m_spindex];
+    m_hss_RT_ptr[m_spindex] = m_h0_RT_ptr[m_spindex] + del_pRT * m_Vss_ptr[m_spindex];
     m_gss_RT_ptr[m_spindex] = m_hss_RT_ptr[m_spindex] - m_sss_R_ptr[m_spindex];
 }
 
@@ -232,15 +213,14 @@ void PDSS_ConstVol::setTemperature(doublereal temp)
     m_temp = temp;
     m_spthermo->update_one(m_spindex, temp,
                            m_cp0_R_ptr, m_h0_RT_ptr, m_s0_R_ptr);
-    m_g0_RT_ptr[m_spindex] =  m_h0_RT_ptr[m_spindex] -  m_s0_R_ptr[m_spindex];
+    m_g0_RT_ptr[m_spindex] = m_h0_RT_ptr[m_spindex] - m_s0_R_ptr[m_spindex];
 
     doublereal del_pRT = (m_pres - m_p0) / (GasConstant * m_temp);
 
-    m_hss_RT_ptr[m_spindex]  = m_h0_RT_ptr[m_spindex] + del_pRT * m_Vss_ptr[m_spindex];
-    m_cpss_R_ptr[m_spindex]  = m_cp0_R_ptr[m_spindex];
+    m_hss_RT_ptr[m_spindex] = m_h0_RT_ptr[m_spindex] + del_pRT * m_Vss_ptr[m_spindex];
+    m_cpss_R_ptr[m_spindex] = m_cp0_R_ptr[m_spindex];
     m_sss_R_ptr[m_spindex] = m_s0_R_ptr[m_spindex];
     m_gss_RT_ptr[m_spindex] = m_hss_RT_ptr[m_spindex] - m_sss_R_ptr[m_spindex];
-
 }
 
 void PDSS_ConstVol::setState_TP(doublereal temp, doublereal pres)

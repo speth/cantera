@@ -6,11 +6,9 @@
  *  dependence (see \ref thermoprops and
  * class \link Cantera::VPSSMgr_ConstVol VPSSMgr_ConstVol\endlink).
  */
-/*
- * Copyright (2005) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/thermo/VPSSMgr_ConstVol.h"
 #include "cantera/thermo/VPStandardStateTP.h"
@@ -22,10 +20,10 @@ using namespace std;
 namespace Cantera
 {
 
-VPSSMgr_ConstVol::VPSSMgr_ConstVol(VPStandardStateTP* vp_ptr, SpeciesThermo* spth) :
+VPSSMgr_ConstVol::VPSSMgr_ConstVol(VPStandardStateTP* vp_ptr, MultiSpeciesThermo* spth) :
     VPSSMgr(vp_ptr, spth)
 {
-    m_useTmpRefStateStorage      = true;
+    m_useTmpRefStateStorage = true;
     m_useTmpStandardStateStorage = true;
 }
 
@@ -36,7 +34,6 @@ VPSSMgr_ConstVol::VPSSMgr_ConstVol(const VPSSMgr_ConstVol& right) :
     m_useTmpStandardStateStorage = true;
     *this = right;
 }
-
 
 VPSSMgr_ConstVol& VPSSMgr_ConstVol::operator=(const VPSSMgr_ConstVol& b)
 {
@@ -59,14 +56,13 @@ VPSSMgr* VPSSMgr_ConstVol::duplMyselfAsVPSSMgr() const
  */
 void VPSSMgr_ConstVol::_updateStandardStateThermo()
 {
-
     doublereal del_pRT = (m_plast - m_p0) / (GasConstant * m_tlast);
 
     for (size_t k = 0; k < m_kk; k++) {
-        m_hss_RT[k]  = m_h0_RT[k] + del_pRT * m_Vss[k];
-        m_cpss_R[k]  = m_cp0_R[k];
-        m_sss_R[k]   = m_s0_R[k];
-        m_gss_RT[k]  = m_hss_RT[k] - m_sss_R[k];
+        m_hss_RT[k] = m_h0_RT[k] + del_pRT * m_Vss[k];
+        m_cpss_R[k] = m_cp0_R[k];
+        m_sss_R[k] = m_s0_R[k];
+        m_gss_RT[k] = m_hss_RT[k] - m_sss_R[k];
         // m_Vss[k] constant
     }
 }
@@ -91,16 +87,9 @@ void VPSSMgr_ConstVol::getStandardVolumes_ref(doublereal* vol) const
     }
 }
 
-void VPSSMgr_ConstVol::initThermo()
-{
-    VPSSMgr::initThermo();
-}
-
-void
-VPSSMgr_ConstVol::initThermoXML(XML_Node& phaseNode, const std::string& id)
+void VPSSMgr_ConstVol::initThermoXML(XML_Node& phaseNode, const std::string& id)
 {
     VPSSMgr::initThermoXML(phaseNode, id);
-
     XML_Node& speciesList = phaseNode.child("speciesArray");
     XML_Node* speciesDB = get_XML_NameID("speciesData", speciesList["datasrc"],
                                          &phaseNode.root());
@@ -125,9 +114,8 @@ VPSSMgr_ConstVol::initThermoXML(XML_Node& phaseNode, const std::string& id)
     }
 }
 
-PDSS*
-VPSSMgr_ConstVol::createInstallPDSS(size_t k, const XML_Node& speciesNode,
-                                    const XML_Node* const phaseNode_ptr)
+PDSS* VPSSMgr_ConstVol::createInstallPDSS(size_t k, const XML_Node& speciesNode,
+                                          const XML_Node* const phaseNode_ptr)
 {
     const XML_Node* ss = speciesNode.findByName("standardState");
     if (!ss) {
@@ -151,11 +139,15 @@ VPSSMgr_ConstVol::createInstallPDSS(size_t k, const XML_Node& speciesNode,
 
 PDSS_enumType VPSSMgr_ConstVol::reportPDSSType(int k) const
 {
+    warn_deprecated("VPSSMgr_ConstVol::reportPDSSType",
+        "To be removed after Cantera 2.3.");
     return cPDSS_CONSTVOL;
 }
 
 VPSSMgr_enumType VPSSMgr_ConstVol::reportVPSSMgrType() const
 {
-    return  cVPSSMGR_CONSTVOL;
+    warn_deprecated("VPSSMgr_ConstVol::reportVPSSMgrType",
+        "To be removed after Cantera 2.3.");
+    return cVPSSMGR_CONSTVOL;
 }
 }

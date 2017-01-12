@@ -6,25 +6,23 @@
  * (see \ref mgrpdssthermocalc and
  * class \link Cantera::VPSSMgr VPSSMgr\endlink).
  */
-/*
- * Copyright (2005) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/thermo/VPSSMgr.h"
 #include "cantera/thermo/VPStandardStateTP.h"
 #include "cantera/thermo/SpeciesThermoFactory.h"
 #include "cantera/thermo/PDSS.h"
-#include "cantera/thermo/GeneralSpeciesThermo.h"
-#include "cantera/base/vec_functions.h"
+#include "cantera/thermo/MultiSpeciesThermo.h"
+#include "cantera/base/utilities.h"
 #include "cantera/base/xml.h"
 
 using namespace std;
 
 namespace Cantera
 {
-VPSSMgr::VPSSMgr(VPStandardStateTP* vptp_ptr, SpeciesThermo* spthermo) :
+VPSSMgr::VPSSMgr(VPStandardStateTP* vptp_ptr, MultiSpeciesThermo* spthermo) :
     m_kk(0),
     m_vptp_ptr(vptp_ptr),
     m_spthermo(spthermo),
@@ -54,95 +52,94 @@ VPSSMgr::VPSSMgr(const VPSSMgr& right) :
     m_useTmpRefStateStorage(false),
     m_useTmpStandardStateStorage(false)
 {
+    warn_deprecated("VPSSMgr copy constructor", "To be removed after"
+        " Cantera 2.3 for all classes derived from VPSSMgr.");
     *this = right;
 }
 
-VPSSMgr&
-VPSSMgr::operator=(const VPSSMgr& right)
+VPSSMgr& VPSSMgr::operator=(const VPSSMgr& right)
 {
+    warn_deprecated("VPSSMgr assignment operator", "To be removed after"
+        " Cantera 2.3 for all classes derived from VPSSMgr.");
     if (&right == this) {
         return *this;
     }
-    m_kk                          = right.m_kk;
-    /*
-     * What we are doing here is to make a shallow copy of the VPStandardStateTP
-     * pointer in the "new" VPSSMgr object using the value from the "old"
-     * VPSSMgr object. This is not appropriate if we are making a copy of a ThermoPhase
-     * object and the VPSSMgr objects are owned by the ThermoPhase object.
-     *
-     * The new object will want to have a different value of m_vptp_ptr than the
-     * value this is being copied here. It will want to refer to the copy of the
-     * VPStandardStateTP object being made that will own the new VPSSMgr object.
-     * However, the assignment object is not the place to carry out this fixup.
-     *
-     * We will have to "fix" up the shallow copies later.
-     */
-    m_vptp_ptr                    = right.m_vptp_ptr;
-    m_spthermo                    = right.m_spthermo;
-    m_tlast                       = -1.0;
-    m_plast                       = -1.0;
-    m_p0                          = right.m_p0;
-    m_minTemp                     = right.m_minTemp;
-    m_maxTemp                     = right.m_maxTemp;
-    m_useTmpRefStateStorage       = right.m_useTmpRefStateStorage;
-    m_h0_RT                       = right.m_h0_RT;
-    m_cp0_R                       = right.m_cp0_R;
-    m_g0_RT                       = right.m_g0_RT;
-    m_s0_R                        = right.m_s0_R;
-    m_V0                          = right.m_V0;
-    m_useTmpStandardStateStorage  = right.m_useTmpStandardStateStorage;
-    m_hss_RT                      = right.m_hss_RT;
-    m_cpss_R                      = right.m_cpss_R;
-    m_gss_RT                      = right.m_gss_RT;
-    m_sss_R                       = right.m_sss_R;
-    m_Vss                         = right.m_Vss;
+    m_kk = right.m_kk;
 
-    mPDSS_h0_RT                   = right.mPDSS_h0_RT;
-    mPDSS_cp0_R                   = right.mPDSS_cp0_R;
-    mPDSS_g0_RT                   = right.mPDSS_g0_RT;
-    mPDSS_s0_R                    = right.mPDSS_s0_R;
-    mPDSS_V0                      = right.mPDSS_V0;
-    mPDSS_hss_RT                  = right.mPDSS_hss_RT;
-    mPDSS_cpss_R                  = right.mPDSS_cpss_R;
-    mPDSS_gss_RT                  = right.mPDSS_gss_RT;
-    mPDSS_sss_R                   = right.mPDSS_sss_R;
-    mPDSS_Vss                     = right.mPDSS_Vss;
+    // What we are doing here is to make a shallow copy of the VPStandardStateTP
+    // pointer in the "new" VPSSMgr object using the value from the "old"
+    // VPSSMgr object. This is not appropriate if we are making a copy of a
+    // ThermoPhase object and the VPSSMgr objects are owned by the ThermoPhase
+    // object.
+    //
+    // The new object will want to have a different value of m_vptp_ptr than the
+    // value this is being copied here. It will want to refer to the copy of the
+    // VPStandardStateTP object being made that will own the new VPSSMgr object.
+    // However, the assignment object is not the place to carry out this fixup.
+    //
+    // We will have to "fix" up the shallow copies later.
+    m_vptp_ptr = right.m_vptp_ptr;
+    m_spthermo = right.m_spthermo;
+    m_tlast = -1.0;
+    m_plast = -1.0;
+    m_p0 = right.m_p0;
+    m_minTemp = right.m_minTemp;
+    m_maxTemp = right.m_maxTemp;
+    m_useTmpRefStateStorage = right.m_useTmpRefStateStorage;
+    m_h0_RT = right.m_h0_RT;
+    m_cp0_R = right.m_cp0_R;
+    m_g0_RT = right.m_g0_RT;
+    m_s0_R = right.m_s0_R;
+    m_V0 = right.m_V0;
+    m_useTmpStandardStateStorage = right.m_useTmpStandardStateStorage;
+    m_hss_RT = right.m_hss_RT;
+    m_cpss_R = right.m_cpss_R;
+    m_gss_RT = right.m_gss_RT;
+    m_sss_R = right.m_sss_R;
+    m_Vss = right.m_Vss;
+    mPDSS_h0_RT = right.mPDSS_h0_RT;
+    mPDSS_cp0_R = right.mPDSS_cp0_R;
+    mPDSS_g0_RT = right.mPDSS_g0_RT;
+    mPDSS_s0_R = right.mPDSS_s0_R;
+    mPDSS_V0 = right.mPDSS_V0;
+    mPDSS_hss_RT = right.mPDSS_hss_RT;
+    mPDSS_cpss_R = right.mPDSS_cpss_R;
+    mPDSS_gss_RT = right.mPDSS_gss_RT;
+    mPDSS_sss_R = right.mPDSS_sss_R;
+    mPDSS_Vss = right.mPDSS_Vss;
 
     return *this;
 }
 
 VPSSMgr* VPSSMgr::duplMyselfAsVPSSMgr() const
 {
+    warn_deprecated("VPSSMgr::duplMyselfAsVPSSMgr", "To be removed after"
+        " Cantera 2.3 for all classes derived from VPSSMgr.");
     return new VPSSMgr(*this);
 }
 
 void VPSSMgr::initAllPtrs(VPStandardStateTP* vp_ptr,
-                          SpeciesThermo* sp_ptr)
+                          MultiSpeciesThermo* sp_ptr)
 {
+    warn_deprecated("VPSSMgr::initAllPtrs", "To be removed after Cantera 2.3 "
+        "for all classes derived from VPSSMgr.");
     m_vptp_ptr = vp_ptr;
     m_spthermo = sp_ptr;
 
     // Take care of STITTbyPDSS objects
-
-    // Go see if the SpeciesThermo type is a GeneralSpeciesThermo
-    GeneralSpeciesThermo* gst = dynamic_cast<GeneralSpeciesThermo*>(sp_ptr);
-    if (gst) {
-        for (size_t k = 0; k < m_kk; k++) {
-            SpeciesThermoInterpType* st = gst->provideSTIT(k);
-            STITbyPDSS* stpd = dynamic_cast<STITbyPDSS*>(st);
-            if (stpd) {
-                PDSS* PDSS_ptr = vp_ptr->providePDSS(k);
-                stpd->initAllPtrs(k, this, PDSS_ptr);
-            }
+    for (size_t k = 0; k < m_kk; k++) {
+        SpeciesThermoInterpType* st = m_spthermo->provideSTIT(k);
+        STITbyPDSS* stpd = dynamic_cast<STITbyPDSS*>(st);
+        if (stpd) {
+            PDSS* PDSS_ptr = vp_ptr->providePDSS(k);
+            stpd->initAllPtrs(k, this, PDSS_ptr);
         }
     }
-
 }
 
 // Standard States
 
-void
-VPSSMgr::getStandardChemPotentials(doublereal* mu) const
+void VPSSMgr::getStandardChemPotentials(doublereal* mu) const
 {
     if (m_useTmpStandardStateStorage) {
         std::copy(m_gss_RT.begin(), m_gss_RT.end(), mu);
@@ -152,8 +149,7 @@ VPSSMgr::getStandardChemPotentials(doublereal* mu) const
     }
 }
 
-void
-VPSSMgr::getGibbs_RT(doublereal* grt) const
+void VPSSMgr::getGibbs_RT(doublereal* grt) const
 {
     if (m_useTmpStandardStateStorage) {
         std::copy(m_gss_RT.begin(), m_gss_RT.end(), grt);
@@ -162,8 +158,7 @@ VPSSMgr::getGibbs_RT(doublereal* grt) const
     }
 }
 
-void
-VPSSMgr::getEnthalpy_RT(doublereal* hrt) const
+void VPSSMgr::getEnthalpy_RT(doublereal* hrt) const
 {
     if (m_useTmpStandardStateStorage) {
         std::copy(m_hss_RT.begin(), m_hss_RT.end(), hrt);
@@ -172,8 +167,7 @@ VPSSMgr::getEnthalpy_RT(doublereal* hrt) const
     }
 }
 
-void
-VPSSMgr::getEntropy_R(doublereal* sr) const
+void VPSSMgr::getEntropy_R(doublereal* sr) const
 {
     if (m_useTmpStandardStateStorage) {
         std::copy(m_sss_R.begin(), m_sss_R.end(), sr);
@@ -182,8 +176,7 @@ VPSSMgr::getEntropy_R(doublereal* sr) const
     }
 }
 
-void
-VPSSMgr::getIntEnergy_RT(doublereal* urt) const
+void VPSSMgr::getIntEnergy_RT(doublereal* urt) const
 {
     if (m_useTmpStandardStateStorage) {
         std::copy(m_hss_RT.begin(), m_hss_RT.end(), urt);
@@ -195,8 +188,7 @@ VPSSMgr::getIntEnergy_RT(doublereal* urt) const
     }
 }
 
-void
-VPSSMgr::getCp_R(doublereal* cpr) const
+void VPSSMgr::getCp_R(doublereal* cpr) const
 {
     if (m_useTmpStandardStateStorage) {
         std::copy(m_cpss_R.begin(), m_cpss_R.end(), cpr);
@@ -205,8 +197,7 @@ VPSSMgr::getCp_R(doublereal* cpr) const
     }
 }
 
-void
-VPSSMgr::getStandardVolumes(doublereal* vol) const
+void VPSSMgr::getStandardVolumes(doublereal* vol) const
 {
     if (m_useTmpStandardStateStorage) {
         std::copy(m_Vss.begin(), m_Vss.end(), vol);
@@ -214,8 +205,7 @@ VPSSMgr::getStandardVolumes(doublereal* vol) const
         throw NotImplementedError("VPSSMgr::getStandardVolumes");
     }
 }
-const vector_fp&
-VPSSMgr::getStandardVolumes() const
+const vector_fp& VPSSMgr::getStandardVolumes() const
 {
     if (!m_useTmpStandardStateStorage) {
         throw NotImplementedError("VPSSMgr::getStandardVolumes");
@@ -224,8 +214,8 @@ VPSSMgr::getStandardVolumes() const
 }
 
 /*****************************************************************/
-void
-VPSSMgr::getEnthalpy_RT_ref(doublereal* hrt) const
+
+void VPSSMgr::getEnthalpy_RT_ref(doublereal* hrt) const
 {
     if (m_useTmpRefStateStorage) {
         std::copy(m_h0_RT.begin(), m_h0_RT.end(), hrt);
@@ -234,8 +224,7 @@ VPSSMgr::getEnthalpy_RT_ref(doublereal* hrt) const
     }
 }
 
-void
-VPSSMgr::getGibbs_RT_ref(doublereal* grt) const
+void VPSSMgr::getGibbs_RT_ref(doublereal* grt) const
 {
     if (m_useTmpRefStateStorage) {
         std::copy(m_g0_RT.begin(), m_g0_RT.end(), grt);
@@ -244,8 +233,7 @@ VPSSMgr::getGibbs_RT_ref(doublereal* grt) const
     }
 }
 
-void
-VPSSMgr::getGibbs_ref(doublereal* g) const
+void VPSSMgr::getGibbs_ref(doublereal* g) const
 {
     if (m_useTmpRefStateStorage) {
         std::copy(m_g0_RT.begin(), m_g0_RT.end(), g);
@@ -255,8 +243,7 @@ VPSSMgr::getGibbs_ref(doublereal* g) const
     }
 }
 
-void
-VPSSMgr::getEntropy_R_ref(doublereal* sr) const
+void VPSSMgr::getEntropy_R_ref(doublereal* sr) const
 {
     if (m_useTmpRefStateStorage) {
         std::copy(m_s0_R.begin(), m_s0_R.end(), sr);
@@ -265,8 +252,7 @@ VPSSMgr::getEntropy_R_ref(doublereal* sr) const
     }
 }
 
-void
-VPSSMgr::getCp_R_ref(doublereal* cpr) const
+void VPSSMgr::getCp_R_ref(doublereal* cpr) const
 {
     if (m_useTmpRefStateStorage) {
         std::copy(m_cp0_R.begin(), m_cp0_R.end(), cpr);
@@ -275,11 +261,9 @@ VPSSMgr::getCp_R_ref(doublereal* cpr) const
     }
 }
 
-void
-VPSSMgr::getStandardVolumes_ref(doublereal* vol) const
+void VPSSMgr::getStandardVolumes_ref(doublereal* vol) const
 {
     getStandardVolumes(vol);
-    //err("getStandardVolumes_ref");
 }
 
 /*****************************************************************/
@@ -343,17 +327,14 @@ void VPSSMgr::_updateRefStateThermo() const
     }
 }
 
-
 /*****************************************************************/
 
-void
-VPSSMgr::initThermo()
+void VPSSMgr::initThermo()
 {
     initLengths();
 }
 
-void
-VPSSMgr::initLengths()
+void VPSSMgr::initLengths()
 {
     m_kk = m_vptp_ptr->nSpecies();
     m_h0_RT.resize(m_kk, 0.0);
@@ -391,7 +372,7 @@ void VPSSMgr::initThermoXML(XML_Node& phaseNode, const std::string& id)
     }
 }
 
-void VPSSMgr::installSTSpecies(size_t k,  const XML_Node& s,
+void VPSSMgr::installSTSpecies(size_t k, const XML_Node& s,
                                const XML_Node* phaseNode_ptr)
 {
     shared_ptr<SpeciesThermoInterpType> stit(newSpeciesThermoInterpType(s.child("thermo")));
@@ -409,6 +390,7 @@ PDSS* VPSSMgr::createInstallPDSS(size_t k, const XML_Node& s,
 }
 
 /*****************************************************************/
+
 doublereal VPSSMgr::minTemp(size_t k) const
 {
     if (k != npos) {
@@ -437,7 +419,6 @@ PDSS_enumType VPSSMgr::reportPDSSType(int index) const
 {
     throw NotImplementedError("VPSSMgr::reportPDSSType()");
 }
-
 
 VPSSMgr_enumType VPSSMgr::reportVPSSMgrType() const
 {

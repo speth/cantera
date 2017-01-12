@@ -1,3 +1,6 @@
+# This file is part of Cantera. See License.txt in the top-level directory or
+# at http://www.cantera.org/license.txt for license and copyright information.
+
 from __future__ import print_function
 
 from types import *
@@ -94,7 +97,7 @@ class ControlWindow(Frame):
         i = 0
         for f in funcs:
             filemenu.add_command(label=f[0], command=f[1])
-            i = i + 1
+            i += 1
         filebutton['menu']=filemenu
         return filemenu
 

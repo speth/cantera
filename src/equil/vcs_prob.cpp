@@ -3,11 +3,9 @@
  *  Implementation for the Interface class for the vcs thermo
  *  equilibrium solver package,
  */
-/*
- * Copyright (2005) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/equil/vcs_prob.h"
 #include "cantera/equil/vcs_VolPhase.h"
@@ -34,11 +32,9 @@ VCS_PROB::VCS_PROB(size_t nsp, size_t nel, size_t nph) :
     T(298.15),
     PresPA(1.0),
     Vol(0.0),
-    m_VCS_UnitsFormat(VCS_UNITS_UNITLESS),
-/* Set the units for the chemical potential data to be
- * unitless */
-    iest(-1),    /* The default is to not expect an initial estimate
-                  * of the species concentrations */
+    // The default is to not expect an initial estimate  of the species
+    // concentrations
+    iest(-1),
     tolmaj(1.0E-8),
     tolmin(1.0E-6),
     m_Iterations(0),
@@ -51,12 +47,12 @@ VCS_PROB::VCS_PROB(size_t nsp, size_t nel, size_t nph) :
         throw CanteraError("VCS_PROB::VCS_PROB",
                            "number of species is zero or neg");
     }
-    NE0       = ne;
+    NE0 = ne;
     if (ne <= 0) {
         throw CanteraError("VCS_PROB::VCS_PROB",
                            "number of elements is zero or neg");
     }
-    NPHASE0   = NPhase;
+    NPHASE0 = NPhase;
     if (NPhase <= 0) {
         throw CanteraError("VCS_PROB::VCS_PROB",
                            "number of phases is zero or neg");
@@ -99,16 +95,16 @@ VCS_PROB::~VCS_PROB()
 {
     for (size_t i = 0; i < nspecies; i++) {
         delete SpeciesThermo[i];
-        SpeciesThermo[i] = 0;
     }
     for (size_t iph = 0; iph < NPhase; iph++) {
         delete VPhaseList[iph];
-        VPhaseList[iph] = 0;
     }
 }
 
 void VCS_PROB::resizePhase(size_t nPhase, int force)
 {
+    warn_deprecated("VCS_PROB::resizePhase",
+                    "Unused. To be removed after Cantera 2.3.");
     if (force || nPhase > NPHASE0) {
         NPHASE0 = nPhase;
     }
@@ -116,6 +112,8 @@ void VCS_PROB::resizePhase(size_t nPhase, int force)
 
 void VCS_PROB::resizeSpecies(size_t nsp, int force)
 {
+    warn_deprecated("VCS_PROB::resizeSpecies",
+                    "Unused. To be removed after Cantera 2.3.");
     if (force || nsp > NSPECIES0) {
         m_gibbsSpecies.resize(nsp, 0.0);
         w.resize(nsp, 0.0);
@@ -150,12 +148,10 @@ void VCS_PROB::resizeElements(size_t nel, int force)
 void VCS_PROB::set_gai()
 {
     gai.assign(gai.size(), 0.0);
-    double* ElemAbund = VCS_DATA_PTR(gai);
-
     for (size_t j = 0; j < ne; j++) {
         for (size_t kspec = 0; kspec < nspecies; kspec++) {
             if (SpeciesUnknownType[kspec] != VCS_SPECIES_TYPE_INTERFACIALVOLTAGE) {
-                ElemAbund[j] += FormulaMatrix(kspec,j) * w[kspec];
+                gai[j] += FormulaMatrix(kspec,j) * w[kspec];
             }
         }
     }
@@ -164,9 +160,8 @@ void VCS_PROB::set_gai()
 void VCS_PROB::prob_report(int print_lvl)
 {
     m_printLvl = print_lvl;
-    /*
-     *          Printout the species information: PhaseID's and mole nums
-     */
+
+    // Printout the species information: PhaseID's and mole nums
     if (m_printLvl > 0) {
         writeline('=', 80, true, true);
         writeline('=', 20, false);
@@ -189,10 +184,10 @@ void VCS_PROB::prob_report(int print_lvl)
         plogf(" Initial_Estimated_Moles   Species_Type\n");
         for (size_t i = 0; i < nspecies; i++) {
             vcs_VolPhase* Vphase = VPhaseList[PhaseID[i]];
-            plogf("%16s      %5d   %16s", SpName[i].c_str(), PhaseID[i],
-                  Vphase->PhaseName.c_str());
+            plogf("%16s      %5d   %16s", SpName[i], PhaseID[i],
+                  Vphase->PhaseName);
             if (iest >= 0) {
-                plogf("             %-10.5g",  w[i]);
+                plogf("             %-10.5g", w[i]);
             } else {
                 plogf("                N/A");
             }
@@ -206,9 +201,7 @@ void VCS_PROB::prob_report(int print_lvl)
             plogf("\n");
         }
 
-        /*
-         *   Printout of the Phase structure information
-         */
+        // Printout of the Phase structure information
         writeline('-', 80, true, true);
         plogf("             Information about phases\n");
         plogf("  PhaseName    PhaseNum SingSpec  GasPhase   "
@@ -217,13 +210,12 @@ void VCS_PROB::prob_report(int print_lvl)
 
         for (size_t iphase = 0; iphase < NPhase; iphase++) {
             vcs_VolPhase* Vphase = VPhaseList[iphase];
-            std::string EOS_cstr = string16_EOSType(Vphase->m_eqnState);
-            plogf("%16s %5d %5d %8d ", Vphase->PhaseName.c_str(),
+            plogf("%16s %5d %5d %8d ", Vphase->PhaseName,
                   Vphase->VP_ID_, Vphase->m_singleSpecies, Vphase->m_gasPhase);
-            plogf("%16s %8d %16e ", EOS_cstr.c_str(),
+            plogf("%16s %8d %16e ", Vphase->eos_name(),
                   Vphase->nSpecies(), Vphase->totalMolesInert());
             if (iest >= 0) {
-                plogf("%16e\n",  Vphase->totalMoles());
+                plogf("%16e\n", Vphase->totalMoles());
             } else {
                 plogf("   N/A\n");
             }
@@ -231,30 +223,14 @@ void VCS_PROB::prob_report(int print_lvl)
 
         plogf("\nElemental Abundances:    ");
         plogf("         Target_kmol    ElemType ElActive\n");
-        double fac = 1.0;
-        if (m_VCS_UnitsFormat == VCS_UNITS_MKS) {
-            fac = 1.0;
-        }
         for (size_t i = 0; i < ne; ++i) {
             writeline(' ', 26, false);
-            plogf("%-2.2s", ElName[i].c_str());
-            plogf("%20.12E  ", fac * gai[i]);
+            plogf("%-2.2s", ElName[i]);
+            plogf("%20.12E  ", gai[i]);
             plogf("%3d       %3d\n", m_elType[i], ElActive[i]);
         }
 
-        plogf("\nChemical Potentials:  ");
-        if (m_VCS_UnitsFormat == VCS_UNITS_UNITLESS) {
-            plogf("(unitless)");
-        } else if (m_VCS_UnitsFormat == VCS_UNITS_KCALMOL) {
-            plogf("(kcal/gmol)");
-        } else if (m_VCS_UnitsFormat == VCS_UNITS_KJMOL) {
-            plogf("(kJ/gmol)");
-        } else if (m_VCS_UnitsFormat == VCS_UNITS_KELVIN) {
-            plogf("(Kelvin)");
-        } else if (m_VCS_UnitsFormat == VCS_UNITS_MKS) {
-            plogf("(J/kmol)");
-        }
-        plogf("\n");
+        plogf("\nChemical Potentials:  (J/kmol)\n");
         plogf("             Species       (phase)    "
               "    SS0ChemPot       StarChemPot\n");
         for (size_t iphase = 0; iphase < NPhase; iphase++) {
@@ -262,9 +238,9 @@ void VCS_PROB::prob_report(int print_lvl)
             Vphase->setState_TP(T, PresPA);
             for (size_t kindex = 0; kindex < Vphase->nSpecies(); kindex++) {
                 size_t kglob = Vphase->spGlobalIndexVCS(kindex);
-                plogf("%16s ", SpName[kglob].c_str());
+                plogf("%16s ", SpName[kglob]);
                 if (kindex == 0) {
-                    plogf("%16s", Vphase->PhaseName.c_str());
+                    plogf("%16s", Vphase->PhaseName);
                 } else {
                     plogf("                ");
                 }
@@ -285,17 +261,14 @@ void VCS_PROB::prob_report(int print_lvl)
 void VCS_PROB::addPhaseElements(vcs_VolPhase* volPhase)
 {
     size_t neVP = volPhase->nElemConstraints();
-    /*
-     * Loop through the elements in the vol phase object
-     */
+
+    // Loop through the elements in the vol phase object
     for (size_t eVP = 0; eVP < neVP; eVP++) {
         size_t foundPos = npos;
         std::string enVP = volPhase->elementName(eVP);
-        /*
-         * Search for matches with the existing elements.
-         * If found, then fill in the entry in the global
-         * mapping array.
-         */
+
+        // Search for matches with the existing elements. If found, then fill in
+        // the entry in the global mapping array.
         for (size_t e = 0; e < ne; e++) {
             std::string en = ElName[e];
             if (!strcmp(enVP.c_str(), en.c_str())) {
@@ -330,9 +303,7 @@ size_t VCS_PROB::addElement(const char* elNameNew, int elType, int elactive)
 size_t VCS_PROB::addOnePhaseSpecies(vcs_VolPhase* volPhase, size_t k, size_t kT)
 {
     if (kT > nspecies) {
-        /*
-         * Need to expand the number of species here
-         */
+        // Need to expand the number of species here
         throw CanteraError("VCS_PROB::addOnePhaseSpecies", "Shouldn't be here");
     }
     const Array2D& fm = volPhase->getFormulaMatrix();
@@ -342,10 +313,9 @@ size_t VCS_PROB::addOnePhaseSpecies(vcs_VolPhase* volPhase, size_t k, size_t kT)
                        "element not found");
         FormulaMatrix(kT,e) = fm(k,eVP);
     }
-    /*
-     * Tell the phase object about the current position of the
-     * species within the global species vector
-     */
+
+    // Tell the phase object about the current position of the species within
+    // the global species vector
     volPhase->setSpGlobalIndexVCS(k, kT);
     return kT;
 }
@@ -357,13 +327,12 @@ void VCS_PROB::reportCSV(const std::string& reportFile)
         throw CanteraError("VCS_PROB::reportCSV", "Failure to open file");
     }
 
-    std::vector<double> volPM(nspecies, 0.0);
-    std::vector<double> activity(nspecies, 0.0);
-    std::vector<double> ac(nspecies, 0.0);
-    std::vector<double> mu(nspecies, 0.0);
-    std::vector<double> mu0(nspecies, 0.0);
-    std::vector<double> molalities(nspecies, 0.0);
-
+    vector_fp volPM(nspecies, 0.0);
+    vector_fp activity(nspecies, 0.0);
+    vector_fp ac(nspecies, 0.0);
+    vector_fp mu(nspecies, 0.0);
+    vector_fp mu0(nspecies, 0.0);
+    vector_fp molalities(nspecies, 0.0);
     double vol = 0.0;
     size_t iK = 0;
     for (size_t iphase = 0; iphase < NPhase; iphase++) {
@@ -371,7 +340,7 @@ void VCS_PROB::reportCSV(const std::string& reportFile)
         vcs_VolPhase* volP = VPhaseList[iphase];
         size_t nSpeciesPhase = volP->nSpecies();
         volPM.resize(nSpeciesPhase, 0.0);
-        volP->sendToVCS_VolPM(VCS_DATA_PTR(volPM));
+        volP->sendToVCS_VolPM(&volPM[0]);
 
         double TMolesPhase = volP->totalMoles();
         double VolPhaseVolumes = 0.0;
@@ -399,23 +368,20 @@ void VCS_PROB::reportCSV(const std::string& reportFile)
         const ThermoPhase* tp = volP->ptrThermoPhase();
         string phaseName = volP->PhaseName;
         size_t nSpeciesPhase = volP->nSpecies();
-        volP->sendToVCS_VolPM(VCS_DATA_PTR(volPM));
+        volP->sendToVCS_VolPM(&volPM[0]);
         double TMolesPhase = volP->totalMoles();
         activity.resize(nSpeciesPhase, 0.0);
         ac.resize(nSpeciesPhase, 0.0);
-
         mu0.resize(nSpeciesPhase, 0.0);
         mu.resize(nSpeciesPhase, 0.0);
         volPM.resize(nSpeciesPhase, 0.0);
         molalities.resize(nSpeciesPhase, 0.0);
-
         int actConvention = tp->activityConvention();
-        tp->getActivities(VCS_DATA_PTR(activity));
-        tp->getActivityCoefficients(VCS_DATA_PTR(ac));
-        tp->getStandardChemPotentials(VCS_DATA_PTR(mu0));
-
-        tp->getPartialMolarVolumes(VCS_DATA_PTR(volPM));
-        tp->getChemPotentials(VCS_DATA_PTR(mu));
+        tp->getActivities(&activity[0]);
+        tp->getActivityCoefficients(&ac[0]);
+        tp->getStandardChemPotentials(&mu0[0]);
+        tp->getPartialMolarVolumes(&volPM[0]);
+        tp->getChemPotentials(&mu[0]);
         double VolPhaseVolumes = 0.0;
         for (size_t k = 0; k < nSpeciesPhase; k++) {
             VolPhaseVolumes += volPM[k] * mf[istart + k];
@@ -425,9 +391,9 @@ void VCS_PROB::reportCSV(const std::string& reportFile)
 
         if (actConvention == 1) {
             const MolalityVPSSTP* mTP = static_cast<const MolalityVPSSTP*>(tp);
-            tp->getChemPotentials(VCS_DATA_PTR(mu));
-            mTP->getMolalities(VCS_DATA_PTR(molalities));
-            tp->getChemPotentials(VCS_DATA_PTR(mu));
+            tp->getChemPotentials(&mu[0]);
+            mTP->getMolalities(&molalities[0]);
+            tp->getChemPotentials(&mu[0]);
 
             if (iphase == 0) {
                 fprintf(FP,"        Name,      Phase,  PhaseMoles,  Mole_Fract, "
@@ -447,9 +413,8 @@ void VCS_PROB::reportCSV(const std::string& reportFile)
                         mf[istart + k], molalities[k], ac[k], activity[k],
                         mu0[k]*1.0E-6, mu[k]*1.0E-6,
                         mf[istart + k] * TMolesPhase,
-                        volPM[k],  VolPhaseVolumes);
+                        volPM[k], VolPhaseVolumes);
             }
-
         } else {
             if (iphase == 0) {
                 fprintf(FP,"        Name,       Phase,  PhaseMoles,  Mole_Fract,  "
@@ -469,25 +434,13 @@ void VCS_PROB::reportCSV(const std::string& reportFile)
                         "%11.3e, %11.3e,% 11.3e, %11.3e, %11.3e\n",
                         sName.c_str(),
                         phaseName.c_str(), TMolesPhase,
-                        mf[istart + k],  molalities[k], ac[k],
+                        mf[istart + k], molalities[k], ac[k],
                         activity[k], mu0[k]*1.0E-6, mu[k]*1.0E-6,
                         mf[istart + k] * TMolesPhase,
-                        volPM[k],  VolPhaseVolumes);
+                        volPM[k], VolPhaseVolumes);
             }
         }
 
-        if (DEBUG_MODE_ENABLED) {
-            /*
-             * Check consistency: These should be equal
-             */
-            tp->getChemPotentials(VCS_DATA_PTR(m_gibbsSpecies)+istart);
-            for (size_t k = 0; k < nSpeciesPhase; k++) {
-                if (!vcs_doubleEqual(m_gibbsSpecies[istart+k], mu[k])) {
-                    fclose(FP);
-                    throw CanteraError("VCS_PROB::reportCSV", "incompatibility");
-                }
-            }
-        }
         iK += nSpeciesPhase;
     }
     fclose(FP);

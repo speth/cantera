@@ -5,11 +5,9 @@
  * thermodynamic properties (see \ref thermoprops and
  * class \link Cantera::VPStandardStateTP VPStandardStateTP\endlink).
  */
-/*
- * Copyright (2005) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/thermo/VPStandardStateTP.h"
 #include "cantera/thermo/PDSS.h"
@@ -19,15 +17,11 @@ using namespace std;
 namespace Cantera
 {
 
-/*
- * Default constructor
- */
 VPStandardStateTP::VPStandardStateTP() :
     m_Pcurrent(OneAtm),
     m_Tlast_ss(-1.0),
     m_Plast_ss(-1.0),
-    m_P0(OneAtm),
-    m_VPSS_ptr(0)
+    m_P0(OneAtm)
 {
 }
 
@@ -35,79 +29,51 @@ VPStandardStateTP::VPStandardStateTP(const VPStandardStateTP& b) :
     m_Pcurrent(OneAtm),
     m_Tlast_ss(-1.0),
     m_Plast_ss(-1.0),
-    m_P0(OneAtm),
-    m_VPSS_ptr(0)
+    m_P0(OneAtm)
 {
     VPStandardStateTP::operator=(b);
 }
 
-VPStandardStateTP&
-VPStandardStateTP::operator=(const VPStandardStateTP& b)
+VPStandardStateTP& VPStandardStateTP::operator=(const VPStandardStateTP& b)
 {
     if (&b != this) {
-        /*
-         * Mostly, this is a passthrough to the underlying
-         * assignment operator for the ThermoPhase parent object.
-         */
+        // Mostly, this is a passthrough to the underlying assignment operator
+        // for the ThermoPhase parent object.
         ThermoPhase::operator=(b);
-        /*
-         * However, we have to handle data that we own.
-         */
-        m_Pcurrent     = b.m_Pcurrent;
-        m_Tlast_ss     = b.m_Tlast_ss;
-        m_Plast_ss     = b.m_Plast_ss;
-        m_P0        = b.m_P0;
 
-        /*
-         * Duplicate the pdss objects
-         */
-        if (m_PDSS_storage.size() > 0) {
-            for (int k = 0; k < (int) m_PDSS_storage.size(); k++) {
-                delete m_PDSS_storage[k];
-            }
-        }
+        // However, we have to handle data that we own.
+        m_Pcurrent = b.m_Pcurrent;
+        m_Tlast_ss = b.m_Tlast_ss;
+        m_Plast_ss = b.m_Plast_ss;
+        m_P0 = b.m_P0;
+
         m_PDSS_storage.resize(m_kk);
         for (size_t k = 0; k < m_kk; k++) {
-            m_PDSS_storage[k] = b.m_PDSS_storage[k]->duplMyselfAsPDSS();
+            m_PDSS_storage[k].reset(b.m_PDSS_storage[k]->duplMyselfAsPDSS());
         }
 
-        /*
-         *  Duplicate the VPSS Manager object that conducts the calculations
-         */
-        delete m_VPSS_ptr;
-        m_VPSS_ptr = (b.m_VPSS_ptr)->duplMyselfAsVPSSMgr();
+        // Duplicate the VPSS Manager object that conducts the calculations
+        m_VPSS_ptr.reset(b.m_VPSS_ptr->duplMyselfAsVPSSMgr());
 
-        /*
-         *  The VPSSMgr object contains shallow pointers. Whenever you have shallow
-         *  pointers, they have to be fixed up to point to the correct objects referring
-         *  back to this ThermoPhase's properties.
-         */
+        // The VPSSMgr object contains shallow pointers. Whenever you have
+        // shallow pointers, they have to be fixed up to point to the correct
+        // objects referring back to this ThermoPhase's properties.
         m_VPSS_ptr->initAllPtrs(this, m_spthermo);
-        /*
-         *  The PDSS objects contains shallow pointers. Whenever you have shallow
-         *  pointers, they have to be fixed up to point to the correct objects referring
-         *  back to this ThermoPhase's properties. This function also sets m_VPSS_ptr
-         *  so it occurs after m_VPSS_ptr is set.
-         */
+
+        // The PDSS objects contains shallow pointers. Whenever you have shallow
+        // pointers, they have to be fixed up to point to the correct objects
+        // referring back to this ThermoPhase's properties. This function also
+        // sets m_VPSS_ptr so it occurs after m_VPSS_ptr is set.
         for (size_t k = 0; k < m_kk; k++) {
-            m_PDSS_storage[k]->initAllPtrs(this, m_VPSS_ptr, m_spthermo);
+            m_PDSS_storage[k]->initAllPtrs(this, m_VPSS_ptr.get(), m_spthermo);
         }
-        /*
-         *  Ok, the VPSSMgr object is ready for business.
-         *  We need to resync the temperature and the pressure of the new standard states
-         *  with what is stored in this object.
-         */
+
+        // Ok, the VPSSMgr object is ready for business. We need to resync the
+        // temperature and the pressure of the new standard states with what is
+        // stored in this object.
         m_VPSS_ptr->setState_TP(m_Tlast_ss, m_Plast_ss);
     }
     return *this;
-}
-
-VPStandardStateTP::~VPStandardStateTP()
-{
-    for (int k = 0; k < (int) m_PDSS_storage.size(); k++) {
-        delete m_PDSS_storage[k];
-    }
-    delete m_VPSS_ptr;
 }
 
 ThermoPhase* VPStandardStateTP::duplMyselfAsThermoPhase() const
@@ -123,35 +89,25 @@ int VPStandardStateTP::standardStateConvention() const
 void VPStandardStateTP::getChemPotentials_RT(doublereal* muRT) const
 {
     getChemPotentials(muRT);
-    doublereal invRT = 1.0 / _RT();
     for (size_t k = 0; k < m_kk; k++) {
-        muRT[k] *= invRT;
+        muRT[k] *= 1.0 / RT();
     }
 }
 
-/*
- * ----- Thermodynamic Values for the Species Standard States States ----
- */
+// ----- Thermodynamic Values for the Species Standard States States ----
+
 void VPStandardStateTP::getStandardChemPotentials(doublereal* g) const
 {
     getGibbs_RT(g);
-    doublereal RT = _RT();
     for (size_t k = 0; k < m_kk; k++) {
-        g[k] *= RT;
+        g[k] *= RT();
     }
 }
 
-inline
 void VPStandardStateTP::getEnthalpy_RT(doublereal* hrt) const
 {
     updateStandardStateThermo();
     m_VPSS_ptr->getEnthalpy_RT(hrt);
-}
-
-void VPStandardStateTP::modifyOneHf298SS(const size_t k, const doublereal Hf298New)
-{
-    m_spthermo->modifyOneHf298(k, Hf298New);
-    m_Tlast_ss += 0.0001234;
 }
 
 void VPStandardStateTP::getEntropy_R(doublereal* srt) const
@@ -160,14 +116,12 @@ void VPStandardStateTP::getEntropy_R(doublereal* srt) const
     m_VPSS_ptr->getEntropy_R(srt);
 }
 
-inline
 void VPStandardStateTP::getGibbs_RT(doublereal* grt) const
 {
     updateStandardStateThermo();
     m_VPSS_ptr->getGibbs_RT(grt);
 }
 
-inline
 void VPStandardStateTP::getPureGibbs(doublereal* g) const
 {
     updateStandardStateThermo();
@@ -197,9 +151,7 @@ const vector_fp& VPStandardStateTP::getStandardVolumes() const
     return m_VPSS_ptr->getStandardVolumes();
 }
 
-/*
- * ----- Thermodynamic Values for the Species Reference States ----
- */
+// ----- Thermodynamic Values for the Species Reference States ----
 
 void VPStandardStateTP::getEnthalpy_RT_ref(doublereal* hrt) const
 {
@@ -248,7 +200,7 @@ void VPStandardStateTP::initThermo()
     ThermoPhase::initThermo();
     m_VPSS_ptr->initThermo();
     for (size_t k = 0; k < m_kk; k++) {
-        PDSS* kPDSS = m_PDSS_storage[k];
+        PDSS* kPDSS = m_PDSS_storage[k].get();
         if (kPDSS) {
             kPDSS->initThermo();
         }
@@ -257,7 +209,7 @@ void VPStandardStateTP::initThermo()
 
 void VPStandardStateTP::setVPSSMgr(VPSSMgr* vp_ptr)
 {
-    m_VPSS_ptr = vp_ptr;
+    m_VPSS_ptr.reset(vp_ptr);
 }
 
 bool VPStandardStateTP::addSpecies(shared_ptr<Species> spec)
@@ -285,63 +237,55 @@ void VPStandardStateTP::calcDensity()
                               "but EOS for phase is not known");
 }
 
-
 void VPStandardStateTP::setState_TP(doublereal t, doublereal pres)
 {
-    /*
-     *  A pretty tricky algorithm is needed here, due to problems involving
-     *  standard states of real fluids. For those cases you need
-     *  to combine the T and P specification for the standard state, or else
-     *  you may venture into the forbidden zone, especially when nearing the
-     *  triple point.
-     *     Therefore, we need to do the standard state thermo calc with the
-     *  (t, pres) combo.
-     */
+    // A pretty tricky algorithm is needed here, due to problems involving
+    // standard states of real fluids. For those cases you need to combine the T
+    // and P specification for the standard state, or else you may venture into
+    // the forbidden zone, especially when nearing the triple point. Therefore,
+    // we need to do the standard state thermo calc with the (t, pres) combo.
     Phase::setTemperature(t);
     m_Pcurrent = pres;
     updateStandardStateThermo();
-    /*
-     * Now, we still need to do the calculations for general ThermoPhase objects.
-     * So, we switch back to a virtual function call, setTemperature, and
-     * setPressure to recalculate stuff for child ThermoPhase objects of
-     * the VPStandardStateTP object. At this point,
-     * we haven't touched m_tlast or m_plast, so some calculations may still
-     * need to be done at the ThermoPhase object level.
-     */
-    //setTemperature(t);
-    //setPressure(pres);
+
+    // Now, we still need to do the calculations for general ThermoPhase
+    // objects. So, we switch back to a virtual function call, setTemperature,
+    // and setPressure to recalculate stuff for child ThermoPhase objects of the
+    // VPStandardStateTP object. At this point, we haven't touched m_tlast or
+    // m_plast, so some calculations may still need to be done at the
+    // ThermoPhase object level.
     calcDensity();
 }
 
-
-
-void
-VPStandardStateTP::createInstallPDSS(size_t k,  const XML_Node& s,
-                                     const XML_Node* phaseNode_ptr)
+void VPStandardStateTP::createInstallPDSS(size_t k, const XML_Node& s,
+                                          const XML_Node* phaseNode_ptr)
 {
     if (m_PDSS_storage.size() < k+1) {
-        m_PDSS_storage.resize(k+1,0);
+        m_PDSS_storage.resize(k+1);
     }
-    delete m_PDSS_storage[k];
-    m_PDSS_storage[k] = m_VPSS_ptr->createInstallPDSS(k, s, phaseNode_ptr);
+    m_PDSS_storage[k].reset(m_VPSS_ptr->createInstallPDSS(k, s, phaseNode_ptr));
 }
 
-PDSS*
-VPStandardStateTP::providePDSS(size_t k)
+PDSS* VPStandardStateTP::providePDSS(size_t k)
 {
-    return m_PDSS_storage[k];
+    return m_PDSS_storage[k].get();
 }
 
-const PDSS*
-VPStandardStateTP::providePDSS(size_t k) const
+const PDSS* VPStandardStateTP::providePDSS(size_t k) const
 {
-    return m_PDSS_storage[k];
+    return m_PDSS_storage[k].get();
+}
+
+void VPStandardStateTP::invalidateCache()
+{
+    ThermoPhase::invalidateCache();
+    m_Tlast_ss += 0.0001234;
 }
 
 void VPStandardStateTP::initThermoXML(XML_Node& phaseNode, const std::string& id)
 {
     for (size_t k = 0; k < m_kk; k++) {
-        PDSS* kPDSS = m_PDSS_storage[k];
+        PDSS* kPDSS = m_PDSS_storage[k].get();
         AssertTrace(kPDSS != 0);
         if (kPDSS) {
             kPDSS->initThermoXML(phaseNode, id);
@@ -351,10 +295,9 @@ void VPStandardStateTP::initThermoXML(XML_Node& phaseNode, const std::string& id
     ThermoPhase::initThermoXML(phaseNode, id);
 }
 
-
 VPSSMgr* VPStandardStateTP::provideVPSSMgr()
 {
-    return m_VPSS_ptr;
+    return m_VPSS_ptr.get();
 }
 
 void VPStandardStateTP::_updateStandardStateThermo() const

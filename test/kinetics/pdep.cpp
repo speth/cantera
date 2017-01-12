@@ -41,7 +41,7 @@ protected:
 
     void set_TP(double T, double P) {
         T_ = T;
-        RT_ = GasConstant / 4184.0 * T;
+        RT_ = GasConst_cal_mol_K * T;
         P_ = P;
         thermo_->setState_TP(T_, P_);
     }
@@ -229,6 +229,7 @@ TEST_F(PdepTest, ChebyshevEdgeCases)
 int main(int argc, char** argv)
 {
     printf("Running main() from pdep.cpp\n");
+    Cantera::make_deprecation_warnings_fatal();
     testing::InitGoogleTest(&argc, argv);
     int result = RUN_ALL_TESTS();
     Cantera::appdelete();

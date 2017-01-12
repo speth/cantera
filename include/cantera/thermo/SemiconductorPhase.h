@@ -2,7 +2,8 @@
  *  @file SemiconductorPhase.h
  */
 
-//  Copyright 2003 California Institute of Technology
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #ifndef CT_SEMICONDPHASE_H
 #define CT_SEMICONDPHASE_H
@@ -20,16 +21,17 @@ const int cHole = 1;
 /**
  * @ingroup thermoprops
  *
- * Class SemiconductorPhase represents electrons and holes
- * in a semiconductor.
+ * Class SemiconductorPhase represents electrons and holes in a semiconductor.
+ * @deprecated Broken and unused. To be removed after Cantera 2.3.
  *
  */
 class SemiconductorPhase : public ThermoPhase
 {
-
 public:
-
-    SemiconductorPhase() {}
+    SemiconductorPhase() {
+        warn_deprecated("class SemiconductorPhase",
+                        "To be removed after Cantera 2.3.");
+    }
     SemiconductorPhase(std::string infile, std::string id="");
 
     SemiconductorPhase(const SemiconductorPhase& right) {
@@ -44,7 +46,6 @@ public:
         return *this;
     }
 
-    //! Duplicator
     virtual ThermoPhase* duplMyselfAsThermoPhase() const {
         SemiconductorPhase* idg = new SemiconductorPhase(*this);
         return (ThermoPhase*) idg;
@@ -53,17 +54,20 @@ public:
     // Overloaded methods of class ThermoPhase
 
     virtual int eosType() const {
+        warn_deprecated("SemiconductorPhase::eosType",
+                        "To be removed after Cantera 2.3.");
         return cSemiconductor;
     }
-
+    virtual std::string type() const {
+        return "Semiconductor";
+    }
 
     virtual void setPressure(doublereal pres) {
         m_press = pres;
     }
-    virtual doublereal  pressure() const {
+    virtual doublereal pressure() const {
         return m_press;
     }
-
 
     virtual void setParametersFromXML(const XML_Node& eosdata) {
         eosdata._require("model","Semiconductor");
@@ -111,13 +115,16 @@ public:
     virtual void getChemPotentials(doublereal* mu) const;
     doublereal nc() const;
     doublereal nv() const;
+
+    /*!
+     * Energy at the top of the conduction band. By default, energies are
+     * referenced to this energy, and so this function simply returns zero.
+     */
     doublereal ec() const;
     doublereal ev() const;
     doublereal bandgap() const {
         return m_bandgap;
     }
-
-protected:
 
 private:
     doublereal m_press;

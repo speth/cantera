@@ -11,7 +11,6 @@ clean:
 	rm -f cantera.conf
 	rm -f config.log
 	rm -f debian/substvars
-
 	dh_clean
 
 binary: build
@@ -42,7 +41,7 @@ binary-indep: binary
 	/bin/true
 
 build:
-	scons build -j6 prefix=/usr blas_lapack_libs=lapack,blas debug=n system_sundials=y f90_interface=y renamed_shared_libraries=n python_package=full python3_package=y layout=debian system_eigen=y extra_inc_dirs=/usr/include/eigen3
+	scons build -j6 prefix=/usr blas_lapack_libs=lapack,blas debug=n system_sundials=y f90_interface=y renamed_shared_libraries=n python_package=full python3_package=y layout=debian system_eigen=y extra_inc_dirs=/usr/include/eigen3 system_fmt=n
 
 build-arch: build
 

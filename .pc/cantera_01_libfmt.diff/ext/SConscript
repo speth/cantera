@@ -26,16 +26,16 @@ def prep_gtest(env):
 def prep_fmt(env):
     localenv = prep_default(env)
     if not env['system_fmt']:
-        license_files.append(('fmtlib', 'fmt-debian/LICENSE.rst'))
+        license_files.append(('fmtlib', 'fmt/LICENSE.rst'))
         for name in ('format.h', 'ostream.h'):
             build(localenv.Command("#include/cantera/ext/fmt/" + name,
-                                   "#ext/fmt-debian/fmt/" + name,
+                                   "#ext/fmt/fmt/" + name,
                                     Copy('$TARGET', '$SOURCE')))
     return localenv
 
 # each element of libs is: (subdir, (file extensions), prepfunction)
 libs = [('libexecstream', ['cpp'], prep_default),
-        ('fmt-debian/fmt', ['cc'], prep_fmt)]
+        ('fmt/fmt', ['cc'], prep_fmt)]
 
 for subdir, extensions, prepFunction in libs:
     localenv = prepFunction(env)

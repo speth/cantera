@@ -1,3 +1,9 @@
+cantera (2.3.0-1+yakkety0) yakkety; urgency=low
+
+  * Build for Yakkety
+
+ -- Raymond Speth <speth@mit.edu>  Thu, 12 Jan 2017 22:18:18 -0500
+
 cantera (2.3.0-1+xenial2) xenial; urgency=low
 
   * Fix missing build dependency on setuptools

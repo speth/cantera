@@ -1,3 +1,9 @@
+cantera (2.3.0-1+zesty1) zesty; urgency=low
+
+  * Build for Zesty
+
+ -- Raymond Speth <speth@mit.edu>  Wed, 28 Jun 2017 22:54:57 -0400
+
 cantera (2.3.0-1+yakkety0) yakkety; urgency=low
 
   * Build for Yakkety

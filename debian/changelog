@@ -1,3 +1,9 @@
+cantera (2.3.0-1+xenial3) xenial; urgency=low
+
+  * Fix ck2cti and ctml_writer scripts missing from cantera-common
+
+ -- Raymond Speth <speth@mit.edu>  Fri, 28 Jul 2017 22:20:40 -0400
+
 cantera (2.3.0-1+xenial2) xenial; urgency=low
 
   * Fix missing build dependency on setuptools

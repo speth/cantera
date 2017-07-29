@@ -1,3 +1,9 @@
+cantera (2.3.0-1+yakkety1) yakkety; urgency=low
+
+  * Fix ck2cti and ctml_writer scripts missing from cantera-common
+
+ -- Raymond Speth <speth@mit.edu>  Fri, 28 Jul 2017 22:54:40 -0400
+
 cantera (2.3.0-1+yakkety0) yakkety; urgency=low
 
   * Build for Yakkety

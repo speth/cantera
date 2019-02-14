@@ -52,6 +52,15 @@ try:
 except ImportError:
     from ruamel import yaml
 
+# Improved float formatting requires Numpy >= 1.14
+try:
+    from numpy import format_float_positional, format_float_scientific
+except ImportError:
+    def format_float_positional(value, trim):
+        return '{:.16g}'.format(value)
+    def format_float_scientific(value, trim):
+        return '{:.16g}'.format(value)
+
 BlockMap = yaml.comments.CommentedMap
 
 def FlowMap(*args, **kwargs):
@@ -63,6 +72,34 @@ def FlowList(*args, **kwargs):
     lst = yaml.comments.CommentedSeq(*args, **kwargs)
     lst.fa.set_flow_style()
     return lst
+
+# Improved float formatting requires Numpy >= 1.14
+if hasattr(np, 'format_float_positional'):
+    def float2string(data):
+        if data == 0:
+            return u'0.0'
+        elif 0.01 <= abs(data) < 10000:
+            return np.format_float_positional(data, trim='0')
+        else:
+            return np.format_float_scientific(data, trim='0')
+else:
+    def float2string(data):
+        return repr(data)
+
+def represent_float(self, data):
+    # type: (Any) -> Any
+    if data != data:
+        value = u'.nan'
+    elif data == self.inf_value:
+        value = u'.inf'
+    elif data == -self.inf_value:
+        value = u'-.inf'
+    else:
+        value = float2string(data)
+
+    return self.represent_scalar(u'tag:yaml.org,2002:float', value)
+
+yaml.RoundTripRepresenter.add_representer(float, represent_float)
 
 QUANTITY_UNITS = {'MOL': 'mol',
                   'MOLE': 'mol',
@@ -258,6 +295,7 @@ class Reaction:
     @classmethod
     def to_yaml(cls, representer, node):
         out = BlockMap([('equation', str(node))])
+        out.yaml_add_eol_comment('Reaction {}'.format(node.index), 'equation')
         if node.duplicate:
             out['duplicate'] = True
         node.kinetics.reduce(out)
@@ -1794,11 +1832,14 @@ class Parser:
                 if surf.reactions:
                     nReactingPhases += 1
 
+            outputStarted = False
+
             # header from original file
             desc = '\n'.join(line.rstrip() for line in self.headerLines)
             desc = desc.strip('\n')
             desc = textwrap.dedent(desc)
             if desc.strip():
+                outputStarted = True
                 emitter.dump({'description': yaml.scalarstring.PreservedScalarString(desc)}, dest)
 
             phases = []
@@ -1807,7 +1848,10 @@ class Parser:
                 units = FlowMap([('length', 'cm'), ('time', 's')])
                 units['quantity'] = self.output_quantity_units
                 units['activation-energy'] = self.output_energy_units
-                emitter.dump({'units': units}, dest)
+                unitsMap = BlockMap([('units', units)])
+                if outputStarted:
+                    unitsMap.yaml_set_comment_before_after_key('units', before='\n')
+                emitter.dump(unitsMap, dest)
 
                 phase = BlockMap()
                 phase['name'] = name
@@ -1848,7 +1892,9 @@ class Parser:
                 phase['state'] = FlowMap([('T', 300.0), ('P', '1 atm')])
                 phases.append(phase)
 
-            emitter.dump({'phases': phases}, dest)
+            phasesMap = BlockMap([('phases', phases)])
+            phasesMap.yaml_set_comment_before_after_key('phases', before='\n')
+            emitter.dump(phasesMap, dest)
 
             # Write data on custom elements
             if self.element_weights:
@@ -1856,17 +1902,23 @@ class Parser:
                 for name, weight in sorted(self.element_weights.items()):
                     E = BlockMap([('symbol', name), ('atomic-weight', weight)])
                     elements.append(E)
-                emitter.dump({'elements': elements})
+                elementsMap = BlockMap([('elements', elements)])
+                elementsMap.yaml_set_comment_before_after_key('elements', before='\n')
+                emitter.dump(elementsMap, dest)
 
             # Write the individual species data
             all_species = list(self.species_list)
             for surf in self.surfaces:
                 all_species.extend(surf.species_list)
-            emitter.dump({'species': all_species}, dest)
+            speciesMap = BlockMap([('species', all_species)])
+            speciesMap.yaml_set_comment_before_after_key('species', before='\n')
+            emitter.dump(speciesMap, dest)
 
             # Write the reactions section(s)
             for label, R in reactions:
-                emitter.dump({label: R}, dest)
+                reactionsMap = BlockMap([(label, R)])
+                reactionsMap.yaml_set_comment_before_after_key(label, before='\n')
+                emitter.dump(reactionsMap, dest)
 
         return surface_names
 

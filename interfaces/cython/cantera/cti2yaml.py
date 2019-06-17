@@ -20,6 +20,7 @@ import os
 import re
 from collections import OrderedDict
 import numpy as np
+from email.utils import formatdate
 
 try:
     import ruamel_yaml as yaml
@@ -1582,9 +1583,15 @@ def convert(filename=None, outName=None, text=None):
             emitter.register_class(cls)
 
     with open(outName, 'w') as dest:
-        outputStarted = False
-
-        # todo: header comment
+        # information regarding conversion
+        metadata = BlockMap([
+            ('generator', 'cti2yaml'),
+            ('cantera-version', '2.5.0a2'),
+            ('date', formatdate(localtime=True)),
+        ])
+        if filename is not None:
+            metadata['input-files'] = FlowList([base])
+        emitter.dump(metadata, dest)
 
         outUnits = FlowMap([])
         if _umass != 'kg':
@@ -1604,36 +1611,28 @@ def convert(filename=None, outName=None, text=None):
 
         if outUnits:
             unitsMap = BlockMap([('units', outUnits)])
+            unitsMap.yaml_set_comment_before_after_key('units', before='\n')
             emitter.dump(unitsMap, dest)
-            outputStarted = True
 
         if _elements:
             elementsMap = BlockMap([('elements', _elements)])
-            if outputStarted:
-                elementsMap.yaml_set_comment_before_after_key('elements', before='\n')
-            outputStarted = True
+            elementsMap.yaml_set_comment_before_after_key('elements', before='\n')
             emitter.dump(elementsMap, dest)
 
         if _phases:
             phasesMap = BlockMap([('phases', _phases)])
-            if outputStarted:
-                phasesMap.yaml_set_comment_before_after_key('phases', before='\n')
-            outputStarted = True
+            phasesMap.yaml_set_comment_before_after_key('phases', before='\n')
             emitter.dump(phasesMap, dest)
 
         if _species:
             speciesMap = BlockMap([('species', _species)])
-            if outputStarted:
-                speciesMap.yaml_set_comment_before_after_key('species', before='\n')
-            outputStarted = True
+            speciesMap.yaml_set_comment_before_after_key('species', before='\n')
             emitter.dump(speciesMap, dest)
 
         for name, reactions in _reactions.items():
             if reactions:
                 reactionsMap = BlockMap([(name, reactions)])
-                if outputStarted:
-                    reactionsMap.yaml_set_comment_before_after_key(name, before='\n')
-                outputStarted = True
+                reactionsMap.yaml_set_comment_before_after_key(name, before='\n')
                 emitter.dump(reactionsMap, dest)
 
 

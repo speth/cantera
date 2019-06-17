@@ -46,6 +46,7 @@ import re
 import itertools
 import getopt
 import textwrap
+from email.utils import formatdate
 
 try:
     import ruamel_yaml as yaml
@@ -756,6 +757,7 @@ class Parser:
         self.reactions = []
         self.final_reaction_comment = ''
         self.headerLines = []
+        self.files = []  # input file names
 
     def warn(self, message):
         if self.warning_as_error:
@@ -1832,15 +1834,24 @@ class Parser:
                 if surf.reactions:
                     nReactingPhases += 1
 
-            outputStarted = False
-
             # header from original file
             desc = '\n'.join(line.rstrip() for line in self.headerLines)
             desc = desc.strip('\n')
             desc = textwrap.dedent(desc)
             if desc.strip():
-                outputStarted = True
                 emitter.dump({'description': yaml.scalarstring.PreservedScalarString(desc)}, dest)
+
+            # Additional information regarding conversion
+            files = [os.path.basename(f) for f in self.files]
+            metadata = BlockMap([
+                ('generator', 'ck2yaml'),
+                ('input-files', FlowList(files)),
+                ('cantera-version', '2.5.0a2'),
+                ('date', formatdate(localtime=True)),
+            ])
+            if desc.strip():
+                metadata.yaml_set_comment_before_after_key('generator', before='\n')
+            emitter.dump(metadata, dest)
 
             phases = []
             reactions = []
@@ -1849,8 +1860,7 @@ class Parser:
                 units['quantity'] = self.output_quantity_units
                 units['activation-energy'] = self.output_energy_units
                 unitsMap = BlockMap([('units', units)])
-                if outputStarted:
-                    unitsMap.yaml_set_comment_before_after_key('units', before='\n')
+                unitsMap.yaml_set_comment_before_after_key('units', before='\n')
                 emitter.dump(unitsMap, dest)
 
                 phase = BlockMap()
@@ -1929,12 +1939,16 @@ class Parser:
 
         parser = Parser()
         if input_file:
+            parser.files.append(input_file)
             input_file = os.path.expanduser(input_file)
         if thermo_file:
+            parser.files.append(thermo_file)
             thermo_file = os.path.expanduser(thermo_file)
         if transport_file:
+            parser.files.append(transport_file)
             transport_file = os.path.expanduser(transport_file)
         if surface_file:
+            parser.files.append(surface_file)
             surface_file = os.path.expanduser(surface_file)
         if out_name:
             out_name = os.path.expanduser(out_name)

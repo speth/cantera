@@ -257,10 +257,7 @@ void ReactorNet::eval(doublereal t, doublereal* y,
     m_time = t; // This will be replaced at the end of the timestep
     updateState(y);
     for (size_t n = 0; n < m_reactors.size(); n++) {
-        // Need to implement DAE solver to use evalEqs, due to volume component
-        // Temporary fix: use residFunction, which calls evalEqs then overwrites volume
-        // m_reactors[n]->evalEqs(t, y + m_start[n], ydot + m_start[n], p);
-        m_reactors[n]->residFunction(y + m_start[n], ydot + m_start[n]);
+        m_reactors[n]->evalEqs(t, y + m_start[n], ydot + m_start[n], p);
     }
     checkFinite("ydot", ydot, m_nv);
 }
@@ -425,6 +422,8 @@ double ReactorNet::solveSteady()
     m_newt->setBounds(0, 0, 100);
     m_newt->setBounds(1, 0, 5);
     m_newt->setBounds(2, -10000000, 10000000);
+
+    m_newt->setConstant(1, true);
 
     m_newt->solve(8);
 }

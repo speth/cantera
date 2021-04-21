@@ -125,8 +125,6 @@ cdef anyvalue_to_python(string name, CxxAnyValue& v):
 
 cdef anymap_to_dict(CxxAnyMap& m):
     m.applyUnits()
-    if m.isEmpty():
-        return {}
     return {pystr(item.first): anyvalue_to_python(item.first, item.second)
             for item in m.ordered()}
 

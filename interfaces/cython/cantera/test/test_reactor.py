@@ -475,6 +475,9 @@ class TestReactor(utilities.CanteraTest):
         Yb = self.r1.Y
 
         print(f'ma = {ma:.16e}; mb = {mb:.16e}; rel. error = {(ma + 0.1 - mb)/ma}')
+        rerr = 0.5 * (ma * Ya + 0.1 * gas2.Y - mb * Yb) / (abs(ma * Ya + 0.1 * gas2.Y) + abs(mb * Yb) + 2e-4)
+        for k in range(self.gas1.n_species):
+            print(f'k = {k}; mak = {ma*Ya[k]: .16e}; Yin = {gas2.Y[k]: .16e}; mbk = {mb*Yb[k]: .16e}; rel. error = {rerr[k]: .16e}')
         self.assertNear(ma + 0.1, mb)
         self.assertArrayNear(ma * Ya + 0.1 * gas2.Y, mb * Yb)
 

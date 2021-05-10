@@ -474,6 +474,7 @@ class TestReactor(utilities.CanteraTest):
         mb = self.r1.volume * self.r1.density
         Yb = self.r1.Y
 
+        print(f'ma = {ma:.16e}; mb = {mb:.16e}; rel. error = {(ma + 0.1 - mb)/ma}')
         self.assertNear(ma + 0.1, mb)
         self.assertArrayNear(ma * Ya + 0.1 * gas2.Y, mb * Yb)
 

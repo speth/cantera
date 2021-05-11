@@ -460,16 +460,12 @@ class TestReactor(utilities.CanteraTest):
         self.net.rtol = 1e-11
         self.net.max_time_step = 0.05
 
-        self.net.advance(0.1)
-        self.assertNear(mfc.mass_flow_rate, 0.)
-        self.net.advance(0.2)
-        self.assertNear(mfc.mass_flow_rate, 0.1)
-        self.net.advance(1.1)
-        self.assertNear(mfc.mass_flow_rate, 0.1)
-        self.net.advance(1.2)
-        self.assertNear(mfc.mass_flow_rate, 0.)
-
-        self.net.advance(2.5)
+        print(f'integrating with {self.r1.__class__.__name__}')
+        while self.net.time < 2.5:
+            m = self.r1.volume * self.r1.density
+            m0 = self.r1.Y[0] * m
+            print(f'    t = {self.net.time:.13e}; m = {m:.14e}; m[0] = {m0:.14e}')
+            self.net.step()
 
         mb = self.r1.volume * self.r1.density
         Yb = self.r1.Y

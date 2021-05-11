@@ -457,7 +457,7 @@ class TestReactor(utilities.CanteraTest):
         ma = self.r1.volume * self.r1.density
         Ya = self.r1.Y
 
-        self.net.rtol = 1e-11
+        self.net.rtol = 1e-12
         self.net.max_time_step = 0.05
 
         self.net.advance(0.1)

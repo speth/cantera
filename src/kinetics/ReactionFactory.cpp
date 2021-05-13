@@ -272,9 +272,10 @@ unique_ptr<Reaction> newReaction(const AnyMap& rxn_node,
                                  const Kinetics& kin)
 {
     std::string type = "elementary";
+    size_t nDim = kin.thermo(kin.reactionPhaseIndex()).nDim();
     if (rxn_node.hasKey("type")) {
         type = rxn_node["type"].asString();
-    } else if (kin.thermo().nDim() == 3) {
+    } else if (nDim == 3) {
         // Reaction type is not specified
         // See if this is a three-body reaction with a specified collision partner
         ElementaryReaction testReaction;
@@ -284,7 +285,7 @@ unique_ptr<Reaction> newReaction(const AnyMap& rxn_node,
         }
     }
 
-    if (kin.thermo().nDim() < 3 && type == "elementary") {
+    if (nDim < 3 && type == "elementary") {
         // See if this is an electrochemical reaction: type of
         // receiving reaction object is unimportant in this case
         ElementaryReaction testReaction;
@@ -295,7 +296,7 @@ unique_ptr<Reaction> newReaction(const AnyMap& rxn_node,
             type = "interface";
         }
     }
-    if (kin.thermo().nDim() < 3 && type == "Blowers-Masel") {
+    if (nDim < 3 && type == "Blowers-Masel") {
         // Allow yaml file to specify "Blowers-Masel" for surface reactions
         type = "surface-Blowers-Masel";
     }

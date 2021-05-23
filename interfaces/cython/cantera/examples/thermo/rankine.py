@@ -31,7 +31,7 @@ def expand(fluid, p_final, eta):
     a turbine with isentropic efficiency eta."""
     h0 = fluid.h
     s0 = fluid.s
-    fluid.SP =s0, p_final
+    fluid.SP = s0, p_final
     h1s = fluid.h
     isentropic_work = h0 - h1s
     actual_work = isentropic_work * eta
@@ -72,6 +72,6 @@ if __name__ == '__main__':
     printState(4, w)
 
     # efficiency
-    eff = (turbine_work - pump_work)/heat_added
+    eff = (turbine_work - pump_work) / heat_added
 
     print('efficiency = ', eff)

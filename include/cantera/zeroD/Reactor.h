@@ -228,6 +228,9 @@ protected:
 
     // Data associated each sensitivity parameter
     std::vector<SensitivityParameter> m_sensParams;
+
+    vector_fp m_userRHS; // User defined terms of governing equations RENAME (COEFF and ADD not LHS and RHS)
+    vector_fp m_userLHS; // User defined terms of governing equations, {coeff dmdt, add dmdt, coeff dYdt, add dYdt, coeff mcpdTdt, add mcpdTdt}
 };
 }
 

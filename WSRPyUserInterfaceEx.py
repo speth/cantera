@@ -18,7 +18,7 @@ class PrimaryZoneReactor(ct.DelegatedIdealGasConstPressureReactor):
 
    def after_initialize(self,t0): #set initial time to t0
       self.n_vars += 2 #increases neq in reactor by 2 (doesnt this just have the get function but no set in the property definition in reactor.pyx?)
-      self.i_M = self.nvars - 1 #index for soot mass concentration
+      self.i_M = self.n_vars - 1 #index for soot mass concentration
       self.i_N = self.n_vars - 2 #index for soot number concentration
  
    def after_get_state(self, y):
@@ -34,13 +34,50 @@ class PrimaryZoneReactor(ct.DelegatedIdealGasConstPressureReactor):
     
    def before_eval(self,): #can you define variables here and they be used in c++?
       #define user coefficients for gov eq, all equal to 1 or 0 initially, user can edit
-      userCoeff_mcpdTdt = 1 #multiply the LHS by a term ex. = ((1/userCoeff_mcpdTdt) + msoot*cpsoot)^-1
-      userAdd_mcpdTdt = 0 #add a term to the RHS of mcpdTdt
+      #dmdt coefficient
+      self.user_RHS[0] = 1 #m_userRHS[0]*mdot_surf
+      self.user_RHS[2] = 1
+      self.user_RHS[4] = 1
+      self.user_LHS[0] = 1
+
+      #dmdt addition
+      self.user_RHS[1] = 0 #mdot_surf + m_userRHS[1]
+      self.user_RHS[3] = 0
+      self.user_RHS[5] = 0
+      self.user_LHS[1] = 0
+
+      #dYdt coefficient
+      self.user_RHS[6] = 1
+      self.user_RHS[8] = 1
+      self.user_RHS[10] = 1
+      self.user_LHS[2] = 1
+
+      #dYdt addition
+      self.user_RHS[7] = 0
+      self.user_RHS[9] = 0
+      self.user_RHS[11] = 0
+      self.user_LHS[3] = 0
+
+      #mcpdTdt coefficient
+      self.user_RHS[12] = 1
+      self.user_RHS[14] = 1
+      self.user_RHS[16] = 1
+      self.user_RHS[18] = 1
+      self.user_RHS[21] = 1
+      self.user_LHS[4] = 1
+
+      #mcpdTdt addition
+      self.user_RHS[13] = 0
+      self.user_RHS[15] = 0
+      self.user_RHS[17] = 0
+      self.user_RHS[19] = 0
+      self.user_RHS[21] = 0
+      self.user_LHS[5] = 0
 
    def after_eval(self, t, ydot):
  # Calculate the time derivative for the additional equation
- #this is where I will ask cantera for all of the fun properties needed 
- #ex. the formation rates of the species
+      ydot[k+2] = dMdt #would have eq here to calculate dMdt
+      ydot[k+3] = dNdt #would have eq here to calculate dMdt
 
 #Application of user created class
 gas = ct.Solution('h2o2.yaml')

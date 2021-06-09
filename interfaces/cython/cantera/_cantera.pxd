@@ -763,6 +763,9 @@ cdef extern from "cantera/zerodim.h" namespace "Cantera":
         void addSensitivityReaction(size_t) except +translate_exception
         void addSensitivitySpeciesEnthalpy(size_t) except +translate_exception
         size_t nSensParams()
+        vector[double]& m_userLHS()
+        vector[double]& m_userRHS()
+
 
     cdef cppclass CxxFlowReactor "Cantera::FlowReactor" (CxxReactor):
         CxxFlowReactor()
@@ -1299,6 +1302,8 @@ cdef class ReactorBase:
 cdef class Reactor(ReactorBase):
     cdef CxxReactor* reactor
     cdef object _kinetics
+    cdef public object user_RHS
+    cdef public object user_LHS
 
 cdef class Reservoir(ReactorBase):
     pass

@@ -26,7 +26,9 @@ Reactor::Reactor() :
     m_mass(0.0),
     m_chem(false),
     m_energy(true),
-    m_nv(0)
+    m_nv(0),
+    m_userRHS{1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0}, //ugly :( Here or in user function?
+    m_userLHS{1, 0, 1, 0, 1, 0}
 {}
 
 void Reactor::insert(shared_ptr<Solution> sol) {

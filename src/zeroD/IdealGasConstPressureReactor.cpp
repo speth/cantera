@@ -76,7 +76,7 @@ void IdealGasConstPressureReactor::eval(double time, double* ydot)
 
     m_thermo->restoreState(m_state);
     double mdot_surf = evalSurfaces(time, ydot + m_nsp + 2);
-    dmdt += mdot_surf;
+    dmdt += m_userRHS[0]*mdot_surf + m_userRHS[1];
 
     m_thermo->getPartialMolarEnthalpies(&m_hk[0]);
     const vector_fp& mw = m_thermo->molecularWeights();
@@ -87,39 +87,39 @@ void IdealGasConstPressureReactor::eval(double time, double* ydot)
     }
 
     // external heat transfer
-    mcpdTdt -= m_Q;
+    mcpdTdt -= m_Q*m_userRHS[12] + m_userRHS[13];
 
     for (size_t n = 0; n < m_nsp; n++) {
         // heat release from gas phase and surface reactions
-        mcpdTdt -= m_wdot[n] * m_hk[n] * m_vol;
-        mcpdTdt -= m_sdot[n] * m_hk[n];
+        mcpdTdt -= (m_wdot[n] * m_hk[n] * m_vol)*m_userRHS[14] + m_userRHS[15];
+        mcpdTdt -= (m_sdot[n] * m_hk[n])*m_userRHS[16] + m_userRHS[17];
         // production in gas phase and from surfaces
-        dYdt[n] = (m_wdot[n] * m_vol + m_sdot[n]) * mw[n] / m_mass;
+        dYdt[n] = ((m_wdot[n] * m_vol + m_sdot[n]) * mw[n] / m_mass)*m_userRHS[6] + m_userRHS[7];
         // dilution by net surface mass flux
-        dYdt[n] -= Y[n] * mdot_surf / m_mass;
+        dYdt[n] -= (Y[n] * mdot_surf / m_mass)*m_userRHS[8] + m_userRHS[9];
     }
 
     // add terms for outlets
     for (auto outlet : m_outlet) {
-        dmdt -= outlet->massFlowRate(); // mass flow out of system
+        dmdt -= m_userRHS[2]*(outlet->massFlowRate()) + m_userRHS[3]; // mass flow out of system
     }
 
     // add terms for inlets
     for (auto inlet : m_inlet) {
         double mdot = inlet->massFlowRate();
-        dmdt += mdot; // mass flow into system
-        mcpdTdt += inlet->enthalpy_mass() * mdot;
+        dmdt += m_userRHS[4]*mdot + m_userRHS[5]; // mass flow into system
+        mcpdTdt += (inlet->enthalpy_mass() * mdot)*m_userRHS[18] +m_userRHS[19];
         for (size_t n = 0; n < m_nsp; n++) {
             double mdot_spec = inlet->outletSpeciesMassFlowRate(n);
             // flow of species into system and dilution by other species
-            dYdt[n] += (mdot_spec - mdot * Y[n]) / m_mass;
-            mcpdTdt -= m_hk[n] / mw[n] * mdot_spec;
+            dYdt[n] += ((mdot_spec - mdot * Y[n]) / m_mass)*m_userRHS[10] + m_userRHS[11];
+            mcpdTdt -= (m_hk[n] / mw[n] * mdot_spec)*m_userRHS[20] + m_userRHS[21];
         }
     }
 
-    ydot[0] = dmdt;
+    ydot[0] = dmdt/m_userLHS[0] + m_userLHS[1];
     if (m_energy) {
-        ydot[1] = mcpdTdt / (m_mass * m_thermo->cp_mass());
+        ydot[1] = (mcpdTdt / (m_mass * m_thermo->cp_mass()))/m_userLHS[4] + m_userLHS[5];
     } else {
         ydot[1] = 0.0;
     }

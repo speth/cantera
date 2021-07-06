@@ -1,0 +1,39 @@
+name: cantera-dev
+channels:
+  - defaults
+dependencies:
+  - lz4-c
+  - mkl
+  - yaml
+  - boost
+  - numpy-base
+  - openssl
+  - six
+  - sqlite
+  - setuptools
+  - libiconv
+  - mkl-service
+  - zlib
+  - python=3.8.5
+  - certifi
+  - libboost
+  - bzip2
+  - mkl_random
+  - zstd
+  - tk
+  - libffi
+  - cython=0.29.21
+  - numpy
+  - xz
+  - pip
+  - intel-openmp
+  - wheel
+  - ruamel_yaml
+  - py-boost
+  - scons
+  - icu
+  - ca-certificates
+  - blas
+  - mkl_fft
+  - notebook
+

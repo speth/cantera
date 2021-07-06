@@ -1,0 +1,6 @@
+name: cantera-web
+channels:
+  - defaults
+dependencies:
+  - python=3
+prefix: /home/china/miniconda3/envs/cantera-web

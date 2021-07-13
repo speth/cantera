@@ -14,7 +14,7 @@ dependencies:
   - libiconv
   - mkl-service
   - zlib
-  - python=3.8.5
+  - python=3.8
   - certifi
   - libboost
   - bzip2

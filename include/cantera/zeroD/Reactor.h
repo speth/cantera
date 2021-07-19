@@ -37,6 +37,9 @@ class Solution;
  *
  * @ingroup ZeroD
  */
+
+class PreconditionerBase; // Forward Declaration so PreconditionerBase can be used
+
 class Reactor : public ReactorBase
 {
 public:
@@ -65,6 +68,8 @@ public:
     void insert(shared_ptr<Solution> sol);
 
     virtual void setKineticsMgr(Kinetics& kin);
+
+    virtual Kinetics* getKineticsMgr();
 
     virtual void setChemistry(bool cflag = true) {
         m_chem = cflag;
@@ -160,6 +165,12 @@ public:
     //! @param nm component name
     //! @param limit value for step size limit
     void setAdvanceLimit(const std::string& nm, const double limit);
+
+    //!This is a function to accept a preconditioner and perform an action based on reactor type.
+    //!@param preconditioner a preconditioner base subclass for preconditioning the system
+    //!@param reactorStart start of the reactor within the network
+    //!@param t, @param y, @param ydot, @param params double pointers used in integration
+    virtual void acceptPreconditioner(PreconditionerBase *preconditioner, size_t reactorStart, double t, double* y, double* ydot, double* params);
 
 protected:
     //! Set reaction rate multipliers based on the sensitivity variables in

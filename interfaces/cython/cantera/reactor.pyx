@@ -561,14 +561,6 @@ cdef class DelegatedIdealGasReactor(DelegatedReactor):
         self.accessor.restoreSurfaceState(n)
 
 
-cdef class DelegatedIdealGasReactor(DelegatedReactor):
-    """
-    A variant of `DelegatedReactor` where the base behavior corresponds to the
-    `IdealGasReactor` class.
-    """
-    reactor_type = "DelegatedIdealGasReactor"
-
-
 cdef class DelegatedConstPressureReactor(DelegatedReactor):
     """
     A variant of `DelegatedReactor` where the base behavior corresponds to the

@@ -12,9 +12,13 @@ class PrimaryZoneReactor(ct.DelegatedIdealGasConstPressureReactor):
       self.soot_comp = 'C' #pure carbon
       self.coag_coeff = 1 #a number 1-9 chosen by user
       self.PAH_list = 'C12H8, C12H10, C13H10, C14H10, C16H10' #PAH species (soot nucleation precursors)
+      self.rho_soot = 12 #arbirary right now
+      self.Na = 6.022*10^22
       self.neighbor = neighbor
       self.M = 0 #initialize soot variables to zero
       self.N = 0
+      self.dNdt = 0 #do I need to have the initial derivatives as zero for the first timestep?
+      self.dMdt = 0
 
    def after_initialize(self,t0): #set initial time to t0
       self.n_vars += 2 #increases neq in reactor by 2 (doesnt this just have the get function but no set in the property definition in reactor.pyx?)
@@ -32,52 +36,28 @@ class PrimaryZoneReactor(ct.DelegatedIdealGasConstPressureReactor):
       self.N = y[self.i_N]
  #add other variables to update here? (if want to plot/save)
     
-   def before_eval(self,): #can you define variables here and they be used in c++?
+   def before_eval(self,):
       #define user coefficients for gov eq, all equal to 1 or 0 initially, user can edit
-      #dmdt coefficient
-      self.user_RHS[0] = 1 #m_userRHS[0]*mdot_surf
-      self.user_RHS[2] = 1
-      self.user_RHS[4] = 1
-      self.user_LHS[0] = 1
+      self.user_RHS[0] = 0
+      self.user_RHS[1] = 1
+      self.user_RHS[2] = 0
+      self.user_RHS[3] = 1
 
-      #dmdt addition
-      self.user_RHS[1] = 0 #mdot_surf + m_userRHS[1]
-      self.user_RHS[3] = 0
-      self.user_RHS[5] = 0
-      self.user_LHS[1] = 0
+      self.user_LHS[0] = 0
+      self.user_LHS[1] = 1
+      self.user_LHS[2] = 0
+      self.user_LHS[3] = 1
 
-      #dYdt coefficient
-      self.user_RHS[6] = 1
-      self.user_RHS[8] = 1
-      self.user_RHS[10] = 1
-      self.user_LHS[2] = 1
-
-      #dYdt addition
-      self.user_RHS[7] = 0
-      self.user_RHS[9] = 0
-      self.user_RHS[11] = 0
-      self.user_LHS[3] = 0
-
-      #mcpdTdt coefficient
-      self.user_RHS[12] = 1
-      self.user_RHS[14] = 1
-      self.user_RHS[16] = 1
-      self.user_RHS[18] = 1
-      self.user_RHS[21] = 1
-      self.user_LHS[4] = 1
-
-      #mcpdTdt addition
-      self.user_RHS[13] = 0
-      self.user_RHS[15] = 0
-      self.user_RHS[17] = 0
-      self.user_RHS[19] = 0
-      self.user_RHS[21] = 0
-      self.user_LHS[5] = 0
-
-   def after_eval(self, t, ydot):
+   def after_eval(self, t, LHS, RHS):
  # Calculate the time derivative for the additional equation
-      ydot[k+2] = dMdt #would have eq here to calculate dMdt
-      ydot[k+3] = dNdt #would have eq here to calculate dMdt
+      for PAH species i
+         for PAH species j
+            ydot[k+2] += dNdt_nucij*nc_ij*self.Wc/self.Na
+            ydot[k+3] += dNdt_nucij #how to calulate dNdt?
+
+      ydot[k+3] -= coag_coeff*sqrt(24*Ru*self.T/(self.rho_soot*self.Na))*sqrt(dp_soot)*N^2 -N*self.mdotout/(self.D*self.V) #need to know how to extract property data from the gas (ex. mdot out)
+      #unknowns: N, dNdt_nuc, solving dNdt, use outside solver for the two coupled soot eqns?
+      ydot[k+2] = dMdt #would have eq here to calculate dMdt: Temp and concentration dependent
 
 #Application of user created class
 gas = ct.Solution('h2o2.yaml')

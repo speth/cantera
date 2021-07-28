@@ -14,6 +14,9 @@
 
 namespace Cantera
 {
+//! Forward Declaration for PreconditionerBase to be part of feval
+class PreconditionerBase;
+
 /**
  *  Virtual base class for ODE right-hand-side function evaluators.
  *  Classes derived from FuncEval evaluate the right-hand-side function
@@ -49,45 +52,34 @@ public:
      */
     int eval_nothrow(double t, double* y, double* ydot);
 
-    /**
-     * Evaluate the setup processes for the Jacobian preconditioner. Called by the integrator.
-     * @param[in] t time.
-     * @param[in] y solution vector, length neq()
-     * @param[out] ydot rate of change of solution vector, length neq()
-     * @param[in] p sensitivity parameter vector, length nparams()
-     */
-    virtual void preconditionerSetup(doublereal t, doublereal* y,
-                        doublereal* ydot, doublereal* params);
-    /**
-     * Evaluate the system using a Jacobian preconditioner. Called by the integrator.
-     * @param[in] t time.
-     * @param[in] y solution vector, length neq()
-     * @param[out] ydot rate of change of solution vector, length neq()
-     * @param[in] p sensitivity parameter vector, length nparams()
-     */
-    virtual void preconditionerSolve(doublereal t, doublereal* y,
-                      doublereal* ydot, doublereal* rhs, doublereal* output, doublereal* params);
+    //!  Evaluate the setup processes for the Jacobian preconditioner.
+    //! @param[in] t time.
+    //! @param[in] y solution vector, length neq()
+    //! @param[out] ydot rate of change of solution vector, length neq()
+    virtual void preconditionerSetup(double t, double* y, double* ydot){
+        throw NotImplementedError("FuncEval::preconditionerSetup");
+    }
 
-    //! Evaluate the right-hand side using return code to indicate status.
-    /*!
-     * Errors are indicated using the return value, rather than by throwing
-     *  exceptions. This method is used when calling from a C-based integrator
-     *  such as CVODES. Exceptions may either be stored or printed, based on the
-     *  setting of suppressErrors().
-     *  @returns 0 for a successful evaluation; 1 after a potentially-
-     *      recoverable error; -1 after an unrecoverable error.
-     */
+    //! Evaluate the system using a Jacobian preconditioner. Called by the integrator.
+    //! @param[in] t time.
+    //! @param[in] y solution vector, length neq()
+    //! @param[out] ydot rate of change of solution vector, length neq()
+    //! @param[in] rhs right hand side vector used in linear system
+    //! @param[out] output guess vector used by GMRES
+    virtual void preconditionerSolve(double t, double* y, double* ydot, double* rhs, double* output){
+        throw NotImplementedError("FuncEval::preconditionerSolve");
+    }
+
+    //! preconditioner setup that doesn't throw an error but returns a
+    //! CVODES flag. It also helps as a first level of polymorphism
+    //! which identifies the specific FuncEval, e.g., ReactorNet.
+    //! Parameters are the same as preconditionerSetup
     int preconditioner_setup_nothrow(double t, double* y, double* ydot);
 
-    //! Evaluate the right-hand side using return code to indicate status.
-    /*!
-     * Errors are indicated using the return value, rather than by throwing
-     *  exceptions. This method is used when calling from a C-based integrator
-     *  such as CVODES. Exceptions may either be stored or printed, based on the
-     *  setting of suppressErrors().
-     *  @returns 0 for a successful evaluation; 1 after a potentially-
-     *      recoverable error; -1 after an unrecoverable error.
-     */
+    //! preconditioner setup that doesn't throw an error but returns a
+    //! CVODES flag. It also helps as a first level of polymorphism
+    //! which identifies the specific FuncEval, e.g., ReactorNet.
+    //! Parameters are the same as preconditionerSolve
     int preconditioner_solve_nothrow(double t, double* y, double* ydot, double* rhs, double* output);
 
     //! Fill in the vector *y* with the current state of the system
@@ -135,6 +127,10 @@ protected:
 
     //! Errors occurring during function evaluations
     std::vector<std::string> m_errors;
+
+    //! Pointer to preconditioner - nullptr unless otherwise set
+    PreconditionerBase *m_preconditioner = nullptr;
+
 };
 
 }

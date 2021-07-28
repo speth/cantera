@@ -43,7 +43,6 @@ void ReactorNet::setIntegratorType(int integratorType)
 void ReactorNet::setIntegratorType(PreconditionerBase* preconditioner, int integratorType)
 {
     m_preconditioner=preconditioner;
-    m_preconditioner_type = preconditioner->getPreconditionerType();
     m_integ->setProblemType(integratorType+PRECONDITION);
 }
 
@@ -126,7 +125,8 @@ void ReactorNet::initialize()
         writelog("Number of equations: {:d}\n", neq());
         writelog("Maximum time step:   {:14.6g}\n", m_maxstep);
     }
-    if (m_preconditioner_type!=PRECONDITIONER_NOT_SET)
+    // Initialize preconditioner if it isn't null
+    if (m_preconditioner != nullptr)
     {
         std::vector<size_t> precon_dims{m_nv, m_nv};
         m_preconditioner->initialize(&precon_dims, m_atols);
@@ -402,24 +402,16 @@ size_t ReactorNet::registerSensitivityParameter(
     return m_sens_params.size() - 1;
 }
 
-void ReactorNet::preconditionerSetup(doublereal t, doublereal* y,
-                      doublereal* ydot, doublereal* params)
+void ReactorNet::preconditionerSetup(double t, double* y,
+                      double* ydot)
 {
-    // Set time step to current of the integrator
-    m_preconditioner->setTimeStep(m_integ->getIntegratorTimeStep());
-    // Update state of reactors in setup
-    updateState(y);
-    // Reseting preconditioner for new setup
-    m_preconditioner->reset();
-    // Passing reactors to preconditioner to complete setup
-    m_preconditioner->setup(&m_reactors, &m_start, t, y, ydot, params);
+    m_preconditioner->setup(this, t, y, ydot);
 }
 
-void ReactorNet::preconditionerSolve(doublereal t, doublereal* y,
-                      doublereal* ydot, doublereal* rhs, doublereal* output, doublereal* params)
+void ReactorNet::preconditionerSolve(double t, double* y,
+                      double* ydot, double* rhs, double* output)
 {
-    // Solve linear system for preconditioned output
-    m_preconditioner->solve(&m_reactors, &m_start, output, rhs, m_nv);
+    m_preconditioner->solve(this, rhs, output);
 }
 
 }

@@ -133,7 +133,7 @@ using namespace Cantera;
         // Check that the two are equal
         EXPECT_EQ(externalPrecon == internalPrecon, true);
         // Reset Internal and test acceptPreconditioner
-        internalPrecon.reset();
+        internalPrecon.getMatrix()->setZero();
         reactor.acceptPreconditioner(&internalPrecon, reactorStart, startTime, y.data(), ydot.data(), nullptr);
         EXPECT_EQ(externalPrecon == internalPrecon, true);
     }
@@ -175,8 +175,11 @@ using namespace Cantera;
         // State produced within CVODES for this example
         std::vector<double> ydot(network.neq(), 0.0);
         std::vector<double> y(network.neq(), 0.0);
+        std::vector<double> rhs(network.neq(), 0.0);
+        std::vector<double> output(network.neq(), 0.0);
         network.getState(y.data());
-        network.preconditionerSetup(startTime, y.data(), ydot.data(), nullptr);
+        network.getState(rhs.data());
+        int flag = network.FuncEval::preconditioner_setup_nothrow(startTime, y.data(), ydot.data());
         // Creating external preconditioner for comparison
         AdaptivePreconditioner externalPrecon;
         externalPrecon.initialize(internalPrecon.getDimensions(), atol);
@@ -226,6 +229,8 @@ using namespace Cantera;
         externalPrecon.transformJacobianToPreconditioner();
         // Check that the two are equal
         EXPECT_EQ(externalPrecon==internalPrecon, true);
+        EXPECT_EQ(flag, 0);
+        EXPECT_EQ(network.FuncEval::preconditioner_solve_nothrow(startTime, y.data(), ydot.data(), rhs.data(), output.data()), 0);
     }
 
     TEST(AdaptivePreconditioning, test_preconditioned_hydrogen_auto_ignition)
@@ -343,7 +348,7 @@ TEST(AdaptivePreconditioning, test_get_set_copy_assignment_compare)
     // Check tolerance matches
     EXPECT_EQ(precon.getAbsoluteTolerance(), atol);
     // Reset preconditioner then compare again
-    precon.reset();
+    precon.getMatrix()->setZero();
     EXPECT_EQ(preconCopy==precon, false);
     // Call assignment then compare again
     precon = preconCopy;
@@ -357,15 +362,14 @@ TEST(AdaptivePreconditioning, test_preconditioner_base)
     IdealGasConstPressureReactor pressureReactor;
     Reactor generalReactor;
     // Test error throwing of preconditioner base
-    EXPECT_THROW(precon.solve(nullptr, nullptr, nullptr, nullptr, 0), CanteraError);
-    EXPECT_THROW(precon.setup(nullptr, nullptr, 0.0, nullptr, nullptr, nullptr), CanteraError);
-    EXPECT_THROW(generalReactor.acceptPreconditioner(&precon, 0, 0.0, nullptr, nullptr, nullptr), CanteraError);
-    EXPECT_THROW(pressureReactor.acceptPreconditioner(&precon, 0, 0.0, nullptr, nullptr, nullptr), CanteraError);
+    EXPECT_THROW(precon.solve(nullptr, nullptr, nullptr), NotImplementedError);
+    EXPECT_THROW(precon.setup(nullptr, 0.0, nullptr, nullptr), NotImplementedError);
+    EXPECT_THROW(generalReactor.acceptPreconditioner(&precon, 0, 0.0, nullptr, nullptr, nullptr), NotImplementedError);
+    EXPECT_THROW(pressureReactor.acceptPreconditioner(&precon, 0, 0.0, nullptr, nullptr, nullptr), NotImplementedError);
     EXPECT_EQ(PRECONDITIONER_NOT_SET, precon.getPreconditionerType());
-    EXPECT_THROW(precon.initialize(nullptr, 1e-15), CanteraError);
-    EXPECT_THROW(precon.reset(), CanteraError);
-    EXPECT_THROW(precon.setElement(0, 0, 0.0), CanteraError);
-    EXPECT_THROW(precon.getElement(0, 0), CanteraError);
-    EXPECT_THROW(precon.setTimeStep(0.0), CanteraError);
-    EXPECT_THROW(precon.getTimeStep(), CanteraError);
+    EXPECT_THROW(precon.initialize(nullptr, 1e-15), NotImplementedError);
+    EXPECT_THROW(precon.setElement(0, 0, 0.0), NotImplementedError);
+    EXPECT_THROW(precon.getElement(0, 0), NotImplementedError);
+    EXPECT_THROW(precon.setTimeStep(0.0), NotImplementedError);
+    EXPECT_THROW(precon.getTimeStep(), NotImplementedError);
 }

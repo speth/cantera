@@ -14,7 +14,6 @@ namespace Cantera
     {
         m_threshold = externalPrecon.m_threshold;
         m_matrix = externalPrecon.m_matrix;
-        m_nonzeros = externalPrecon.m_nonzeros;
         m_dimensions.clear();
         m_dimensions.push_back(externalPrecon.m_dimensions.at(0));
         m_dimensions.push_back(externalPrecon.m_dimensions.at(1));
@@ -30,7 +29,6 @@ namespace Cantera
     {
         m_threshold = externalPrecon.m_threshold;
         m_matrix = externalPrecon.m_matrix;
-        m_nonzeros = externalPrecon.m_nonzeros;
         m_atol = externalPrecon.m_atol;
         m_dimensions.clear();
         m_dimensions.push_back(externalPrecon.m_dimensions.at(0));
@@ -115,18 +113,16 @@ namespace Cantera
         return m_timestep;
     }
 
-    void AdaptivePreconditioner::solve(std::vector<Reactor*>* reactors, std::vector<size_t>* reactorStart, double* output, double* rhs_vector, size_t size)
+    void AdaptivePreconditioner::solve(ReactorNet* network, double *rhs_vector, double* output)
     {
-        std::vector<double> rhs_vector_temp (size);
+        std::vector<double> rhs_vector_temp (network->m_nv);
         // rhs_vector is currently the mass fractions that come in
-        for (size_t n = 0; n < reactors->size(); n++)
+        for (size_t n = 0; n < network->m_reactors.size(); n++)
         {
-            ForwardConversion(reactors->at(n), rhs_vector_temp.data(), rhs_vector, reactorStart->at(n));
+            ForwardConversion(network->m_reactors[n], rhs_vector_temp.data(), rhs_vector, network->m_start[n]);
         }
-        // Compressing sparse matrix structure
-        m_matrix.makeCompressed();
         // Creating vectors in the form of Ax=b
-        Eigen::Map<Eigen::VectorXd> bVector(rhs_vector_temp.data(), size);
+        Eigen::Map<Eigen::VectorXd> bVector(rhs_vector_temp.data(), network->m_nv);
         Eigen::VectorXd xVector;
         // Solve for xVector
         xVector = m_solver.solve(bVector);
@@ -134,25 +130,33 @@ namespace Cantera
         // Copy x vector to x
         Eigen::VectorXd::Map(output, xVector.rows()) = xVector;
         // Convert output back
-        for (size_t n = 0; n < reactors->size(); n++)
+        for (size_t n = 0; n < network->m_reactors.size(); n++)
         {
-            BackwardConversion(reactors->at(n), output, reactorStart->at(n));
+            BackwardConversion(network->m_reactors[n], output, network->m_start[n]);
         }
     }
 
-    void AdaptivePreconditioner::setup(std::vector<Cantera::Reactor*>* reactors, std::vector<size_t>* reactorStart, double t, double* y, double* ydot, double* params)
+    void AdaptivePreconditioner::setup(ReactorNet* network, double t, double* y, double* ydot)
     {
-        for (size_t n = 0; n < reactors->size(); n++)
+        // Set time step to current of the integrator
+        setTimeStep(network->m_integ->getIntegratorTimeStep());
+        // Setting to zero to refill
+        m_matrix.setZero();
+        // Calling
+        for (size_t n = 0; n < network->m_reactors.size(); n++)
         {
             // Reactor start is not added to y and ydot because the
             // preconditioner is not broken into units like reactors are
-            (reactors->at(n))->acceptPreconditioner(this, reactorStart->at(n), t, y, ydot, params);
+            (network->m_reactors[n])->acceptPreconditioner(this, network->m_start[n], t, y, ydot, (network->m_sens_params).data());
         }
         // Make into preconditioner as P = (I - gamma * J_bar)
         transformJacobianToPreconditioner();
         // Analyze and factorize
         m_solver.analyzePattern(m_matrix);
         m_solver.factorize(m_matrix);
+        // Compressing sparse matrix structure
+        m_matrix.makeCompressed();
+        // Check for errors
         preconditionerErrorCheck();
     }
 
@@ -187,20 +191,12 @@ namespace Cantera
         {
             throw CanteraError("initialize", "specified matrix dimensions are not square");
         }
-        m_nonzeros = m_dimensions[0]; // Reserves the main diagonal spaces
         m_matrix.resize(m_dimensions[0], m_dimensions[1]);
-        m_matrix.reserve(m_nonzeros);
+        m_matrix.reserve(m_dimensions[0] * m_dimensions[0]);
         m_atol = atol;
         // Creating sparse identity matrix
         m_identity.resize(m_dimensions[0], m_dimensions[1]);
         m_identity.setIdentity();
-    }
-
-    void AdaptivePreconditioner::reset()
-    {
-        m_matrix.setZero(); // Set all elements to zero
-        m_matrix.makeCompressed(); // Compress matrix
-        m_matrix.reserve(m_nonzeros); // Reserve space potentially needed
     }
 
     void AdaptivePreconditioner::ForwardConversion(Reactor *currReactor, double *tempState, double *rhs, size_t reactorStart)

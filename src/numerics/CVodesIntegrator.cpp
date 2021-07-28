@@ -87,7 +87,7 @@ extern "C" {
             else
             {
                 (*jcurPtr)=false; // indicate that Jacobian data was not recomputed
-                return 0; //No error because not recomputed
+                return 0; // No error because not recomputed
             }
         }
 

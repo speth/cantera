@@ -17,19 +17,21 @@
 #endif
 
 #include "cantera/numerics/PreconditionerBase.h"
+#include "cantera/zerodim.h"
 #include "cantera/thermo.h"
 #include "cantera/kinetics.h"
 #include "cantera/kinetics/Reaction.h"
+
 #include "float.h"
+
+namespace Cantera
+{
 
 //! Flag to indicate adaptive preconditioner is set
 const int ADAPTIVE_MECHANISM_PRECONDITIONER = 1;
 
-namespace Cantera //Making ASP apart of Cantera namespace
+class AdaptivePreconditioner : public PreconditionerBase
 {
-
-  class AdaptivePreconditioner : public PreconditionerBase
-    {
     protected:
         //! @param m_matrix is the container that is the sparse preconditioner
         Eigen::SparseMatrix<double> m_matrix;
@@ -40,9 +42,6 @@ namespace Cantera //Making ASP apart of Cantera namespace
         //! @param m_solver is the solver used in solving the linear
         //! system
         Eigen::SparseLU<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int>> m_solver;
-
-        //! @param m_nonzeros is a member variable for the reserved nonzero elements in m_matrix
-        size_t m_nonzeros; // initialize to 0 to prevent failures
 
         //! @param m_threshold a double value to selectively fill the matrix structure based on this threshold
         double m_threshold = DBL_EPSILON; // default
@@ -63,10 +62,10 @@ namespace Cantera //Making ASP apart of Cantera namespace
         double m_timestep;
 
     public:
-        EIGEN_MAKE_ALIGNED_OPERATOR_NEW //Required for mis-alignment of EIGEN matrix
-        AdaptivePreconditioner(/* args */){}; //Default constructor
-        virtual ~AdaptivePreconditioner(){}; //Default destructor
-        AdaptivePreconditioner(const AdaptivePreconditioner &externalPrecon); //Copy constructor
+        EIGEN_MAKE_ALIGNED_OPERATOR_NEW // Required for mis-alignment of EIGEN matrix
+        AdaptivePreconditioner(/* args */){};
+        ~AdaptivePreconditioner(){};
+        AdaptivePreconditioner(const AdaptivePreconditioner &externalPrecon);
 
         //! This function determines rate law derivatives of species
         //! with respect to other species specifically it determines the
@@ -98,7 +97,7 @@ namespace Cantera //Making ASP apart of Cantera namespace
         //! @param ydot A pointer to the current state derivatives
         //! passed from CVODES
         //! @param params A double pointer to sensitivty parameters.
-        virtual void TemperatureDerivatives(IdealGasConstPressureReactor* reactor, double t, double* y, double* ydot, double* params);
+        void TemperatureDerivatives(IdealGasConstPressureReactor* reactor, double t, double* y, double* ydot, double* params);
 
         //! This function is used to convert the system from mass fraction to mole fraction for solving the linear system with a mole based jacobian.
         //! @param *reactor A pointer to the current reactor being converted
@@ -118,91 +117,95 @@ namespace Cantera //Making ASP apart of Cantera namespace
         void preconditionerErrorCheck();
 
         //! This function returns the current type of preconditioner as an integer
-        virtual size_t getPreconditionerType(){return ADAPTIVE_MECHANISM_PRECONDITIONER;};
+        size_t getPreconditionerType(){return ADAPTIVE_MECHANISM_PRECONDITIONER;};
 
         //! Function to solve a linear system Ax=b where A is the preconditioner contained in this matrix
-        //! @param reactors A vector pointer of Reactor pointers in the network
-        //! @param output a double pointer to the vector (array) to store inv(A)*b
-        //! @param rhs_vector a double pointer to the vector (array) multiplied by inv(A)
-        //! @param size a unsigned length of the vectors
-        virtual void solve(std::vector<Reactor*>* reactors,std::vector<size_t>* reactorStart,double* output, double *rhs_vector,size_t size);
+        //! @param ReactorNet object for integrating
+        //! @param[in] t time.
+        //! @param[in] y solution vector, length neq()
+        //! @param[out] ydot rate of change of solution vector, length neq()
+        //! @param[in] rhs right hand side vector used in linear system
+        //! @param[out] output guess vector used by GMRES
+        void solve(ReactorNet* network, double *rhs_vector, double* output);
 
-        //! This function performs the setup of the preconditioner for a Reactor and should be overloaded for each different reactor time
-        //! @param reactors A vector pointer of reactor pointers in the network
-        //! @param reactorStart an size_t providing the index location in which the state of the given reactor starts
-        virtual void setup(std::vector<Reactor*>* reactors,std::vector<size_t>* reactorStart, double t, double* y, double* ydot, double* params);
+        //! This function performs the setup of the preconditioner for the specified reactor type and should be overloaded for each different reactor time
+        //! @param ReactorNet object for integrating
+        //! @param[in] t time.
+        //! @param[in] y solution vector, length neq()
+        //! @param[out] ydot rate of change of solution vector, length neq()
+        void setup(ReactorNet* network, double t, double* y, double* ydot);
 
         //! This function is called during setup for any processes that need to be completed prior to setup functions used in sundials.
         //! @param dims A pointer to a dimensions array
         //! @param atol absolute tolerance value of ODE solver
-        virtual void initialize(std::vector<size_t> *dims, double atol);
+        void initialize(std::vector<size_t> *dims, double atol);
 
         //! This function is called during setup to clean up previous
         //! setup data
-        virtual void reset();
+        void reset();
 
         //! Function used to get index start of the current reactor variable
-        virtual double getReactorStart();
+        double getReactorStart();
 
         //! Function used to get a specific element of the matrix structure
         //! @param row size_t specifying the row location
         //! @param col size_t specifying the column location
-        virtual double getElement(size_t row, size_t col); //get element
+        double getElement(size_t row, size_t col); //get element
 
         //! Function used to return compressed version of the matrix structure
-        virtual Eigen::SparseMatrix<double>* getMatrix();
+        Eigen::SparseMatrix<double>* getMatrix();
 
         //! Use this function to get the threshold value for setting elements
-        virtual double getThreshold();
+        double getThreshold();
 
         //! Use this function to return the used absolute tolerance
-        virtual double getAbsoluteTolerance();
+        double getAbsoluteTolerance();
 
         //! Use this function to get the dampening parameter
-        virtual double getDampeningParameter();
+        double getDampeningParameter();
 
         //! Use this function to get the current time step to be used in
         //! preconditioning
-        virtual double getTimeStep();
+        double getTimeStep();
 
         //! Function used to set index start of the current reactor variable
-        virtual void setReactorStart(size_t reactorStart);
+        void setReactorStart(size_t reactorStart);
 
         //! Function used to set a specific element of the matrix structure
         //! @param row size_t specifying the row location
         //! @param col size_t specifying the column location
         //! @param element double value to be inserted into matrix structure
-        virtual void setElement(size_t row, size_t col, double element);//set element
+        void setElement(size_t row, size_t col, double element);//set element
 
         //! Function used to set compressed version of the matrix structure
         //! @param sparseMatrix a SUNMatrix pointer to a type of SUNMatrix
-        virtual void setMatrix(Eigen::SparseMatrix<double>* sparseMatrix);
+        void setMatrix(Eigen::SparseMatrix<double>* sparseMatrix);
 
         //! Use this function to set the threshold value to compare elements against
         //! @param threshold double value used in setting by threshold
-        virtual void setThreshold(double threshold);
+        void setThreshold(double threshold);
 
         //! Use this function to set the absolute tolerance in the
         //! solver outside of the network initialization
         //! @param atol the specified tolerance
-        virtual void setAbsoluteTolerance(double atol);
+        void setAbsoluteTolerance(double atol);
 
         //! Use this function to set the dampening parameter
         //! @param dampeningParam the desired dampening parameter
         //! between zero and one.
-        virtual void setDampeningParameter(double dampeningParam);
+        void setDampeningParameter(double dampeningParam);
 
         //! Use this function to set the timestep
         //! @param timestep to be used in preconditioning
-        virtual void setTimeStep(double timestep);
+        void setTimeStep(double timestep);
 
         //!Use this function to transform Jacobian into preconditioner
-        virtual void transformJacobianToPreconditioner();
+        void transformJacobianToPreconditioner();
 
         //! Function used to complete individual reactor setups
         //! @param reactor A IdealGasConstPressureReactor pointer
         //! @param reactorStart an size_t providing the index location in which the state of the given reactor starts
-        virtual void reactorLevelSetup(IdealGasConstPressureReactor* reactor, size_t reactorStart, double t, double* y, double* ydot, double* params);
+        void reactorLevelSetup(IdealGasConstPressureReactor* reactor, size_t reactorStart, double t, double* y, double* ydot, double* params);
 
         //! @param reactor - the contents of this reactor will be printed
         inline void printReactorComponents(Reactor* reactor);
@@ -217,6 +220,9 @@ namespace Cantera //Making ASP apart of Cantera namespace
         //! Overloading of the = operator to copy one preconditioner to another
         //! @param externalPrecon. Preconditioner becoming this object
         void operator= (const AdaptivePreconditioner &externalPrecon);
-      };
+
+};
+
 }
+
 #endif

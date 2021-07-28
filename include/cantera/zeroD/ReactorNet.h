@@ -9,7 +9,6 @@
 #include "Reactor.h"
 #include "cantera/numerics/FuncEval.h"
 #include "cantera/numerics/Integrator.h"
-#include "cantera/numerics/PreconditionerBase.h"
 
 
 namespace Cantera
@@ -281,23 +280,23 @@ public:
     //! Retrieve absolute step size limits during advance
     bool getAdvanceLimits(double* limits);
 
-    //! Evaluate the setup processes for the Jacobian preconditioner. Called by the integrator.
+    //!  Evaluate the setup processes for the Jacobian preconditioner.
     //! @param[in] t time.
     //! @param[in] y solution vector, length neq()
     //! @param[out] ydot rate of change of solution vector, length neq()
-    //! @param[in] p sensitivity parameter vector, length nparams()
-    virtual void preconditionerSetup(doublereal t, doublereal* y,
-                        doublereal* ydot, doublereal* params);
+    void preconditionerSetup(double t, double* y, double* ydot);
 
-    //!  Evaluate the system using a Jacobian preconditioner. Called by the integrator.
+    //! Evaluate the system using a Jacobian preconditioner. Called by the integrator.
     //! @param[in] t time.
     //! @param[in] y solution vector, length neq()
     //! @param[out] ydot rate of change of solution vector, length neq()
-    //! @param[in] p sensitivity parameter vector, length nparams()
-    virtual void preconditionerSolve(doublereal t, doublereal* y,
-                      doublereal* ydot, doublereal* rhs, doublereal* output, doublereal* params);
+    //! @param[in] rhs right hand side vector used in linear system
+    //! @param[out] output guess vector used by GMRES
+    void preconditionerSolve(double t, double* y, double* ydot, double* rhs, double* output);
 
 protected:
+    //! Make AdaptivePreconditioner able to access internal elements
+    friend class AdaptivePreconditioner;
 
     //! Estimate a future state based on current derivatives.
     //! The function is intended for internal use by ReactorNet::advance
@@ -335,12 +334,6 @@ protected:
     vector_fp m_ydot;
     vector_fp m_yest;
     vector_fp m_advancelimits;
-
-    //! Pointer to preconditioner
-    PreconditionerBase *m_preconditioner;
-    //! preconditioner type set
-    unsigned long m_preconditioner_type=PRECONDITIONER_NOT_SET; //default setting is that it is not on.
-
 };
 }
 

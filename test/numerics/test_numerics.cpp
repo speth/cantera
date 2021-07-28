@@ -19,6 +19,8 @@ TEST(GeneralNumericsTests, test_integrators_funceval)
     network.initialize();
     // Testing parameters
     EXPECT_THROW(integ.getIntegratorTimeStep(), CanteraError);
+    EXPECT_THROW(network.FuncEval::preconditionerSetup(0, nullptr, nullptr), NotImplementedError);
+    EXPECT_THROW(network.FuncEval::preconditionerSolve(0, nullptr, nullptr, nullptr, nullptr), NotImplementedError);
     cvodesInteg->initialize(0.0, network);
     EXPECT_EQ(cvodesInteg->getIntegratorTimeStep(), 0);
 }

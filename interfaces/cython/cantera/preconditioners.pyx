@@ -24,6 +24,6 @@ cdef class AdaptivePreconditioner(PreconditionerBase):
 
     def setThreshold(self, val):
         self.c_adapt_prec.setThreshold(val)
-    
+
     def addToNetwork(self, ReactorNet network, int integratorType=16):
         network.net.setIntegratorType(self.c_adapt_prec, integratorType)

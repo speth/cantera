@@ -7,6 +7,7 @@
 #define CT_REACTOR_H
 
 #include "ReactorBase.h"
+#include "cantera/numerics/PreconditionerBase.h"
 
 namespace Cantera
 {
@@ -37,8 +38,6 @@ class Solution;
  *
  * @ingroup ZeroD
  */
-
-class PreconditionerBase; // Forward Declaration so PreconditionerBase can be used
 
 class Reactor : public ReactorBase
 {

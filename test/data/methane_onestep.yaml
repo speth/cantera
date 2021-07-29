@@ -1,0 +1,19 @@
+generator: ctml2yaml
+cantera-version: 2.5.0a4
+
+phases:
+- name: methane_onestep
+  elements: [O, H, C]
+  species:
+  - gri30.yaml/species: [O2, H2O, CH4, CO2]
+  thermo: ideal-gas
+  transport: mixture-averaged
+  kinetics: gas
+  reactions: all
+  state: {T: 300.0 K, P: 1.01325e+05 Pa}
+
+reactions:
+- equation: 'CH4 + 2 O2 => CO2 + 2 H2O '
+  rate-constant: {A: 3.478505e+08, b: 0.0, Ea: 2.0e+04 cal/mol}
+  orders:
+    O2: 0.5

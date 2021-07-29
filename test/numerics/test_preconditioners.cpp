@@ -167,7 +167,7 @@ using namespace Cantera;
         // Create and add preconditioner
         AdaptivePreconditioner internalPrecon;
         internalPrecon.setThreshold(sharedThreshold);
-        network.setIntegratorType(&internalPrecon,GMRES);
+        network.setIntegratorType(&internalPrecon, GMRES);
         network.initialize();
         // Use this to reset absolute tolerance so test passes
         double atol = -1e10;
@@ -229,8 +229,12 @@ using namespace Cantera;
         externalPrecon.transformJacobianToPreconditioner();
         // Check that the two are equal
         EXPECT_EQ(externalPrecon==internalPrecon, true);
+        internalPrecon.getMatrix()->setZero();
+        network.preconditionerSetup(startTime, y.data(), ydot.data());
+        EXPECT_EQ(externalPrecon==internalPrecon, true);
         EXPECT_EQ(flag, 0);
         EXPECT_EQ(network.FuncEval::preconditioner_solve_nothrow(startTime, y.data(), ydot.data(), rhs.data(), output.data()), 0);
+        EXPECT_NO_THROW(network.preconditionerSolve(startTime, y.data(), ydot.data(), rhs.data(), output.data()));
     }
 
     TEST(AdaptivePreconditioning, test_preconditioned_hydrogen_auto_ignition)
@@ -353,6 +357,18 @@ TEST(AdaptivePreconditioning, test_get_set_copy_assignment_compare)
     // Call assignment then compare again
     precon = preconCopy;
     EXPECT_EQ(preconCopy==precon, true);
+    // Testing some get/set utilities
+    double randSetGet = std::rand();
+    precon.setThreshold(randSetGet);
+    EXPECT_EQ(precon.getThreshold(), randSetGet);
+    precon.setElement(1, 1, randSetGet-1);
+    EXPECT_EQ(precon.getElement(1, 1), randSetGet-1);
+    precon.setReactorStart(randSetGet);
+    EXPECT_EQ(precon.getReactorStart(), randSetGet);
+    precon.setDampeningParameter(randSetGet);
+    EXPECT_EQ(precon.getDampeningParameter(), randSetGet);
+    precon.setTimeStep(randSetGet);
+    EXPECT_EQ(precon.getTimeStep(), randSetGet);
 }
 
 TEST(AdaptivePreconditioning, test_preconditioner_base)

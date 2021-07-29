@@ -177,10 +177,6 @@ class AdaptivePreconditioner : public PreconditionerBase
         //! @param element double value to be inserted into matrix structure
         void setElement(size_t row, size_t col, double element);//set element
 
-        //! Function used to set compressed version of the matrix structure
-        //! @param sparseMatrix a SUNMatrix pointer to a type of SUNMatrix
-        void setMatrix(Eigen::SparseMatrix<double>* sparseMatrix);
-
         //! Use this function to set the threshold value to compare elements against
         //! @param threshold double value used in setting by threshold
         void setThreshold(double threshold);

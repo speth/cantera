@@ -58,11 +58,6 @@ namespace Cantera
         return &(m_matrix);
     }
 
-    void AdaptivePreconditioner::setMatrix(Eigen::SparseMatrix<double> *sparseMat)
-    {
-        m_matrix =* (sparseMat);
-    }
-
     double AdaptivePreconditioner::getThreshold()
     {
         return m_threshold;

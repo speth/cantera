@@ -284,7 +284,8 @@ public:
     //! @param[in] t time.
     //! @param[in] y solution vector, length neq()
     //! @param[out] ydot rate of change of solution vector, length neq()
-    void preconditionerSetup(double t, double* y, double* ydot);
+    //! @param gamma the gamma in M=I-gamma*J
+    void preconditionerSetup(double t, double* y, double* ydot, double gamma);
 
     //! Evaluate the system using a Jacobian preconditioner. Called by the integrator.
     //! @param[in] t time.

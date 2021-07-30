@@ -28,6 +28,10 @@ class PreconditionerBase
     protected:
         //! @param dimensions an size_t pointer to store dimensions
         std::vector<size_t> m_dimensions;
+
+        //! @param m_gamma gamma value used in M = I - gamma*J
+        double m_gamma;
+
     public:
         PreconditionerBase(/* args */){}
         ~PreconditionerBase(){}
@@ -53,7 +57,7 @@ class PreconditionerBase
         //! @param[in] t time.
         //! @param[in] y solution vector, length neq()
         //! @param[out] ydot rate of change of solution vector, length neq()
-        virtual void setup(ReactorNet* network, double t, double* y, double* ydot){
+        virtual void setup(ReactorNet* network, double t, double* y, double* ydot, double gamma){
             throw NotImplementedError("PreconditionerBase::setup");
         };
 
@@ -79,16 +83,15 @@ class PreconditionerBase
             throw NotImplementedError("PreconditionerBase::getElement");
         };
 
-        //! Function used to set a specific element of the matrix structure
-        //! @param timestep double value to be used when solving for the
-        //! preconditioner.
-        virtual void setTimeStep(double timestep){
-            throw NotImplementedError("PreconditionerBase::setTimeStep");
+        //! Function used to set gamma
+        //! @param gamma used in M = I - gamma*J
+        virtual void setGamma(double gamma){
+            m_gamma = gamma;
         };
 
-        //! Function used to get a timestep value
-        virtual double getTimeStep(){
-            throw NotImplementedError("PreconditionerBase::getTimeStep");
+        //! Function used to get gamma
+        virtual double getGamma(){
+            return m_gamma;
         };
 
         //! Function used to complete individual reactor setups

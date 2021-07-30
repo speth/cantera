@@ -56,7 +56,8 @@ public:
     //! @param[in] t time.
     //! @param[in] y solution vector, length neq()
     //! @param[out] ydot rate of change of solution vector, length neq()
-    virtual void preconditionerSetup(double t, double* y, double* ydot){
+    //! @param gamma the gamma in M=I-gamma*J
+    virtual void preconditionerSetup(double t, double* y, double* ydot, double gamma){
         throw NotImplementedError("FuncEval::preconditionerSetup");
     }
 
@@ -74,7 +75,7 @@ public:
     //! CVODES flag. It also helps as a first level of polymorphism
     //! which identifies the specific FuncEval, e.g., ReactorNet.
     //! Parameters are the same as preconditionerSetup
-    int preconditioner_setup_nothrow(double t, double* y, double* ydot);
+    int preconditioner_setup_nothrow(double t, double* y, double* ydot, double gamma);
 
     //! preconditioner setup that doesn't throw an error but returns a
     //! CVODES flag. It also helps as a first level of polymorphism

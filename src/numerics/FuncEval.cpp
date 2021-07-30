@@ -51,10 +51,10 @@ std::string FuncEval::getErrors() const {
     return errs.str();
 }
 
-int FuncEval::preconditioner_setup_nothrow(double t, double* y, double* ydot)
+int FuncEval::preconditioner_setup_nothrow(double t, double* y, double* ydot, double gamma)
 {
     try {
-        preconditionerSetup(t, y, ydot);
+        preconditionerSetup(t, y, ydot, gamma);
     } catch (CanteraError& err) {
         if (suppressErrors()) {
             m_errors.push_back(err.what());

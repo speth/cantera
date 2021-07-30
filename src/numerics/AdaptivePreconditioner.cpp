@@ -88,26 +88,6 @@ namespace Cantera
         return m_atol;
     }
 
-    void AdaptivePreconditioner::setDampeningParameter(double dampeningParam)
-    {
-        m_dampeningParam = dampeningParam;
-    }
-
-    double AdaptivePreconditioner::getDampeningParameter()
-    {
-        return m_dampeningParam;
-    }
-
-    void AdaptivePreconditioner::setTimeStep(double timestep)
-    {
-        m_timestep = timestep;
-    }
-
-    double AdaptivePreconditioner::getTimeStep()
-    {
-        return m_timestep;
-    }
-
     void AdaptivePreconditioner::solve(ReactorNet* network, double *rhs_vector, double* output)
     {
         std::vector<double> rhs_vector_temp (network->m_nv);
@@ -131,10 +111,10 @@ namespace Cantera
         }
     }
 
-    void AdaptivePreconditioner::setup(ReactorNet* network, double t, double* y, double* ydot)
+    void AdaptivePreconditioner::setup(ReactorNet* network, double t, double* y, double* ydot, double gamma)
     {
-        // Set time step to current of the integrator
-        setTimeStep(network->m_integ->getIntegratorTimeStep());
+        // Set gamma value for M =I - gamma*J
+        m_gamma = gamma;
         // Setting to zero to refill
         m_matrix.setZero();
         // Calling
@@ -167,7 +147,7 @@ namespace Cantera
         reactor->updateState(yCopy.data());
         // Set preconditioner reactor start to passed value
         setReactorStart(reactorStart);
-        // SpeciesDerivatives
+        // Species Derivatives
         SpeciesSpeciesDerivatives(reactor);
         // Temperature Derivatives
         TemperatureDerivatives(reactor, t, yCopy.data(), ydot, params);
@@ -375,7 +355,7 @@ namespace Cantera
 
     void AdaptivePreconditioner::transformJacobianToPreconditioner()
     {
-        m_matrix = m_identity - m_timestep * m_dampeningParam * m_matrix;
+        m_matrix = m_identity - m_gamma * m_matrix;
     }
 
     void AdaptivePreconditioner::printPreconditioner()

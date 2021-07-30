@@ -403,9 +403,9 @@ size_t ReactorNet::registerSensitivityParameter(
 }
 
 void ReactorNet::preconditionerSetup(double t, double* y,
-                      double* ydot)
+                      double* ydot, double gamma)
 {
-    m_preconditioner->setup(this, t, y, ydot);
+    m_preconditioner->setup(this, t, y, ydot, gamma);
 }
 
 void ReactorNet::preconditionerSolve(double t, double* y,

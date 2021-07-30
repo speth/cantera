@@ -75,28 +75,34 @@ extern "C" {
         integrator->m_error_message += "\n";
     }
 
-    #if CT_SUNDIALS_VERSION>=40 // These functions only work with Sundials 4.0 or newer
-        static int cvodes_jac_setup(realtype t, N_Vector y, N_Vector ydot, booleantype jok, booleantype *jcurPtr, realtype gamma, void *f_data)
+    #if CT_SUNDIALS_VERSION >= 30
+        static int cvodes_prec_setup(realtype t, N_Vector y, N_Vector ydot, booleantype jok, booleantype *jcurPtr, realtype gamma, void *f_data)
+    #else
+        static int cvodes_prec_setup(realtype t, N_Vector y, N_Vector ydot, booleantype jok, booleantype *jcurPtr, realtype gamma, void *f_data, N_Vector tmp1, N_Vector tmp2, N_Vector tmp3)
+    #endif
         {
-            if(!jok)
-            {
-                FuncEval* f = (FuncEval*) f_data;
-                (*jcurPtr)=true; // Jacobian data was recomputed
-                return f->preconditioner_setup_nothrow(t, NV_DATA_S(y), NV_DATA_S(ydot));
-            }
-            else
-            {
-                (*jcurPtr)=false; // indicate that Jacobian data was not recomputed
-                return 0; // No error because not recomputed
-            }
+                if(!jok)
+                {
+                    FuncEval* f = (FuncEval*) f_data;
+                    (*jcurPtr)=true; // Jacobian data was recomputed
+                    return f->preconditioner_setup_nothrow(t, NV_DATA_S(y), NV_DATA_S(ydot), gamma);
+                }
+                else
+                {
+                    (*jcurPtr)=false; // indicates that Jacobian data was not recomputed
+                    return 0; // No error because not recomputed
+                }
         }
 
-        static int cvodes_jac_solve(realtype t, N_Vector y, N_Vector ydot, N_Vector r, N_Vector z, realtype gamma, realtype delta, int lr, void *f_data)
+    #if CT_SUNDIALS_VERSION >= 30
+        static int cvodes_prec_solve(realtype t, N_Vector y, N_Vector ydot, N_Vector r, N_Vector z, realtype gamma, realtype delta, int lr, void *f_data)
+    #else
+        static int cvodes_prec_solve(realtype t, N_Vector y, N_Vector ydot, N_Vector r, N_Vector z, realtype gamma, realtype delta, int lr, void *f_data, N_Vector tmp)
+    #endif
         {
             FuncEval* f = (FuncEval*) f_data;
             return f->preconditioner_solve_nothrow(t, NV_DATA_S(y), NV_DATA_S(ydot),NV_DATA_S(r),NV_DATA_S(z));
         }
-    #endif
 }
 
 CVodesIntegrator::CVodesIntegrator() :
@@ -431,16 +437,16 @@ void CVodesIntegrator::applyOptions()
     else if (m_type == GMRES + PRECONDITION) // Added for adaptive preconditioner
     {
         #if CT_SUNDIALS_VERSION >= 40
-            // make solver Scaled Preconditioned General Minimum Residual
             m_linsol = SUNLinSol_SPGMR(m_y, PREC_LEFT, 0);
-            // Set linear solver type
+            CVodeSetLinearSolver(m_cvode_mem, (SUNLinearSolver) m_linsol, nullptr);
+            CVodeSetPreconditioner(m_cvode_mem, cvodes_prec_setup, cvodes_prec_solve);
+        #elif CT_SUNDIALS_VERSION >= 30
+            m_linsol = SUNSPGMR(m_y, PREC_LEFT, 0);
             CVSpilsSetLinearSolver(m_cvode_mem, (SUNLinearSolver) m_linsol);
-            // Set preconditioner and functions for it
-            CVodeSetPreconditioner(m_cvode_mem, cvodes_jac_setup, cvodes_jac_solve);
+            CVSpilsSetPreconditioner(m_cvode_mem, cvodes_prec_setup, cvodes_prec_solve);
         #else
-            char buffer[100];
-            sprintf(buffer, "GMRES+PRECONDITION not setup for Sundials %d.\n", CT_SUNDIALS_VERSION);
-            throw CanteraError("CVodesIntegrator::applyOptions",buffer);
+            CVSpgmr(m_cvode_mem, PREC_LEFT, 0);
+            CVSpilsSetPreconditioner(m_cvode_mem, cvodes_prec_setup, cvodes_prec_solve);
         #endif
     }
     else if (m_type == BAND + NOJAC) {
@@ -614,13 +620,6 @@ string CVodesIntegrator::getErrorInfo(int N)
                    get<2>(weightedErrors[i]), get<1>(weightedErrors[i]));
     }
     return to_string(s);
-}
-
-double CVodesIntegrator::getIntegratorTimeStep()
-{
-    double tstep;
-    CVodeGetCurrentStep(m_cvode_mem, &tstep);
-    return tstep;
 }
 
 }

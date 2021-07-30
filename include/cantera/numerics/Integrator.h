@@ -220,11 +220,6 @@ public:
         return 0.0;
     }
 
-    virtual double getIntegratorTimeStep() {
-        throw CanteraError("getIntegratorTimeStep", "method not implemented for Integrator");
-        return 0.0;
-    }
-
 private:
     doublereal m_dummy;
     void warn(const std::string& msg) const {

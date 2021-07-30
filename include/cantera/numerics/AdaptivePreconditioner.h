@@ -53,14 +53,6 @@ class AdaptivePreconditioner : public PreconditionerBase
         //! @param m_atol absolute tolerance of the ODE solver
         double m_atol = 0;
 
-        // TODO: double check beta and time step
-        //! @param m_dampeningParam a value, beta, between zero and 1 to
-        //! damp the preconditioner. By default it is undamped, beta = 1.
-        double m_dampeningParam = 1;
-
-        //! @param m_timestep the delta t value used in gamma = (t_n-t_(n-1))*beta
-        double m_timestep;
-
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW // Required for mis-alignment of EIGEN matrix
         AdaptivePreconditioner(/* args */){};
@@ -75,7 +67,7 @@ class AdaptivePreconditioner : public PreconditionerBase
         //! for preconditioning
         void SpeciesSpeciesDerivatives(Reactor* reactor);
 
-        //! This function is a subfunction of SpeciesDerivatives that
+        //! This function is a subfunction of SpeciesSpeciesDerivatives that
         //! gets the species w.r.t species derivatives for each reaction
         //! @param reactor pointer to the current reactor being
         //! preconditioned
@@ -132,8 +124,10 @@ class AdaptivePreconditioner : public PreconditionerBase
         //! @param ReactorNet object for integrating
         //! @param[in] t time.
         //! @param[in] y solution vector, length neq()
-        //! @param[out] ydot rate of change of solution vector, length neq()
-        void setup(ReactorNet* network, double t, double* y, double* ydot);
+        //! @param[out] ydot rate of change of solution vector, length
+        //! neq()
+        //! @param gamma in M = I - gamma*J
+        void setup(ReactorNet* network, double t, double* y, double* ydot, double gamma);
 
         //! This function is called during setup for any processes that need to be completed prior to setup functions used in sundials.
         //! @param dims A pointer to a dimensions array
@@ -161,13 +155,6 @@ class AdaptivePreconditioner : public PreconditionerBase
         //! Use this function to return the used absolute tolerance
         double getAbsoluteTolerance();
 
-        //! Use this function to get the dampening parameter
-        double getDampeningParameter();
-
-        //! Use this function to get the current time step to be used in
-        //! preconditioning
-        double getTimeStep();
-
         //! Function used to set index start of the current reactor variable
         void setReactorStart(size_t reactorStart);
 
@@ -185,15 +172,6 @@ class AdaptivePreconditioner : public PreconditionerBase
         //! solver outside of the network initialization
         //! @param atol the specified tolerance
         void setAbsoluteTolerance(double atol);
-
-        //! Use this function to set the dampening parameter
-        //! @param dampeningParam the desired dampening parameter
-        //! between zero and one.
-        void setDampeningParameter(double dampeningParam);
-
-        //! Use this function to set the timestep
-        //! @param timestep to be used in preconditioning
-        void setTimeStep(double timestep);
 
         //!Use this function to transform Jacobian into preconditioner
         void transformJacobianToPreconditioner();

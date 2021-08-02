@@ -28,6 +28,8 @@ public:
     virtual ~ReactorNet();
     ReactorNet(const ReactorNet&) = delete;
     ReactorNet& operator=(const ReactorNet&) = delete;
+    vector<doublereal> m_LHS;
+    vector<doublereal> m_RHS;
 
     //! @name Methods to set up a simulation.
     //@{
@@ -177,7 +179,7 @@ public:
         return m_nv;
     }
     virtual void eval(doublereal t, doublereal* y,
-                      doublereal* ydot, doublereal* p);
+                      doublereal* LHS, doublereal* p);
 
     virtual void getState(doublereal* y);
 

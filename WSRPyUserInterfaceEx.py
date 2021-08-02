@@ -38,26 +38,20 @@ class PrimaryZoneReactor(ct.DelegatedIdealGasConstPressureReactor):
     
    def before_eval(self,):
       #define user coefficients for gov eq, all equal to 1 or 0 initially, user can edit
-      self.user_RHS[0] = 0
-      self.user_RHS[1] = 1
-      self.user_RHS[2] = 0
-      self.user_RHS[3] = 1
-
-      self.user_LHS[0] = 0
-      self.user_LHS[1] = 1
-      self.user_LHS[2] = 0
-      self.user_LHS[3] = 1
 
    def after_eval(self, t, LHS, RHS):
+      #RHS and LHS are arrays of the same length as y (the solution vector)
  # Calculate the time derivative for the additional equation
       for PAH species i
          for PAH species j
-            ydot[k+2] += dNdt_nucij*nc_ij*self.Wc/self.Na
-            ydot[k+3] += dNdt_nucij #how to calulate dNdt?
+            RHS[k+2] += dNdt_nucij*nc_ij*self.Wc/self.Na
+            RHS[k+3] += dNdt_nucij #how to calulate dNdt?
+            LHS[k+2] += #add equation stuff here
+            LHS[k+3] +=
 
-      ydot[k+3] -= coag_coeff*sqrt(24*Ru*self.T/(self.rho_soot*self.Na))*sqrt(dp_soot)*N^2 -N*self.mdotout/(self.D*self.V) #need to know how to extract property data from the gas (ex. mdot out)
+      RHS[k+3] -= coag_coeff*sqrt(24*Ru*self.T/(self.rho_soot*self.Na))*sqrt(dp_soot)*N^2 -N*self.mdotout/(self.D*self.V) #need to know how to extract property data from the gas (ex. mdot out)
       #unknowns: N, dNdt_nuc, solving dNdt, use outside solver for the two coupled soot eqns?
-      ydot[k+2] = dMdt #would have eq here to calculate dMdt: Temp and concentration dependent
+      RHS[k+2] = dMdt #would have eq here to calculate dMdt: Temp and concentration dependent
 
 #Application of user created class
 gas = ct.Solution('h2o2.yaml')

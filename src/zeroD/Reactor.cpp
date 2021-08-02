@@ -198,7 +198,7 @@ void Reactor::updateConnected(bool updatePressure) {
     }
 }
 
-void Reactor::eval(double time, double* ydot)
+void Reactor::eval(double* m_LHS.data(), double* m_RHS.data())
 {
     double dmdt = 0.0; // dm/dt (gas phase)
     double* dYdt = ydot + 3;

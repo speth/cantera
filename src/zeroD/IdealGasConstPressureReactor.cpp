@@ -66,11 +66,12 @@ void IdealGasConstPressureReactor::updateState(doublereal* y)
     updateConnected(false);
 }
 
-void IdealGasConstPressureReactor::eval(time, m_LHS.data() + m_start[n], m_RHS.data() + m_start[n])
+//want to pass in a pointer to the first element of m_RHS and m_LHS, member variables are accessible by any function within the class, dont need to pass in directly
+void IdealGasConstPressureReactor::eval(double time, double* p_LHS, double* p_RHS) 
 {
     double dmdt = 0.0; // dm/dt (gas phase)
     double mcpdTdt = 0.0; // m * c_p * dT/dt
-    double* dYdt = begin(m_RHS) + 2;
+    double* dYdt = p_RHS + 2;
 
     double* p_dYdt = dYdt;
     double* p_dmdt = &dmdt;

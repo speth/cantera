@@ -117,8 +117,9 @@ public:
 
     //! Evaluate the reactor governing equations. Called by ReactorNet::eval.
     //! @param[in] t time.
-    //! @param[out] ydot rate of change of solution vector, length neq()
-    virtual void eval(double t, double* ydot);
+    //! @param[out] m_LHS pointer to start of vector of left-hand side coefficients for governing equations, length m_nv, default values 1
+    //! @param[out] m_RHS pointer to start of vector of right-hand side coefficients for governing equations, length m_nv, default values 0
+    virtual void eval(double t, double* p_LHS, double* p_RHS);
 
     virtual void syncState();
 
@@ -229,8 +230,9 @@ protected:
     // Data associated each sensitivity parameter
     std::vector<SensitivityParameter> m_sensParams;
 
-    vector_fp m_userRHS; // User defined terms of governing equations RENAME (COEFF and ADD not LHS and RHS)
-    vector_fp m_userLHS; // User defined terms of governing equations, {coeff dmdt, add dmdt, coeff dYdt, add dYdt, coeff mcpdTdt, add mcpdTdt}
+    vector_fp m_RHS;
+    vector_fp m_LHS;
+
 };
 }
 

@@ -179,7 +179,7 @@ public:
         return m_nv;
     }
     virtual void eval(doublereal t, doublereal* y,
-                      doublereal* LHS, doublereal* p);
+                      doublereal* ydot, doublereal* p);
 
     virtual void getState(doublereal* y);
 

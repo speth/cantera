@@ -160,8 +160,8 @@ cdef class Reactor(ReactorBase):
 
     def __cinit__(self, *args, **kwargs):
         self.reactor = <CxxReactor*>(self.rbase)
-        self.user_LHS = self.userLHS
-        self.user_RHS = self.userRHS
+        #self.user_LHS = self.userLHS
+        #self.user_RHS = self.userRHS
 
     # The signature of this function causes warnings for Sphinx documentation
     def __init__(self, contents=None, *, name=None, energy='on', **kwargs):

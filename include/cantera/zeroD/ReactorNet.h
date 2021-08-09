@@ -28,8 +28,6 @@ public:
     virtual ~ReactorNet();
     ReactorNet(const ReactorNet&) = delete;
     ReactorNet& operator=(const ReactorNet&) = delete;
-    vector<doublereal> m_LHS;
-    vector<doublereal> m_RHS;
 
     //! @name Methods to set up a simulation.
     //@{
@@ -291,6 +289,8 @@ protected:
     vector_fp m_ydot;
     vector_fp m_yest;
     vector_fp m_advancelimits;
+    vector_fp m_LHS;
+    vector_fp m_RHS;
     bool m_checked_eval_deprecation; //!< @todo Remove after Cantera 2.6
     std::vector<bool> m_have_deprecated_eval; //!< @todo Remove after Cantera 2.6
 };

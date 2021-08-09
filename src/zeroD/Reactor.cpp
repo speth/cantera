@@ -197,20 +197,20 @@ void Reactor::updateConnected(bool updatePressure) {
     }
 }
 
-void Reactor::eval(double time, double* m_LHS, double* m_RHS) //argument will be pointing at start of info for nth reactor in reactor network
+void Reactor::eval(double time, double* LHS, double* RHS) //argument will be pointing at start of info for nth reactor in reactor network
 {
-    double* dmdt = m_RHS; // dm/dt (gas phase)
-    double* dYdt = m_RHS + 2; //dYdt is a pointer to a double, pointing to the 2nd element in the m_RHS vector
+    double& dmdt = RHS[0]; // dm/dt (gas phase)
+    double* dYdt = RHS + 2; //dYdt is a pointer to a double, pointing to the 2nd element in the m_RHS vector
 
-    *dmdt = 0.0;
+    dmdt = 0.0;
 
     evalWalls(time);
     m_thermo->restoreState(m_state);
-    double mdot_surf = evalSurfaces(time, m_RHS + m_nsp + 3); // change ydot to m_RHS because at this point RHS is equivalent to ydot?
-    *dmdt += mdot_surf; // mass added to gas phase from surface reactions
+    double mdot_surf = evalSurfaces(time, RHS + m_nsp + 3);
+    dmdt += mdot_surf; // mass added to gas phase from surface reactions
 
     // volume equation
-    m_RHS[1] = m_vdot;
+    RHS[1] = m_vdot;
 
     const vector_fp& mw = m_thermo->molecularWeights();
     const doublereal* Y = m_thermo->massFractions();
@@ -231,31 +231,31 @@ void Reactor::eval(double time, double* m_LHS, double* m_RHS) //argument will be
     //     \dot U = -P\dot V + A \dot q + \dot m_{in} h_{in} - \dot m_{out} h.
     // \f]
     if (m_energy) {
-        m_RHS[2] = - m_thermo->pressure() * m_vdot - m_Q;
+        RHS[2] = - m_thermo->pressure() * m_vdot - m_Q;
     } else {
-        m_RHS[2] = 0.0;
+        RHS[2] = 0.0;
     }
 
     // add terms for outlets
     for (auto outlet : m_outlet) {
         double mdot = outlet->massFlowRate();
-        *dmdt -= mdot; // mass flow out of system
+        dmdt -= mdot; // mass flow out of system
         if (m_energy) {
-            m_RHS[2] -= mdot * m_enthalpy;
+            RHS[2] -= mdot * m_enthalpy;
         }
     }
 
     // add terms for inlets
     for (auto inlet : m_inlet) {
         double mdot = inlet->massFlowRate();
-        *dmdt += mdot; // mass flow into system
+        dmdt += mdot; // mass flow into system
         for (size_t n = 0; n < m_nsp; n++) {
             double mdot_spec = inlet->outletSpeciesMassFlowRate(n);
             // flow of species into system and dilution by other species
             dYdt[n] += (mdot_spec - mdot * Y[n]) / m_mass;
         }
         if (m_energy) {
-            m_RHS[2] += mdot * inlet->enthalpy_mass();
+            RHS[2] += mdot * inlet->enthalpy_mass();
         }
     }
 }

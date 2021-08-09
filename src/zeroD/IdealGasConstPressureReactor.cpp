@@ -66,24 +66,19 @@ void IdealGasConstPressureReactor::updateState(doublereal* y)
     updateConnected(false);
 }
 
-//want to pass in a pointer to the first element of m_RHS and m_LHS, member variables are accessible by any function within the class, dont need to pass in directly
-void IdealGasConstPressureReactor::eval(double time, double* p_LHS, double* p_RHS) 
+void IdealGasConstPressureReactor::eval(double time, double* LHS, double* RHS) 
 {
-    double dmdt = 0.0; // dm/dt (gas phase)
-    double mcpdTdt = 0.0; // m * c_p * dT/dt
-    double* dYdt = p_RHS + 2;
+    double& dmdt = RHS[0]; // dm/dt (gas phase)
+    double& mcpdTdt = RHS[1]; // m * c_p * dT/dt
+    double* dYdt = RHS + 2;
 
-    double* p_dYdt = dYdt;
-    double* p_dmdt = &dmdt;
-    double* p_mcpdTdt = &mcpdTdt;
-    m_RHS[0] = *p_dmdt; //psuedocode: want RHS element 0 to be a pointer to the dmdt variable value
-    m_RHS[1] = *p_mcpdTdt; // want RHS element 1 to point at mcpdTdt variable
-    m_RHS[2] = *p_dYdt;
+    dmdt = 0.0;
+    mcpdTdt = 0.0;
 
     evalWalls(time);
 
     m_thermo->restoreState(m_state);
-    double mdot_surf = evalSurfaces(time, begin(m_RHS) + m_nsp + 2);
+    double mdot_surf = evalSurfaces(time, RHS + m_nsp + 2);
     dmdt += mdot_surf;
 
     m_thermo->getPartialMolarEnthalpies(&m_hk[0]);
@@ -102,10 +97,10 @@ void IdealGasConstPressureReactor::eval(double time, double* p_LHS, double* p_RH
         mcpdTdt -= (m_wdot[n] * m_hk[n] * m_vol);
         mcpdTdt -= (m_sdot[n] * m_hk[n]);
         // production in gas phase and from surfaces
-        m_RHS[n+2] = (m_wdot[n] * m_vol + m_sdot[n]) * mw[n];
-        m_LHS[n+2] = m_mass; 
+        RHS[n+2] = (m_wdot[n] * m_vol + m_sdot[n]) * mw[n];
+        LHS[n+2] = m_mass; 
         // dilution by net surface mass flux
-        dYdt[n] -= (Y[n] * mdot_surf / m_mass); //fix later (m_RHS/m_LHS)
+        dYdt[n] -= (Y[n] * mdot_surf / m_mass); //fix later (LHS reassignment)
     }
 
     // add terms for outlets
@@ -127,11 +122,11 @@ void IdealGasConstPressureReactor::eval(double time, double* p_LHS, double* p_RH
     }
 
     //dYdt[n] = (dYdt[n])*m_userLHS[n+3] + m_userm_RHS[n+3]; //user will need to define the soot creation rate for each species (defined in coupled ODEs) How to implement that?
-    m_RHS[0] = dmdt;
+    RHS[0] = dmdt;
     if (m_energy) {
-        m_RHS[1] = mcpdTdt / (m_mass * m_thermo->cp_mass());
+        RHS[1] = mcpdTdt / (m_mass * m_thermo->cp_mass());
     } else {
-        m_RHS[1] = 0.0;
+        RHS[1] = 0.0;
     }
 }
 

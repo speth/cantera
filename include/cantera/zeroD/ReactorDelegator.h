@@ -259,11 +259,7 @@ public:
         const std::string& when) override
     {
         if (name == "eval") {
-            m_eval = makeDelegate<1>(func,
-                [this]() {
-                    return std::array<size_t, 1>{R::neq()};
-                },
-                when,
+            m_eval = makeDelegate(func,
                 [this](double t, double* LHS, double* RHS) {
                     R::eval(t, LHS, RHS);
                 }

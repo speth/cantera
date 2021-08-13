@@ -255,11 +255,15 @@ public:
     // For functions with the signature void(double, double*, double*)
     virtual void setDelegate(
         const std::string& name,
-        const std::function<void(std::array<size_t, 1>, double, double*, double*)>& func,
+        const std::function<void(std::array<size_t, 2>, double, double*, double*)>& func,
         const std::string& when) override
     {
         if (name == "eval") {
-            m_eval = makeDelegate(func,
+            m_eval = makeDelegate(func, 
+                [this]() {
+                    return std::array<size_t, 2>{R::neq(), R::neq()};
+                },
+                when,
                 [this](double t, double* LHS, double* RHS) {
                     R::eval(t, LHS, RHS);
                 }

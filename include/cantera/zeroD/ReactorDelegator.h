@@ -259,7 +259,7 @@ public:
         const std::string& when) override
     {
         if (name == "eval") {
-            m_eval = makeDelegate(func, 
+            m_eval = makeDelegate<2>(func,
                 [this]() {
                     return std::array<size_t, 2>{R::neq(), R::neq()};
                 },
@@ -271,7 +271,7 @@ public:
         } else {
             throw NotImplementedError("ReactorDelegator::setDelegate",
                 "For function named '{}' with signature"
-                "void(array<size_t, 1>, double, double*, double*)", name);
+                "void(array<size_t, 2>, double, double*, double*)", name);
         }
     }
 

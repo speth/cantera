@@ -99,7 +99,7 @@ cdef int callback_i_zr_csr(PyFuncInfo& funcInfo, size_t& out, const string& arg)
     return -1
 
 # Wrapper for functions of type void(double, double*, double*)
-cdef void callback_v_d_dp_dp(PyFuncInfo& funcInfo, size_array1 sizes, double arg1,
+cdef void callback_v_d_dp_dp(PyFuncInfo& funcInfo, size_array2 sizes, double arg1,
                                 double* arg2, double* arg3):
     cdef double[:] view = <double[:sizes[0]]>arg2 if sizes[0] else None
 

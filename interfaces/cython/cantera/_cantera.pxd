@@ -927,7 +927,9 @@ cdef extern from "cantera/zerodim.h" namespace "Cantera":
         size_t nparams()
         string sensitivityParameterName(size_t) except +translate_exception
         void setIntegratorType(int integratorType)
-        void setIntegratorType(CxxPreconditionerBase* preconditioner, int integratorType)
+        void setIntegratorType(CxxPreconditionerBase* preconditioner,
+        int integratorType)
+        int getNumNonlinIters();
 
 
 cdef extern from "cantera/thermo/ThermoFactory.h" namespace "Cantera":

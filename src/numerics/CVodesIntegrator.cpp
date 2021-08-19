@@ -571,6 +571,13 @@ int CVodesIntegrator::nEvals() const
     return ne;
 }
 
+int CVodesIntegrator::getNonlinSolvIters() const
+{
+    long int numIters;
+    CVodeGetNumNonlinSolvIters(m_cvode_mem, &numIters);
+    return numIters;
+}
+
 double CVodesIntegrator::sensitivity(size_t k, size_t p)
 {
     if (m_time == m_t0) {

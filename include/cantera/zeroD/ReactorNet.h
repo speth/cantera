@@ -295,6 +295,8 @@ public:
     //! @param[out] output guess vector used by GMRES
     void preconditionerSolve(double t, double* y, double* ydot, double* rhs, double* output);
 
+    int getNumNonlinIters();
+
 protected:
     //! Make AdaptivePreconditioner able to access internal elements
     friend class AdaptivePreconditioner;

@@ -65,12 +65,13 @@ public:
     }
     virtual double sensitivity(size_t k, size_t p);
 
+    virtual int getNonlinSolvIters() const;
+
     //! Returns a string listing the weighted error estimates associated
     //! with each solution component.
     //! This information can be used to identify which variables are
     //! responsible for integrator failures or unexpected small timesteps.
     virtual std::string getErrorInfo(int N);
-
     //! Error message information provide by CVodes
     std::string m_error_message;
 

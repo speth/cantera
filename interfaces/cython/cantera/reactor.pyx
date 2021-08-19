@@ -1291,3 +1291,6 @@ cdef class ReactorNet:
 
     def setIntegratorType(self, int integratorType):
         self.net.setIntegratorType(integratorType)
+
+    def getNumNonlinIterations(self):
+        return self.net.getNumNonlinIters()

@@ -415,6 +415,8 @@ cdef extern from "cantera/kinetics/Reaction.h" namespace "Cantera":
     cdef cppclass CxxFalloffRate "Cantera::FalloffRate" [T] (CxxReactionRateBase):
         CxxFalloffRate()
         CxxFalloffRate(CxxAnyMap) except +translate_exception
+
+    cdef cppclass CxxFalloff3 "Cantera::Falloff":
         cbool allow_negative_pre_exponential_factor
         double third_body_concentration
         cbool chemicallyActivated()
@@ -427,7 +429,6 @@ cdef extern from "cantera/kinetics/Reaction.h" namespace "Cantera":
         void setData(vector[double]&) except +translate_exception
         double evalF(double, double) except +translate_exception
 
-    cdef cppclass CxxFalloff3 "Cantera::Falloff"
     cdef cppclass CxxLindemann "Cantera::Lindemann" (CxxFalloff3)
     cdef cppclass CxxTroe "Cantera::Troe" (CxxFalloff3)
     cdef cppclass CxxSri "Cantera::SRI" (CxxFalloff3)
@@ -1249,9 +1250,8 @@ cdef class ReactionRate:
     cdef set_cxx_object(self)
 
 cdef class FalloffRate(ReactionRate):
-    cdef CxxFalloffRate[CxxFalloff3]* falloff
+    cdef CxxFalloff3* falloff
     cdef set_cxx_object(self)
-    cdef CxxFalloffRate[CxxFalloff3]* cxx_object(self)
 
 cdef class CustomRate(ReactionRate):
     cdef CxxCustomFunc1Rate* cxx_object(self)

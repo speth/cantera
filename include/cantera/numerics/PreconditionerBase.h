@@ -18,7 +18,7 @@ namespace Cantera
 //! Forward Declarations
 class ReactorNet;
 class Reactor;
-class IdealGasConstPressureReactor;
+class IdealGasConstPressureMoleReactor;
 
 //! Flag to indicate preconditioner is not set
 const int PRECONDITIONER_NOT_SET = 0;
@@ -30,7 +30,7 @@ class PreconditionerBase
         std::vector<size_t> m_dimensions;
 
         //! @param m_gamma gamma value used in M = I - gamma*J
-        double m_gamma;
+        double m_gamma = 1.0;
 
     public:
         PreconditionerBase(/* args */){}
@@ -42,8 +42,8 @@ class PreconditionerBase
         //! preconditioner contained in this matrix
         //! @param ReactorNet object for integrating
         //! @param[in] t time.
-        //! @param[in] y solution vector, length neq()
-        //! @param[out] ydot rate of change of solution vector, length neq()
+        //! @param[in] c solution vector, length neq()
+        //! @param[out] cdot rate of change of solution vector, length neq()
         //! @param[in] rhs right hand side vector used in linear system
         //! @param[out] output guess vector used by GMRES
         virtual void solve(ReactorNet* network, double *rhs_vector, double* output){
@@ -55,16 +55,15 @@ class PreconditionerBase
         //! different reactor time
         //! @param ReactorNet object for integrating
         //! @param[in] t time.
-        //! @param[in] y solution vector, length neq()
-        //! @param[out] ydot rate of change of solution vector, length neq()
-        virtual void setup(ReactorNet* network, double t, double* y, double* ydot, double gamma){
+        //! @param[in] c solution vector, length neq()
+        //! @param[out] cdot rate of change of solution vector, length neq()
+        virtual void setup(ReactorNet* network, double t, double* c, double* cdot, double gamma){
             throw NotImplementedError("PreconditionerBase::setup");
         };
 
         //! This function is called during setup for any processes that need to be completed prior to setup functions
-        //! @param dims A pointer to a dimensions array
-        //! @param atol absolute tolerance of the ODE solver
-        virtual void initialize(std::vector<size_t> *dims, double atol){
+        //! @param network A pointer to the reactor net object associated with the integration
+        virtual void initialize(ReactorNet* network){
             throw NotImplementedError("PreconditionerBase::initialize");
         };
 
@@ -96,16 +95,15 @@ class PreconditionerBase
 
         //! Function used to complete individual reactor setups
         //! @param reactor A Reactor pointer
-        //! @param reactorStart an size_t providing the index location in which the state of the given reactor starts
-        virtual void reactorLevelSetup(Reactor* reactor, size_t reactorStart, double t, double* y, double* ydot, double* params){
+        virtual void reactorLevelSetup(Reactor* reactor, double t, double* c, double* cdot, double* params){
         throw NotImplementedError("PreconditionerBase-Reactor::reactorLevelSetup");
         };
 
         //! Function used to complete individual reactor setups
-        //! @param reactor A IdealGasConstPressureReactor pointer
+        //! @param reactor A IdealGasConstPressureMoleReactor pointer
         //! @param reactorStart an size_t providing the index location in which the state of the given reactor starts
-        virtual void reactorLevelSetup(IdealGasConstPressureReactor* reactor, size_t reactorStart, double t, double* y, double* ydot, double* params){
-        throw NotImplementedError("PreconditionerBase-IdealGasConstPressureReactor::reactorLevelSetup");
+        virtual void reactorLevelSetup(IdealGasConstPressureMoleReactor* reactor, double t, double* c, double* cdot, double* params){
+        throw NotImplementedError("PreconditionerBase-IdealGasConstPressureMoleReactor::reactorLevelSetup");
         };
 
         //! Function used to set dimensions of the preconditioner

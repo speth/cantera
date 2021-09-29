@@ -363,6 +363,13 @@ cdef class IdealGasConstPressureReactor(Reactor):
     """
     reactor_type = "IdealGasConstPressureReactor"
 
+cdef class IdealGasConstPressureMoleReactor(Reactor):
+    """
+    A homogeneous, constant pressure, zero-dimensional reactor for ideal gas
+    mixtures. The volume of the reactor changes as a function of time in order
+    to keep the pressure constant.
+    """
+    reactor_type = "IdealGasConstPressureMoleReactor"
 
 cdef class FlowReactor(Reactor):
     """
@@ -1294,3 +1301,6 @@ cdef class ReactorNet:
 
     def getNumNonlinIterations(self):
         return self.net.getNumNonlinIters()
+
+    def getNumLinIterations(self):
+        return self.net.getNumLinIters()

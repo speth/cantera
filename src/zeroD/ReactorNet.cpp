@@ -128,8 +128,7 @@ void ReactorNet::initialize()
     // Initialize preconditioner if it isn't null
     if (m_preconditioner != nullptr)
     {
-        std::vector<size_t> precon_dims{m_nv, m_nv};
-        m_preconditioner->initialize(&precon_dims, m_atols);
+        m_preconditioner->initialize(this);
     }
     m_integ->initialize(m_time, *this);
     m_integrator_init = true;
@@ -417,6 +416,11 @@ void ReactorNet::preconditionerSolve(double t, double* y,
 int ReactorNet::getNumNonlinIters()
 {
     return m_integ->getNonlinSolvIters();
+}
+
+int ReactorNet::getNumLinIters()
+{
+    return m_integ->getLinSolvIters();
 }
 
 }

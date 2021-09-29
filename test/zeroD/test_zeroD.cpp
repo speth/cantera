@@ -84,6 +84,43 @@ TEST(ZeroDim, test_get_thermo_from_reactor)
     EXPECT_EQ(thermo1->pressure(), thermo2->pressure());
 }
 
+TEST(MoleReactor, test_mole_reactor_get_state)
+{
+    // Setting up solution object and thermo/kinetics pointers
+    auto sol = newSolution("h2o2.yaml");
+    sol->thermo()->setState_TPY(1000.0, 101325, "H2:0.5, O2:0.5");
+    IdealGasConstPressureMoleReactor reactor;
+    reactor.insert(sol);
+    reactor.setInitialVolume(0.5);
+    reactor.setEnergy(false);
+    reactor.initialize();
+    std::vector<double> state(reactor.neq());
+    std::vector<double> updatedState(reactor.neq());
+    // test get state
+    auto thermo = reactor.getThermoMgr();
+    const double* Y = thermo->massFractions();
+    const std::vector<double>& imw = thermo->inverseMolecularWeights();
+    // prescribed state
+    double mass = reactor.volume() * thermo->density();
+    size_t H2I = reactor.componentIndex("H2")-1;
+    size_t O2I = reactor.componentIndex("O2")-1;
+    double O2_Moles = imw[O2I] * 0.5 * mass;
+    double  H2_Moles = imw[H2I] * 0.5 * mass;
+    // test getState
+    reactor.getState(state.data());
+    EXPECT_EQ(state[reactor.componentIndex("H2")], H2_Moles);
+    EXPECT_EQ(state[reactor.componentIndex("O2")], O2_Moles);
+    // Test updateState
+    reactor.updateState(state.data());
+    reactor.getState(updatedState.data());
+    EXPECT_EQ(reactor.volume(), 0.5);
+    EXPECT_EQ(reactor.pressure(), 101325);
+    for (size_t i = 0; i < reactor.neq(); i++)
+    {
+       EXPECT_EQ(state[i], updatedState[i]);
+    }
+}
+
 int main(int argc, char** argv)
 {
     printf("Running main() from test_zeroD.cpp\n");

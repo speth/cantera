@@ -70,6 +70,8 @@ public:
     //! reactions.
     virtual void update_rates_C();
 
+    virtual void thirdbodyConcMultiply(double* data);
+
 protected:
     //! @name Internal service methods
     /*!

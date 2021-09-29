@@ -578,6 +578,17 @@ int CVodesIntegrator::getNonlinSolvIters() const
     return numIters;
 }
 
+int CVodesIntegrator::getLinSolvIters() const
+{
+    long int numIters = 0;
+    #if CT_SUNDIALS_VERSION >= 40
+        CVodeGetNumLinRhsEvals(m_cvode_mem, &numIters);
+    #else
+        throw CanteraError("CVodesIntegrator::getLinSolvIters", "Function not supported with sundials versions less than 4.");
+    #endif
+    return numIters;
+}
+
 double CVodesIntegrator::sensitivity(size_t k, size_t p)
 {
     if (m_time == m_t0) {

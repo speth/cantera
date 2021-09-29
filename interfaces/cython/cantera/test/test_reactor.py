@@ -1031,6 +1031,24 @@ class TestIdealGasConstPressureReactor(TestConstPressureReactor):
     reactorClass = ct.IdealGasConstPressureReactor
 
 
+class TestIdealGasConstPressureMoleReactor(TestIdealGasConstPressureReactor):
+    reactorClass = ct.IdealGasConstPressureMoleReactor
+
+    @unittest.expectedFailure
+    def test_with_surface_reactions(self):
+        self.create_reactors(add_surf=True)
+        self.net1.atol = self.net2.atol = 1e-18
+        self.net1.rtol = self.net2.rtol = 1e-9
+        self.integrate(surf=True)
+
+    def test_preconditioned_integration(self):
+        self.create_reactors()
+        self.precon = ct.AdaptivePreconditioner()
+        self.precon.setThreshold(1e-8)
+        self.precon.addToNetwork(self.net2)
+        self.integrate()
+
+
 class TestFlowReactor(utilities.CanteraTest):
     gas_def = """
     phases:
@@ -1801,32 +1819,3 @@ class AdvanceCoveragesTest(utilities.CanteraTest):
         self.assertArrayNear(cov, self.surf.coverages)
         self.assertTrue(any(cov != self.surf.coverages))
 
-    @unittest.expectedFailure
-    def test_preconditioned_equilibrium_HP(self):
-        # Adiabatic, constant pressure combustion should proceed to equilibrium
-        # at constant enthalpy and pressure.
-        #Initial conditions
-        P0 = 10 * ct.one_atm
-        T0 = 1100
-        X0 = 'H2:1.0, O2:0.5, AR:8.0'
-        #Creating initial const pressure reactor
-        gas1 = ct.Solution('h2o2.yaml')
-        gas1.TPX = T0, P0, X0
-        r1 = ct.IdealGasConstPressureReactor(gas1)
-        #Creating reactor network
-        net = ct.ReactorNet()
-        net.add_reactor(r1)
-        #Added preconditioning
-        precon = ct.AdaptivePreconditioner()
-        precon.addToNetwork(net)
-        #Advance simulation
-        net.advance(1.0)
-        #Creating solution object
-        gas2 = ct.Solution('h2o2.yaml')
-        gas2.TPX = T0, P0, X0
-        gas2.equilibrate('HP')
-        #Assertions to check if correct
-        self.assertNear(r1.T, gas2.T)
-        self.assertNear(r1.thermo.P, P0)
-        self.assertNear(r1.thermo.density, gas2.density)
-        self.assertArrayNear(r1.thermo.X, gas2.X)

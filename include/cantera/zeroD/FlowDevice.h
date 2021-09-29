@@ -62,6 +62,10 @@ public:
     //! is not present in the upstream mixture.
     double outletSpeciesMassFlowRate(size_t k);
 
+    //! Mass flow rate (kg/s) of outlet species k. Returns zero if this species
+    //! is not present in the upstream mixture.
+    double outletSpeciesMolarFlowRate(size_t k);
+
     //! specific enthalpy
     double enthalpy_mass();
 

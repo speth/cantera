@@ -57,8 +57,6 @@ public:
     //!     const int JAC = 8;
     //!     const int GMRES = 16;
     //!     const int BAND = 32;
-    //! Preconditioner Types:
-    //! 1 - ADAPTIVE_MECHANISM_PRECONDITIONER
     void setIntegratorType(PreconditionerBase* preconditioner, int integratorType=GMRES);
 
     //! Set initial time. Default = 0.0 s. Restarts integration from this time
@@ -296,6 +294,8 @@ public:
     void preconditionerSolve(double t, double* y, double* ydot, double* rhs, double* output);
 
     int getNumNonlinIters();
+
+    int getNumLinIters();
 
 protected:
     //! Make AdaptivePreconditioner able to access internal elements

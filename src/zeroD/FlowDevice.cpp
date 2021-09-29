@@ -68,6 +68,19 @@ double FlowDevice::outletSpeciesMassFlowRate(size_t k)
     return m_mdot * m_in->massFraction(ki);
 }
 
+double FlowDevice::outletSpeciesMolarFlowRate(size_t k)
+{
+    if (k >= m_nspout) {
+        return 0.0;
+    }
+    size_t ki = m_out2in[k];
+    if (ki == npos) {
+        return 0.0;
+    }
+    auto thermo = m_in->getThermoMgr();
+    return m_mdot / thermo->meanMolecularWeight() * thermo->moleFraction(ki);
+}
+
 double FlowDevice::enthalpy_mass()
 {
     return m_in->enthalpy_mass();

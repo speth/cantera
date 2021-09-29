@@ -27,3 +27,6 @@ cdef class AdaptivePreconditioner(PreconditionerBase):
 
     def addToNetwork(self, ReactorNet network, int integratorType=16):
         network.net.setIntegratorType(self.c_adapt_prec, integratorType)
+
+    def printContents(self):
+        self.c_adapt_prec.printPreconditioner()

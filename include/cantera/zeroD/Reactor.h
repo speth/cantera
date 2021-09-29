@@ -168,8 +168,8 @@ public:
     //!This is a function to accept a preconditioner and perform an action based on reactor type.
     //!@param preconditioner a preconditioner base subclass for preconditioning the system
     //!@param reactorStart start of the reactor within the network
-    //!@param t, @param y, @param ydot, @param params double pointers used in integration
-    virtual void acceptPreconditioner(PreconditionerBase *preconditioner, size_t reactorStart, double t, double* y, double* ydot, double* params);
+    //!@param t, @param c, @param cdot, @param params double pointers used in integration
+    virtual void acceptPreconditioner(PreconditionerBase *preconditioner, double t, double* c, double* cdot, double* params);
 
 protected:
     //! Set reaction rate multipliers based on the sensitivity variables in
@@ -195,6 +195,12 @@ protected:
     //! @param[out] ydot  array of d(coverage)/dt for surface species
     //! @returns          Net mass flux from surfaces
     virtual double evalSurfaces(double t, double* ydot);
+
+    //! Evaluate terms related to surface reactions. Calculates #m_sdot and rate
+    //! of change in surface species coverages - via concentrations which are set in updateState before hand
+    //! @param t          the current time
+    //! @returns          Net mass flux from surfaces
+    virtual double evalSurfaces(double t);
 
     //! Update the state of SurfPhase objects attached to this reactor
     virtual void updateSurfaceState(double* y);

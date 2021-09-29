@@ -226,6 +226,12 @@ public:
         return 0;
     }
 
+    virtual int getLinSolvIters() const
+    {
+        warn("getNonlinSolvIters");
+        return 0;
+    }
+
 private:
     doublereal m_dummy;
     void warn(const std::string& msg) const {

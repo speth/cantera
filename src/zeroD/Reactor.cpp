@@ -316,6 +316,27 @@ double Reactor::evalSurfaces(double t, double* ydot)
     return mdot_surf;
 }
 
+double Reactor::evalSurfaces(double t)
+{
+    const vector_fp& mw = m_thermo->molecularWeights();
+    fill(m_sdot.begin(), m_sdot.end(), 0.0);
+    double mdot_surf = 0.0; // net mass flux from surface
+
+    for (auto S : m_surfaces) {
+        Kinetics* kin = S->kinetics();
+        SurfPhase* surf = S->thermo();
+        surf->setTemperature(m_state[0]);
+        kin->getNetProductionRates(&m_work[0]);
+        size_t bulkloc = kin->kineticsSpeciesIndex(m_thermo->speciesName(0));
+        double wallarea = S->area();
+        for (size_t k = 0; k < m_nsp; k++) {
+            m_sdot[k] += m_work[bulkloc + k] * wallarea;
+            mdot_surf += m_sdot[k] * mw[k];
+        }
+    }
+    return mdot_surf;
+}
+
 void Reactor::addSensitivityReaction(size_t rxn)
 {
     if (!m_chem || rxn >= m_kin->nReactions()) {
@@ -507,9 +528,9 @@ void Reactor::setAdvanceLimit(const string& nm, const double limit)
     }
 }
 
-void Reactor::acceptPreconditioner(PreconditionerBase *preconditioner, size_t reactorStart, double t, double* y, double* ydot, double* params)
+void Reactor::acceptPreconditioner(PreconditionerBase *preconditioner, double t, double* c, double* cdot, double* params)
 {
-    preconditioner->reactorLevelSetup(this, reactorStart, t, y, ydot, params);
+    preconditioner->reactorLevelSetup(this, t, c, cdot, params);
 }
 
 }

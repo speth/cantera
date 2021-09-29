@@ -4,7 +4,8 @@
 // at https://cantera.org/license.txt for license and copyright information.
 
 #include "cantera/numerics/AdaptivePreconditioner.h"
-#include "float.h"
+#include "cantera/base/utilities.h"
+#include "cantera/base/global.h"
 #include <iostream>
 
 namespace Cantera
@@ -13,7 +14,11 @@ namespace Cantera
     AdaptivePreconditioner::AdaptivePreconditioner(const AdaptivePreconditioner &externalPrecon)
     {
         m_threshold = externalPrecon.m_threshold;
-        m_matrix = externalPrecon.m_matrix;
+        m_values = externalPrecon.m_values;
+        m_inner = externalPrecon.m_inner;
+        m_outer = externalPrecon.m_outer;
+        m_nnz = externalPrecon.m_nnz;
+        m_precon_matrix = externalPrecon.m_precon_matrix;
         m_dimensions.clear();
         m_dimensions.push_back(externalPrecon.m_dimensions.at(0));
         m_dimensions.push_back(externalPrecon.m_dimensions.at(1));
@@ -21,14 +26,18 @@ namespace Cantera
 
     bool AdaptivePreconditioner::operator== (const AdaptivePreconditioner &externalPrecon)
     {
-        // only compares internal matrix
-        return m_matrix.isApprox(externalPrecon.m_matrix);
+        // only compare preconditioner matrix, will fail if it has not been formed
+        return m_precon_matrix.isApprox(externalPrecon.m_precon_matrix);
     }
 
     void AdaptivePreconditioner::operator= (const AdaptivePreconditioner &externalPrecon)
     {
         m_threshold = externalPrecon.m_threshold;
-        m_matrix = externalPrecon.m_matrix;
+        m_values = externalPrecon.m_values;
+        m_inner = externalPrecon.m_inner;
+        m_outer = externalPrecon.m_outer;
+        m_nnz = externalPrecon.m_nnz;
+        m_precon_matrix = externalPrecon.m_precon_matrix;
         m_atol = externalPrecon.m_atol;
         m_dimensions.clear();
         m_dimensions.push_back(externalPrecon.m_dimensions.at(0));
@@ -36,338 +45,293 @@ namespace Cantera
         return;
     }
 
-    void AdaptivePreconditioner::setElement(size_t row, size_t col, double element)
+    double& AdaptivePreconditioner::operator() (size_t row, size_t col)
     {
-        if (std::abs(element) >= m_threshold)
+        size_t index = __gidx(row, col);
+        if (m_state_indices.find(index) != m_state_indices.end())
         {
-            m_matrix.coeffRef(row,col) = element;
+            size_t idx = m_state_indices.at(index);
+            return m_values[idx];
         }
-        else if( row == col)
+        else
         {
-            m_matrix.coeffRef(row,col) = element;
-        }
-    }
-
-    double AdaptivePreconditioner::getElement(size_t row, size_t col)
-    {
-        return m_matrix.coeffRef(row, col);
-    }
-
-    Eigen::SparseMatrix<double>* AdaptivePreconditioner::getMatrix()
-    {
-        return &(m_matrix);
-    }
-
-    double AdaptivePreconditioner::getThreshold()
-    {
-        return m_threshold;
-    }
-
-    void AdaptivePreconditioner::setThreshold(double threshold)
-    {
-        m_threshold = threshold;
-    }
-
-    void AdaptivePreconditioner::setReactorStart(size_t reactorStart)
-    {
-        m_current_start = reactorStart;
-    }
-
-    double AdaptivePreconditioner::getReactorStart()
-    {
-        return m_current_start;
-    }
-
-    void AdaptivePreconditioner::setAbsoluteTolerance(double atol)
-    {
-        m_atol = atol;
-    }
-
-    double AdaptivePreconditioner::getAbsoluteTolerance()
-    {
-        return m_atol;
-    }
-
-    void AdaptivePreconditioner::solve(ReactorNet* network, double *rhs_vector, double* output)
-    {
-        std::vector<double> rhs_vector_temp (network->m_nv);
-        // rhs_vector is currently the mass fractions that come in
-        for (size_t n = 0; n < network->m_reactors.size(); n++)
-        {
-            ForwardConversion(network->m_reactors[n], rhs_vector_temp.data(), rhs_vector, network->m_start[n]);
-        }
-        // Creating vectors in the form of Ax=b
-        Eigen::Map<Eigen::VectorXd> bVector(rhs_vector_temp.data(), network->m_nv);
-        Eigen::VectorXd xVector;
-        // Solve for xVector
-        xVector = m_solver.solve(bVector);
-        preconditionerErrorCheck();
-        // Copy x vector to x
-        Eigen::VectorXd::Map(output, xVector.rows()) = xVector;
-        // Convert output back
-        for (size_t n = 0; n < network->m_reactors.size(); n++)
-        {
-            BackwardConversion(network->m_reactors[n], output, network->m_start[n]);
+            m_zero[0] = 0; // reset to zero just incase it was assigned
+            return m_zero[0];
         }
     }
 
-    void AdaptivePreconditioner::setup(ReactorNet* network, double t, double* y, double* ydot, double gamma)
+    void AdaptivePreconditioner::initialize(ReactorNet* network)
     {
-        // Set gamma value for M =I - gamma*J
-        m_gamma = gamma;
-        // Setting to zero to refill
-        m_matrix.setZero();
-        // Calling
-        for (size_t n = 0; n < network->m_reactors.size(); n++)
-        {
-            // Reactor start is not added to y and ydot because the
-            // preconditioner is not broken into units like reactors are
-            (network->m_reactors[n])->acceptPreconditioner(this, network->m_start[n], t, y, ydot, (network->m_sens_params).data());
-        }
-        // Make into preconditioner as P = (I - gamma * J_bar)
-        transformJacobianToPreconditioner();
-        // Analyze and factorize
-        m_solver.analyzePattern(m_matrix);
-        m_solver.factorize(m_matrix);
-        // Compressing sparse matrix structure
-        m_matrix.makeCompressed();
-        // Check for errors
-        preconditionerErrorCheck();
-    }
-
-    void AdaptivePreconditioner::reactorLevelSetup(IdealGasConstPressureReactor* reactor, size_t reactorStart, double t, double* y, double* ydot, double* params)
-    {
-        // Create strictly positive composition
-        std::vector<double> yCopy(reactor->neq());
-        for (size_t i = 0; i < reactor->neq(); i++)
-        {
-            yCopy[i] = std::max(y[reactorStart+i], m_atol);
-        }
-        // Set state to strictly positive composition
-        reactor->updateState(yCopy.data());
-        // Set preconditioner reactor start to passed value
-        setReactorStart(reactorStart);
-        // Species Derivatives
-        SpeciesSpeciesDerivatives(reactor);
-        // Temperature Derivatives
-        TemperatureDerivatives(reactor, t, yCopy.data(), ydot, params);
-        // Reset state
-        reactor->updateState(y+reactorStart);
-    }
-
-    void AdaptivePreconditioner::initialize(std::vector<size_t> *dims, double atol)
-    {
+        //! Don't use legacy rate constants
+        use_legacy_rate_constants(false);
+        // Reset arrays in case of re-initialization
         m_dimensions.clear();
-        for (auto dimIter = dims->begin(); dimIter != dims->end(); ++dimIter)
-        {
-            m_dimensions.push_back(*dimIter);
-        }
+        m_outer.clear();
+        m_inner.clear();
+        m_thermo_indices.clear();
+        m_values.clear();
+        m_sizes.clear();
+        m_reaction_derv_mgrs.clear();
+        m_state_indices.clear();
+        m_nnz = 0;
+        // Set dimensions of preconditioner from network
+        size_t totalColLen = network->m_nv;
+        m_dimensions.push_back(totalColLen);
+        m_dimensions.push_back(totalColLen);
         if (m_dimensions[0] != m_dimensions[1])
         {
             throw CanteraError("initialize", "specified matrix dimensions are not square");
         }
-        m_matrix.resize(m_dimensions[0], m_dimensions[1]);
-        m_matrix.reserve(m_dimensions[0] * m_dimensions[0]);
-        m_atol = atol;
+        // Set zero parameter
+        m_zero[0] = 0;
+        // Set absolute tolerance from network
+        m_atol = network->m_atols;
+        // Reserve maximum space for vectors making up SparseMatrix
+        m_inner.reserve(totalColLen * totalColLen);
+        m_outer.reserve(totalColLen * totalColLen);
+        m_outer.push_back(0); // first outer starts at zero
+        m_thermo_indices.reserve(3 * network->m_reactors.size() * totalColLen);
+        // Allocate spaces for sizes and set first start to zero
+        m_sizes.reserve(network->m_reactors.size() + 1);
+        m_sizes.push_back(0);
+        // Set up sparse patterns
+        m_reaction_derv_mgrs.resize(network->m_reactors.size());
+        for (size_t i = 0; i < m_reaction_derv_mgrs.size(); i++)
+        {
+            auto currReactor = network->m_reactors[i];
+            size_t currStart = network->m_start[i];
+            m_reaction_derv_mgrs[i].initialize(currReactor);
+            // Checking manager
+            int column_size = currReactor->neq();
+            int species_start = column_size-currReactor->getThermoMgr()->nSpecies();
+            // Create temporary indices vector and reserve space for it
+            std::vector<int> indices;
+            std::unordered_map<int, int> newIndices;
+            indices.reserve(column_size * column_size);
+            // Diagonal state variables
+            for (int j = 0; j < species_start; j++)
+            {
+                // Non diagonal state variable derivative elements
+                for (int k = 0; k < column_size; k++)
+                {
+                    indices.push_back(k + j * column_size); // traverse row
+                    indices.push_back(column_size * (k) + j); // traverse column
+                }
+            }
+            // Get reaction derivative indices
+            m_reaction_derv_mgrs[i].getDerivativeIndices(&indices);
+            // Sort
+            std::sort(indices.begin(), indices.end(), std::less<int>());
+            // Only keep unique elements
+            std::unique(indices.begin(), indices.end());
+            // Reduce indices capacity to it's size
+            indices.shrink_to_fit();
+            // Convert indices to network based
+            int currCol = currStart;
+            int counter = 0;
+            for (auto j = indices.begin(); j != indices.end(); j++)
+            {
+                // current index
+                int cidx = *j;
+                // associated preconditioner column
+                int nextCol = cidx / column_size + currStart;
+                int nextRow = cidx % column_size + currStart;
+                int flatIdx = nextRow + nextCol * totalColLen;
+                // check that index is not already in the state map
+                if (m_state_indices.find(flatIdx) == m_state_indices.end())
+                {
+                    // associated preconditioner row
+                    m_inner.push_back(nextRow);
+                    // global state index
+                    m_state_indices.insert(std::pair<int, int>(flatIdx, m_nnz));
+                    //remapped index
+                    newIndices.insert(std::pair<int, int> (cidx, counter));
+                    // Find outer index locations
+                    if (nextCol != currCol)
+                    {
+                        for (int k = 0; k < std::abs(nextCol-currCol); k++)
+                        {
+                            m_outer.push_back(m_nnz);
+                        }
+                        currCol = nextCol;
+                    }
+                    m_nnz++;
+                    counter++;
+                }
+            }
+            // Add final size to m_outer for current reactor
+            m_outer.push_back(m_nnz);
+            // Set next size of reactor indices array
+            m_sizes.push_back(m_nnz);
+            // remap derivative indices to sparse structure
+            m_reaction_derv_mgrs[i].remapDerivativeIndices(&newIndices);
+        }
+        // Shrink appropriate vectors
+        m_inner.shrink_to_fit();
+        m_outer.shrink_to_fit();
+        // Create space for working vector
+        m_values.resize(m_inner.size());
+        // Reserve space for preconditioner
+        m_precon_matrix.resize(m_dimensions[0], m_dimensions[1]);
+        m_precon_matrix.reserve(m_nnz);
         // Creating sparse identity matrix
         m_identity.resize(m_dimensions[0], m_dimensions[1]);
         m_identity.setIdentity();
+        m_identity.makeCompressed();
     }
 
-    void AdaptivePreconditioner::ForwardConversion(Reactor *currReactor, double *tempState, double *rhs, size_t reactorStart)
+    void AdaptivePreconditioner::setup(ReactorNet* network, double t, double* N, double* Ndot, double gamma)
     {
-        ThermoPhase *thermo = currReactor->getThermoMgr();
-        double currMass =  currReactor->mass();
-        size_t nStateVars = currReactor->neq()-thermo->nSpecies();
-        // Transferring unchanged parameters for each reactor
-        for (size_t i = 0; i < nStateVars; i++)
+        // Set gamma value for M =I - gamma*J
+        m_gamma = gamma;
+        // Setting to zero to refill
+        reset();
+        // Calling
+        for (size_t n = 0; n < network->m_reactors.size(); n++)
         {
-            size_t globalIndex = reactorStart+i;
-            tempState[globalIndex] = rhs[globalIndex];
+            m_ri = n; // set reactor counter
+            m_current_start = network->m_start[n]; // set reactor start for indexing
+            // Reactor start is not added to N and Ndot because the
+            // preconditioner is not broken into units like reactors are
+            (network->m_reactors[n])->acceptPreconditioner(this, t, N + m_current_start, Ndot + m_current_start, (network->m_sens_params).data());
         }
-        // Adjusting mass fraction parameters for each reactor to moles for AJP
-        std::vector<double> molecularWeights (thermo->nSpecies());
-        thermo->getMolecularWeights(molecularWeights.data());
-        for (size_t i = 0; i < thermo->nSpecies(); i++)
+        // Make into preconditioner as P = (I - gamma * J_bar)
+        transformJacobianToPreconditioner();
+        // Compressing sparse matrix structure
+        m_precon_matrix.makeCompressed();
+        // Analyze and factorize
+        m_solver.analyzePattern(m_precon_matrix);
+        m_solver.factorize(m_precon_matrix);
+        // Check for errors
+        preconditionerErrorCheck();
+    }
+
+    void AdaptivePreconditioner::reactorLevelSetup(IdealGasConstPressureMoleReactor* reactor, double t, double* N, double* Ndot, double* params)
+    {
+        // strictly positive composition
+        std::vector<double> NCopy(reactor->neq());
+        getStrictlyPositiveComposition(reactor->neq(), N, NCopy.data());
+        reactor->updateState(NCopy.data());
+        // Species Derivatives
+        SpeciesSpeciesDerivatives(reactor, NCopy.data());
+        // Temperature Derivatives
+        if (reactor->energyEnabled())
         {
-            size_t globalIndex = reactorStart + i + nStateVars;
-            tempState[globalIndex] = currMass * molecularWeights[i] * rhs[globalIndex];
+            TemperatureDerivatives(reactor, t, NCopy.data(), Ndot, params);
         }
     }
 
-    void AdaptivePreconditioner::BackwardConversion(Reactor *currReactor, double *output, size_t reactorStart)
+    void AdaptivePreconditioner::SpeciesSpeciesDerivatives(IdealGasConstPressureMoleReactor* reactor, double* N)
     {
-        ThermoPhase *thermo = currReactor->getThermoMgr();
-        double currMass =  currReactor->mass();
-        size_t nStateVars = currReactor->neq() - thermo->nSpecies();
-        // Do nothing to unchanged parameters
-        // Convert moles back to mass fractions
-        std::vector<double> molecularWeights (thermo->nSpecies());
-        thermo->getMolecularWeights(molecularWeights.data());
-        for (size_t i = 0; i < thermo->nSpecies(); i++)
-        {
-            size_t globalIndex = reactorStart + i + nStateVars;
-            output[globalIndex] *= 1/(molecularWeights[i] * currMass);
-        }
-    }
-
-    void AdaptivePreconditioner::SpeciesSpeciesDerivatives(Reactor* reactor)
-    {
+        // Getting rate constant data
         auto kinetics = reactor->getKineticsMgr();
         auto thermo = reactor->getThermoMgr();
-        // Important sizes to the determination of values
         size_t numberOfReactions = kinetics->nReactions();
-        size_t numberOfSpecies = kinetics->nTotalSpecies();
-        size_t speciesStart = getReactorStart() + thermo->stateSize() - numberOfSpecies;
-        // Vectors for data that is reused
-        std::vector<double> rateLawDerivatives (numberOfSpecies * numberOfSpecies);
-        std::vector<double> kForward (numberOfReactions);
-        std::vector<double> kBackward (numberOfReactions);
-        std::vector<double> concentrations (numberOfSpecies);
-        thermo->getConcentrations(concentrations.data());
+        std::vector<double> kForward (numberOfReactions, 0.0);
+        std::vector<double> kBackward (numberOfReactions, 0.0);
         kinetics->getFwdRateConstants(kForward.data());
         kinetics->getRevRateConstants(kBackward.data());
-        double volume = reactor->volume();
-
-        for (size_t r = 0; r < numberOfReactions; r++)
-        {
-            // shared_ptr for current reaction in finding Jacobian
-            std::shared_ptr<Reaction> currentReaction = kinetics->getReaction(r);
-            Composition reactants = currentReaction->reactants;
-            Composition products = currentReaction->products;
-            updateRateLawDerivatives(reactor, &reactants, &reactants, rateLawDerivatives.data(), concentrations.data(), -kForward[r]);
-            updateRateLawDerivatives(reactor, &products, &reactants, rateLawDerivatives.data(), concentrations.data(), kForward[r]);
-            // Calculate other direction if reaction is reversible
-            updateRateLawDerivatives(reactor, &reactants, &products, rateLawDerivatives.data(), concentrations.data(), kBackward[r]);
-            updateRateLawDerivatives(reactor, &products, &products, rateLawDerivatives.data(), concentrations.data(), -kBackward[r]);
-        }
-        // Adding to preconditioner
-        // d(w)/dn_j
-        for (size_t j = 0; j < numberOfSpecies; j++) //  row
-            {
-            for (size_t i = 0; i < numberOfSpecies; i++) // col
-            {
-                size_t idx = j + i * numberOfSpecies; // Getting flattened index
-                setElement(j + speciesStart, i + speciesStart, volume * rateLawDerivatives[idx]); // Add by threshold
-            }
-        }
+        kinetics->thirdbodyConcMultiply(kForward.data());
+        kinetics->thirdbodyConcMultiply(kBackward.data());
+        std::vector<double> concs(reactor->neq(), 0.0);
+        thermo->getConcentrations(concs.data() + reactor->m_sidx);
+        scale(kForward.begin(), kForward.end(), kForward.begin(), 1/reactor->volume());
+        scale(kBackward.begin(), kBackward.end(), kBackward.begin(), 1/reactor->volume());
+        // Calculating derivatives with reaction manager
+        m_reaction_derv_mgrs[m_ri].getDerivatives(concs.data(), m_values.data() + m_sizes[m_ri], kForward.data(), kBackward.data());
     }
 
-    inline void AdaptivePreconditioner::updateRateLawDerivatives(Reactor *reactor, Composition *dependent, Composition *independent, double* rateLawDerivatives, double* concentrations, double kDirection)
-    {
-        size_t numberOfSpecies = reactor->getThermoMgr()->nSpecies();
-        size_t speciesStart = reactor->getThermoMgr()->stateSize() - numberOfSpecies; // Starting idx for species
-        double volume = reactor->volume();
-        for (std::map<std::string,double>::iterator iterCol = dependent->begin(); iterCol != dependent->end(); iterCol++) // Dependent variable -- column
-        {
-            for (std::map<std::string,double>::iterator iterRow = independent->begin(); iterRow != independent->end(); iterRow++) // Independent variable -- row
-            {
-                // Get flattened index for current omega
-                size_t omegaIdx = reactor->componentIndex(iterCol->first) - speciesStart + (reactor->componentIndex(iterRow->first)-speciesStart) * (numberOfSpecies);
-                // Current derivative
-                double dRdn = kDirection * iterCol->second * iterRow->second / volume * std::pow(concentrations[reactor->componentIndex(iterRow->first)-speciesStart], iterRow->second-1);
-                for (std::map<std::string,double>::iterator iterLoop = independent->begin(); iterLoop != independent->end(); iterLoop++) // Dependent variable
-                {
-                    if (iterRow->first!=iterLoop->first) // Non-derivative terms
-                    {
-                        dRdn *= std::pow(concentrations[reactor->componentIndex(iterLoop->first)-speciesStart], iterLoop->second);
-                    }
-                }
-                rateLawDerivatives[omegaIdx] += dRdn; // Updating omega derivative
-            }
-        }
-    }
-
-    void AdaptivePreconditioner::TemperatureDerivatives(IdealGasConstPressureReactor* reactor, double t, double* y, double* ydot, double* params)
+    void AdaptivePreconditioner::TemperatureDerivatives(IdealGasConstPressureMoleReactor* reactor, double t, double* N, double* Ndot, double* params)
     {
         auto kinetics = reactor->getKineticsMgr();
         auto thermo = reactor->getThermoMgr();
         // Important sizes to the determination of values
         size_t numberOfSpecies = kinetics->nTotalSpecies();
         // Size of state for current reactor
-        size_t stateSize = thermo->stateSize();
+        size_t stateSize = reactor->neq();
         // Starting idx for species in reactor
         size_t speciesStart  = stateSize - numberOfSpecies;
-        // Starting idx for species in reactor
-        size_t reactorStart = getReactorStart();
         // Temperature Index in reactor
         size_t tempIndex = reactor->componentIndex("temperature");
-        // Molecular weights for conversion
-        std::vector<double> molecularWeights (thermo->nSpecies());
-        thermo->getMolecularWeights(molecularWeights.data());
         // Getting perturbed state for finite difference
-        double deltaTemp = y[tempIndex] * (std::sqrt(DBL_EPSILON));
-        double reactorMass = reactor->mass();
+        double deltaTemp = N[tempIndex] * m_perturb;
+        /**
+         *
+         * Temperature Finite Difference
+         *
+         **/
         // net production rates and enthalpies for each state
-        std::vector<double> yNext (stateSize);
-        std::vector<double> yDotNext (stateSize);
-        std::vector<double> yCurrent (stateSize);
-        std::vector<double> yDotCurrent (stateSize);
-        // Copy y to current and next
-        for (size_t i = 0; i < stateSize; i++)
-        {
-            yCurrent[i] = y[i];
-            yNext[i] = y[i];
-        }
+        std::vector<double> NNext (stateSize);
+        std::vector<double> NdotNext (stateSize);
+        std::vector<double> NCurrent (stateSize);
+        std::vector<double> NdotCurrent (stateSize);
+        // Copy N to current and next
+        copy(N, N + stateSize, NCurrent.begin());
+        copy(N, N + stateSize, NNext.begin());
         // perturb temperature
-        yNext[tempIndex] += deltaTemp;
+        NNext[tempIndex] += deltaTemp;
         // Getting perturbed state
-        reactor->updateState(yNext.data());
-        reactor->evalEqs(t, yNext.data(), yDotNext.data(), params);
+        reactor->updateState(NNext.data());
+        reactor->evalEqs(t, NNext.data(), NdotNext.data(), params);
         // Reset and get original state
-        reactor->updateState(yCurrent.data());
-        reactor->evalEqs(t, yCurrent.data(), yDotCurrent.data(), params);
+        reactor->updateState(NCurrent.data());
+        reactor->evalEqs(t, NCurrent.data(), NdotCurrent.data(), params);
         // d T_dot/dT
-        setElement(tempIndex + reactorStart, tempIndex + reactorStart, reactor->volume() * (yDotNext[tempIndex] - yDotCurrent[tempIndex]) / deltaTemp);
+        (*this)[__gidx(tempIndex, tempIndex)] = (NdotNext[tempIndex] - NdotCurrent[tempIndex]) / deltaTemp;
+        /**
+         *
+         * Species Finite Difference
+         *
+         **/
         // d omega_dot_j/dT
         for (size_t j = speciesStart; j < stateSize; j++)
         {
-            // Convert dy_j/dt to dN_j/dt by multiply by mass and
-            // dividing by MW
-            setElement(j+reactorStart, tempIndex+reactorStart, (yDotNext[j] - yDotCurrent[j]) * reactorMass / molecularWeights[j-speciesStart] / deltaTemp);
+            (*this)[__gidx(j, tempIndex)] = (NdotNext[j] - NdotCurrent[j]) / deltaTemp;
         }
-        // d T_dot/dnj
+        // d T_dot/dcj
         std::vector<double> specificHeat (numberOfSpecies);
         std::vector<double> netProductionRates (numberOfSpecies);
-        std::vector<double> concentrations (numberOfSpecies);
         std::vector<double> enthalpy (numberOfSpecies);
+        std::vector<double> concentrations (numberOfSpecies);
         // Getting species concentrations
         thermo->getConcentrations(concentrations.data());
         thermo->getPartialMolarCp(specificHeat.data());
         thermo->getPartialMolarEnthalpies(enthalpy.data());
         kinetics->getNetProductionRates(netProductionRates.data());
         // Getting perturbed changes w.r.t temperature
+        double CkCpkSum = 0;
+        double hkwkSum = 0;
+        double inverseVolume = 1/reactor->volume();
+        for (size_t i = 0; i < numberOfSpecies; i++)
+        {
+            hkwkSum += enthalpy[i] * netProductionRates[i];
+            CkCpkSum += concentrations[i] * specificHeat[i];
+        }
         for (size_t j = 0; j < numberOfSpecies; j++) // Spans columns
         {
-            double CkCpkSum = 0;
-            double hkwkSum = 0;
             double hkdwkdnjSum = 0;
             for (size_t k = 0; k < numberOfSpecies; k++) // Spans rows
             {
-                hkwkSum += enthalpy[k] * netProductionRates[k];
-                hkdwkdnjSum += enthalpy[k] * getElement(k+speciesStart, j+speciesStart);
-                CkCpkSum += concentrations[k] * specificHeat[k];
+                hkdwkdnjSum += enthalpy[k] * (*this)[__gidx(k+speciesStart, j + speciesStart)];
             }
-            // Set appropriate colume of preconditioner
-            setElement(tempIndex + reactorStart, j + speciesStart + reactorStart, (-hkdwkdnjSum * CkCpkSum + specificHeat[j] / reactor->volume() * hkwkSum) / (CkCpkSum * CkCpkSum));
+            // Set appropriate column of preconditioner
+            (*this)[__gidx(tempIndex, j + speciesStart)] = (hkdwkdnjSum * CkCpkSum - specificHeat[j] * inverseVolume * hkwkSum) / (CkCpkSum * CkCpkSum);
         }
     }
 
     void AdaptivePreconditioner::transformJacobianToPreconditioner()
     {
-        m_matrix = m_identity - m_gamma * m_matrix;
-    }
-
-    void AdaptivePreconditioner::printPreconditioner()
-    {
-        std::cout<<Eigen::MatrixXd(m_matrix)<<std::endl;
-    }
-
-    inline void AdaptivePreconditioner::printReactorComponents(Reactor* reactor)
-    {
-        for (size_t i = 0; i < reactor->neq(); i++)
+        Eigen::Map<Eigen::SparseMatrix<double>> jacobian(m_dimensions[0], m_dimensions[1], m_nnz, m_outer.data(), m_inner.data(), m_values.data());
+        m_precon_matrix = m_identity - m_gamma * jacobian;
+        for (int k=0; k<m_precon_matrix.outerSize(); ++k)
         {
-            std::cout << reactor->componentName(i) << std::endl;
+            for (Eigen::SparseMatrix<double>::InnerIterator it(m_precon_matrix, k); it; ++it)
+            {
+                if (std::abs(it.value()) < m_threshold && it.row() != it.col())
+                {
+                    m_precon_matrix.coeffRef(it.row(), it.col()) = 0;
+                }
+            }
         }
     }
 
@@ -378,4 +342,15 @@ namespace Cantera
             throw CanteraError("AdaptivePreconditioner::solve", m_solver.lastErrorMessage());
         }
     }
+
+    void AdaptivePreconditioner::solve(ReactorNet* network, double *rhs_vector, double* output)
+    {
+        // Creating vectors in the form of Ax=b
+        Eigen::Map<Eigen::VectorXd> bVector(rhs_vector, network->m_nv);
+        Eigen::Map<Eigen::VectorXd> xVector(output, network->m_nv);
+        // Solve for xVector
+        xVector = m_solver.solve(bVector);
+        preconditionerErrorCheck();
+    }
+
 }

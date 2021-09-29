@@ -67,6 +67,8 @@ public:
 
     virtual int getNonlinSolvIters() const;
 
+    virtual int getLinSolvIters() const;
+
     //! Returns a string listing the weighted error estimates associated
     //! with each solution component.
     //! This information can be used to identify which variables are

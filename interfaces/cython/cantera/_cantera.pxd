@@ -423,7 +423,7 @@ cdef extern from "cantera/kinetics/Reaction.h" namespace "Cantera":
         cbool allow_negative_pre_exponential_factor
         double third_body_concentration
         cbool chemicallyActivated()
-        void chemicallyActivated(cbool)
+        void setChemicallyActivated(bool)
         CxxArrheniusBase& lowRate()
         void setLowRate(CxxArrheniusBase&) except +translate_exception
         CxxArrheniusBase& highRate()
@@ -588,6 +588,10 @@ cdef extern from "cantera/kinetics/Reaction.h" namespace "Cantera":
 
     cdef cppclass CxxBlowersMaselReaction "Cantera::BlowersMaselReaction"(CxxReaction3):
         CxxBlowersMaselReaction()
+
+    cdef cppclass CxxFalloffReaction3 "Cantera::FalloffReaction3" (CxxReaction3):
+        CxxFalloffReaction3()
+        shared_ptr[CxxThirdBody] thirdBody()
 
     cdef cppclass CxxPlogReaction3 "Cantera::PlogReaction3" (CxxReaction3):
         CxxPlogReaction3()

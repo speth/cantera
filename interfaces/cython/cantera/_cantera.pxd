@@ -368,8 +368,8 @@ cdef extern from "cantera/kinetics/ReactionFactory.h" namespace "Cantera":
     cdef shared_ptr[CxxReaction] CxxNewReaction "newReaction" (CxxAnyMap&, CxxKinetics&) except +translate_exception
 
 cdef extern from "cantera/kinetics/ReactionRateFactory.h" namespace "Cantera":
-    cdef shared_ptr[CxxReactionRateBase] CxxNewReactionRate "newReactionRate" (string) except +translate_exception
-    cdef shared_ptr[CxxReactionRateBase] CxxNewReactionRate "newReactionRate" (CxxAnyMap&) except +translate_exception
+    cdef shared_ptr[CxxReactionRate] CxxNewReactionRate "newReactionRate" (string) except +translate_exception
+    cdef shared_ptr[CxxReactionRate] CxxNewReactionRate "newReactionRate" (CxxAnyMap&) except +translate_exception
 
 cdef extern from "cantera/kinetics/Reaction.h" namespace "Cantera":
     cdef vector[shared_ptr[CxxReaction]] CxxGetReactions "getReactions" (XML_Node&) except +translate_exception
@@ -386,8 +386,8 @@ cdef extern from "cantera/kinetics/Reaction.h" namespace "Cantera":
     cdef cppclass CxxArrhenius2 "Cantera::Arrhenius2" (CxxArrheniusBase):
         double activationEnergy_R()
 
-    cdef cppclass CxxReactionRateBase "Cantera::ReactionRateBase":
-        CxxReactionRateBase()
+    cdef cppclass CxxReactionRate "Cantera::ReactionRate":
+        CxxReactionRate()
         string type()
         void update(double) except +translate_exception
         void update(double, double) except +translate_exception
@@ -397,7 +397,7 @@ cdef extern from "cantera/kinetics/Reaction.h" namespace "Cantera":
         double ddT(double, double) except +translate_exception
         CxxAnyMap parameters() except +translate_exception
 
-    cdef cppclass CxxArrheniusRate "Cantera::ArrheniusRate" (CxxReactionRateBase):
+    cdef cppclass CxxArrheniusRate "Cantera::ArrheniusRate" (CxxReactionRate):
         CxxArrheniusRate()
         CxxArrheniusRate(CxxAnyMap) except +translate_exception
         CxxArrheniusRate(double, double, double)
@@ -415,7 +415,7 @@ cdef extern from "cantera/kinetics/Reaction.h" namespace "Cantera":
         double deltaH()
         void setDeltaH(double)
 
-    cdef cppclass CxxFalloffRate "Cantera::FalloffRate" [T] (CxxReactionRateBase):
+    cdef cppclass CxxFalloffRate "Cantera::FalloffRate" [T] (CxxReactionRate):
         CxxFalloffRate()
         CxxFalloffRate(CxxAnyMap) except +translate_exception
 
@@ -437,13 +437,13 @@ cdef extern from "cantera/kinetics/Reaction.h" namespace "Cantera":
     cdef cppclass CxxSri "Cantera::SRI" (CxxFalloff3)
     cdef cppclass CxxTsang "Cantera::Tsang" (CxxFalloff3)
 
-    cdef cppclass CxxPlogRate "Cantera::PlogRate" (CxxReactionRateBase):
+    cdef cppclass CxxPlogRate "Cantera::PlogRate" (CxxReactionRate):
         CxxPlogRate()
         CxxPlogRate(CxxAnyMap) except +translate_exception
         CxxPlogRate(multimap[double, CxxArrhenius2])
         multimap[double, CxxArrhenius2] getRates()
 
-    cdef cppclass CxxChebyshevRate3 "Cantera::ChebyshevRate3" (CxxReactionRateBase):
+    cdef cppclass CxxChebyshevRate3 "Cantera::ChebyshevRate3" (CxxReactionRate):
         CxxChebyshevRate3()
         CxxChebyshevRate3(CxxAnyMap) except +translate_exception
         CxxChebyshevRate3(double, double, double, double, CxxArray2D)
@@ -455,7 +455,7 @@ cdef extern from "cantera/kinetics/Reaction.h" namespace "Cantera":
         size_t nPressure()
         CxxArray2D& data()
 
-    cdef cppclass CxxCustomFunc1Rate "Cantera::CustomFunc1Rate" (CxxReactionRateBase):
+    cdef cppclass CxxCustomFunc1Rate "Cantera::CustomFunc1Rate" (CxxReactionRate):
         CxxCustomFunc1Rate()
         void setRateFunction(shared_ptr[CxxFunc1]) except +translate_exception
 
@@ -481,8 +481,8 @@ cdef extern from "cantera/kinetics/Reaction.h" namespace "Cantera":
         cbool usesLegacy()
         CxxUnits rate_units
 
-        shared_ptr[CxxReactionRateBase] rate()
-        void setRate(shared_ptr[CxxReactionRateBase])
+        shared_ptr[CxxReactionRate] rate()
+        void setRate(shared_ptr[CxxReactionRate])
 
     cdef cppclass CxxElementaryReaction2 "Cantera::ElementaryReaction2" (CxxReaction):
         CxxElementaryReaction2()
@@ -1249,10 +1249,10 @@ cdef class InterfacePhase(ThermoPhase):
     cdef CxxSurfPhase* surf
 
 cdef class ReactionRate:
-    cdef shared_ptr[CxxReactionRateBase] _rate
-    cdef CxxReactionRateBase* rate
+    cdef shared_ptr[CxxReactionRate] _rate
+    cdef CxxReactionRate* rate
     @staticmethod
-    cdef wrap(shared_ptr[CxxReactionRateBase])
+    cdef wrap(shared_ptr[CxxReactionRate])
     cdef set_cxx_object(self)
 
 cdef class FalloffRate(ReactionRate):

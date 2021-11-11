@@ -3,8 +3,8 @@
 // This file is part of Cantera. See License.txt in the top-level directory or
 // at https://cantera.org/license.txt for license and copyright information.
 
-#ifndef CT_IDEALGASCONSTPRESSMOLE_REACTOR_H
-#define CT_IDEALGASCONSTPRESSMOLE_REACTOR_H
+#ifndef CT_IDEALGASMOLE_REACTOR_H
+#define CT_IDEALGASMOLE_REACTOR_H
 
 #include "MoleReactor.h"
 
@@ -18,18 +18,18 @@ namespace Cantera
  * regulator, etc. Additional reactors may be connected to the other end of the
  * flow device, allowing construction of arbitrary reactor networks.
  */
-class IdealGasConstPressureMoleReactor : public MoleReactor
+class IdealGasMoleReactor : public MoleReactor
 {
 public:
-    IdealGasConstPressureMoleReactor() {}
+    IdealGasMoleReactor() {}
 
     virtual std::string typeStr() const {
-        warn_deprecated("IdealGasConstPressureMoleReactor::typeStr",
+        warn_deprecated("IdealGasMoleReactor::typeStr",
                         "To be removed after Cantera 2.6. Use type() instead.");
-        return "IdealGasConstPressureMoleReactor";
+        return "IdealGasMoleReactor";
     }
     virtual std::string type() const {
-        return "IdealGasConstPressureMoleReactor";
+        return "IdealGasMoleReactor";
     }
     virtual void setThermoMgr(ThermoPhase& thermo);
     virtual void getState(double* N);
@@ -40,9 +40,8 @@ public:
     virtual void updateState(double* N);
 
     virtual void acceptPreconditioner(PreconditionerBase *preconditioner, double t, double* N, double* Ndot, double* params);
-
 protected:
-    std::vector<double> m_hk; //!< Species molar enthalpies
+    std::vector<double> m_uk; //!< Species molar enthalpies
 };
 }
 

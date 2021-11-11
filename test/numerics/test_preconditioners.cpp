@@ -12,14 +12,12 @@
 
 using namespace Cantera;
 
-void twoStepManualPrecondition(AdaptivePreconditioner* externalPrecon, IdealGasConstPressureMoleReactor* reactor, double* N, double* Ndot, double t=0.0)
+void twoStepManualPrecondition(AdaptivePreconditioner* externalPrecon, MoleReactor* reactor, double* N, double* Ndot, double t=0.0, size_t loc=0)
     {
-        externalPrecon->reset();
         auto thermo = reactor->getThermoMgr();
         auto kinetics = reactor->getKineticsMgr();
         double volInv = 1/reactor->volume();
         // Getting data for manual calculations
-        size_t numberOfSpecies = thermo->nSpecies();
         size_t numberOfReactions = kinetics->nReactions();
         // vectors for manual calcs
         std::vector<double> kf(numberOfReactions, 0.0);
@@ -35,31 +33,30 @@ void twoStepManualPrecondition(AdaptivePreconditioner* externalPrecon, IdealGasC
         double CO = C[4];
         // Setting elements
         // O2
-        externalPrecon->operator()(1, 1) = (- 2.25 * kf[0] * CH4 * std::pow(O2, 0.5) - 0.25 * kf[1] * CO * std::pow(O2, -0.5)) * volInv; // dO2/dO2
-        externalPrecon->operator()(1, 3) = - 1.5 * kf[0] * std::pow(O2, 1.5) * volInv; // dO2/dCH4
-        externalPrecon->operator()(1, 4) = 0.5 * kr[1] * volInv; // dO2/dCO2
-        externalPrecon->operator()(1, 5) = - 0.5 * kf[1] * std::pow(O2, 0.5) * volInv; // dO2/dCO
+        externalPrecon->operator()(1 + loc, 1 + loc) = (- 2.25 * kf[0] * CH4 * std::pow(O2, 0.5) - 0.25 * kf[1] * CO * std::pow(O2, -0.5)) * volInv; // dO2/dO2
+        externalPrecon->operator()(1 + loc, 3 + loc) = - 1.5 * kf[0] * std::pow(O2, 1.5) * volInv; // dO2/dCH4
+        externalPrecon->operator()(1 + loc, 4 + loc) = 0.5 * kr[1] * volInv; // dO2/dCO2
+        externalPrecon->operator()(1 + loc, 5 + loc) = - 0.5 * kf[1] * std::pow(O2, 0.5) * volInv; // dO2/dCO
         // H2O
-        externalPrecon->operator()(2, 1) = 3 * kf[0] * CH4 * std::pow(O2, 0.5) * volInv; // dH2O/dO2
-        externalPrecon->operator()(2, 3) = 2 * kf[0] * std::pow(O2, 1.5) * volInv; // dH2O/dCH4
+        externalPrecon->operator()(2 + loc, 1 + loc) = 3 * kf[0] * CH4 * std::pow(O2, 0.5) * volInv; // dH2O/dO2
+        externalPrecon->operator()(2 + loc, 3 + loc) = 2 * kf[0] * std::pow(O2, 1.5) * volInv; // dH2O/dCH4
         // CH4
-        externalPrecon->operator()(3, 1) = - 1.5 * kf[0] * CH4 * std::pow(O2, 0.5) * volInv; // dCH4/dO2
-        externalPrecon->operator()(3, 3) = - kf[0] * std::pow(O2, 1.5) * volInv; // dCH4/dCH4
+        externalPrecon->operator()(3 + loc, 1 + loc) = - 1.5 * kf[0] * CH4 * std::pow(O2, 0.5) * volInv; // dCH4/dO2
+        externalPrecon->operator()(3 + loc, 3 + loc) = - kf[0] * std::pow(O2, 1.5) * volInv; // dCH4/dCH4
         // CO2
-        externalPrecon->operator()(4, 1) = (0.5 * kf[1] * CO * std::pow(O2, -0.5)) * volInv; // dCO2/dO2
-        externalPrecon->operator()(4, 4) = -kr[1] * volInv; // dCO2/dCO2
-        externalPrecon->operator()(4, 5) = kf[1] * std::pow(O2, 0.5) * volInv; // dCO2/CO
+        externalPrecon->operator()(4 + loc, 1 + loc) = (0.5 * kf[1] * CO * std::pow(O2, -0.5)) * volInv; // dCO2/dO2
+        externalPrecon->operator()(4 + loc, 4 + loc) = -kr[1] * volInv; // dCO2/dCO2
+        externalPrecon->operator()(4 + loc, 5 + loc) = kf[1] * std::pow(O2, 0.5) * volInv; // dCO2/CO
         //CO
-        externalPrecon->operator()(5, 1) = (1.5 * kf[0] * CH4 * std::pow(O2, 0.5) - 0.5 * kf[1] * CO * std::pow(O2, -0.5)) * volInv; // dCO/dO2
-        externalPrecon->operator()(5, 3) = kf[0] * std::pow(O2, 1.5) * volInv; // dCO/dCH4
-        externalPrecon->operator()(5, 4) = kr[1] * volInv; // dCO/dCO2
-        externalPrecon->operator()(5, 5) = -kf[1] * std::pow(O2,0.5) * volInv; // dCO/CO
+        externalPrecon->operator()(5 + loc, 1 + loc) = (1.5 * kf[0] * CH4 * std::pow(O2, 0.5) - 0.5 * kf[1] * CO * std::pow(O2, -0.5)) * volInv; // dCO/dO2
+        externalPrecon->operator()(5 + loc, 3 + loc) = kf[0] * std::pow(O2, 1.5) * volInv; // dCO/dCH4
+        externalPrecon->operator()(5 + loc, 4 + loc) = kr[1] * volInv; // dCO/dCO2
+        externalPrecon->operator()(5 + loc, 5 + loc) = -kf[1] * std::pow(O2,0.5) * volInv; // dCO/CO
         // temperature derivatives
         if (reactor->energyEnabled())
         {
             externalPrecon->TemperatureDerivatives(reactor, t, N, Ndot, nullptr);
         }
-        externalPrecon->transformJacobianToPreconditioner();
     };
 
 void preconditionWithClass(AdaptivePreconditioner* internalPrecon, IdealGasConstPressureMoleReactor* reactor, double* N, double* Ndot, double t=0.0)
@@ -102,6 +99,7 @@ void TwoStepMechanism(bool energy)
     std::vector<double> N(reactor.neq(), 0.0);
     std::vector<double> Ndot(reactor.neq(), 0.0);
     std::vector<double> NCopy(reactor.neq(), 0.0);
+    reactor.getState(N.data());
     // Internal preconditioner
     AdaptivePreconditioner internalPrecon;
     preconditionerInitialize(&network, &internalPrecon);
@@ -116,7 +114,10 @@ void TwoStepMechanism(bool energy)
         preconditionWithClass(&internalPrecon, &reactor, N.data(), Ndot.data(), ct);
         externalPrecon.getStrictlyPositiveComposition(reactor.neq(), N.data(), NCopy.data());
         reactor.updateState(NCopy.data());
+        // manual precondition
+        externalPrecon.reset();
         twoStepManualPrecondition(&externalPrecon, &reactor, NCopy.data(), Ndot.data(), ct);
+        externalPrecon.transformJacobianToPreconditioner();
         reactor.updateState(N.data());
         // Check that the two are equal
         EXPECT_EQ(externalPrecon == internalPrecon, true);
@@ -130,7 +131,7 @@ void TwoStepMechanism(bool energy)
     EXPECT_EQ(externalPrecon == internalPrecon, true);
 }
 
-TEST(PreconditionerTestSet, test_two_step_mechanism)
+TEST(AdaptivePreconditionerTestSet, test_two_step_mechanism)
 {
     // testing with energy off
     TwoStepMechanism(false);
@@ -138,7 +139,64 @@ TEST(PreconditionerTestSet, test_two_step_mechanism)
     TwoStepMechanism(true);
 }
 
-TEST(PreconditionerTestSet, test_one_step_mechanism_network)
+TEST(AdaptivePreconditionerTestSet, test_two_step_multitype_network)
+{
+    // Constants
+    double volume = 0.2;
+    // Setting up solution object and thermo/kinetics pointers
+    auto sol = newSolution("methane_twostep.yaml");
+    auto thermo = sol->thermo();
+    auto kinetics = sol->kinetics();
+    thermo->setState_TPX(1000.0, 101325, "CH4:1.0, O2:1.0, H2O:0, CO2:0, CO:0");
+    // Set up reactor object
+    IdealGasConstPressureMoleReactor reactor1;
+    IdealGasMoleReactor reactor2;
+    reactor1.insert(sol);
+    reactor1.setInitialVolume(volume);
+    reactor2.insert(sol);
+    reactor2.setInitialVolume(volume);
+    // Setup network for initialization
+    ReactorNet network;
+    network.addReactor(reactor1);
+    network.addReactor(reactor2);
+    // Internal preconditioner
+    AdaptivePreconditioner internalPrecon;
+    network.setIntegratorType(&internalPrecon, GMRES);
+    network.initialize();
+    // Creating external preconditioner for comparison
+    AdaptivePreconditioner externalPrecon;
+    preconditionerInitialize(&network, &externalPrecon);
+    // State produced within CVODES for this example
+    std::vector<double> N(network.neq(), 0.0);
+    std::vector<double> Ndot(network.neq(), 0.0);
+    std::vector<double> NCopy(network.neq(), 0.0);
+    network.getState(N.data());
+    // Get used gamma value
+    double gamma = internalPrecon.getGamma();
+    // Compare the preconditioners while stepping
+    double ct = 0.0;
+    for (size_t i = 0; i < 1000; i++)
+    {
+        // precondition from reactor object
+        network.preconditionerSetup(ct, N.data(), Ndot.data(), gamma);
+        externalPrecon.getStrictlyPositiveComposition(network.neq(), N.data(), NCopy.data());
+        network.updateState(NCopy.data());
+        // manual precondition external
+        externalPrecon.reset();
+        externalPrecon.setReactorStart(0);
+        twoStepManualPrecondition(&externalPrecon, &reactor1, NCopy.data(), Ndot.data(), ct);
+        externalPrecon.setReactorStart(reactor1.neq());
+        twoStepManualPrecondition(&externalPrecon, &reactor2, NCopy.data(), Ndot.data(), ct);
+        externalPrecon.transformJacobianToPreconditioner();
+        network.updateState(N.data());
+        // Check that the two are equal
+        EXPECT_EQ(externalPrecon == internalPrecon, true);
+        // step the network
+        ct = network.step();
+    }
+}
+
+TEST(AdaptivePreconditionerTestSet, test_one_step_mechanism_network)
 {
     // Constants
     double volume = 0.2;
@@ -146,7 +204,7 @@ TEST(PreconditionerTestSet, test_one_step_mechanism_network)
     double startTime = 0.0;
     double sharedThreshold = 1e-16;
     double gamma = 1.0;
-    size_t numberOfReactors = 1;
+    size_t numberOfReactors = 3;
     bool energy = true;
     // Network
     ReactorNet network;
@@ -245,7 +303,7 @@ TEST(PreconditionerTestSet, test_one_step_mechanism_network)
     EXPECT_EQ(externalPrecon==internalPrecon, true);
 }
 
-TEST(PreconditionerTestSet, test_run_sim)
+TEST(AdaptivePreconditionerTestSet, test_run_sim)
 {
     // Setting up solution object and thermo/kinetics pointers
     auto sol = newSolution("methane_twostep.yaml");
@@ -286,7 +344,7 @@ TEST(PreconditionerTestSet, test_run_sim)
     network.step();
 }
 
-TEST(PreconditionerTestSet, test_preconditioned_hydrogen_auto_ignition)
+TEST(AdaptivePreconditionerTestSet, test_preconditioned_hydrogen_auto_ignition)
 {
     // create an ideal gas mixture that corresponds to GRI-Mech 3.0
     auto sol = newSolution("gri30.yaml", "gri30", "None");
@@ -312,7 +370,7 @@ TEST(PreconditionerTestSet, test_preconditioned_hydrogen_auto_ignition)
     }
 }
 
-TEST(PreconditionerTestSet, test_utilities_get_set)
+TEST(AdaptivePreconditionerTestSet, test_utilities_get_set)
 {
     // Seed random number generator
     std::srand(std::time(NULL));
@@ -325,6 +383,8 @@ TEST(PreconditionerTestSet, test_utilities_get_set)
     AdaptivePreconditioner precon;
     auto precon_mat = precon.getMatrix();
     precon_mat->resize(dims[0], dims[1]);
+    // Ensure all elements are zero
+    precon_mat->setZero();
     // Set threshold
     double thresh = (double) base+2;
     precon.setThreshold(thresh);
@@ -349,11 +409,11 @@ TEST(PreconditionerTestSet, test_utilities_get_set)
         double returnedElement = precon.getElement(row, col);
         if(std::abs(currElement) >= thresh || row == col)
         {
-            EXPECT_EQ (returnedElement, currElement);
+            EXPECT_DOUBLE_EQ (returnedElement, currElement);
         }
         else
         {
-            EXPECT_EQ (returnedElement, 0.0);
+            EXPECT_DOUBLE_EQ (returnedElement, 0.0);
         }
     }
     // Set dimensions randomly
@@ -373,7 +433,7 @@ TEST(PreconditionerTestSet, test_utilities_get_set)
     EXPECT_EQ(precon.getAbsoluteTolerance(), randSetGet);
 }
 
-TEST(PreconditionerTestSet, test_preconditioner_base)
+TEST(PreconditionerBaseTestSet, test_preconditioner_base)
 {
     // Required variables
     PreconditionerBase precon;
@@ -390,7 +450,7 @@ TEST(PreconditionerTestSet, test_preconditioner_base)
     EXPECT_THROW(precon.getElement(0, 0), NotImplementedError);
 }
 
-TEST(PreconditionerTestSet, test_funceval_precon_funcs)
+TEST(PreconditionerBaseTestSet, test_funceval_precon_funcs)
 {
     // Setting up solution to insert in reactor
     auto sol = newSolution("h2o2.yaml");

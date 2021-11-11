@@ -1,9 +1,9 @@
-//! @file IdealGasConstPressureMoleReactor.cpp A constant pressure zero-dimensional reactor
+//! @file IdealGasMoleReactor.cpp A constant pressure zero-dimensional reactor
 
 // This file is part of Cantera. See License.txt in the top-level directory or
 // at https://cantera.org/license.txt for license and copyright information.
 
-#include "cantera/zeroD/IdealGasConstPressureMoleReactor.h"
+#include "cantera/zeroD/IdealGasMoleReactor.h"
 #include "cantera/zeroD/FlowDevice.h"
 #include "cantera/zeroD/ReactorNet.h"
 #include "cantera/kinetics/Kinetics.h"
@@ -17,21 +17,21 @@ using namespace std;
 namespace Cantera
 {
 
-void IdealGasConstPressureMoleReactor::setThermoMgr(ThermoPhase& thermo)
+void IdealGasMoleReactor::setThermoMgr(ThermoPhase& thermo)
 {
     //! @TODO: Add a method to ThermoPhase that indicates whether a given
     //! subclass is compatible with this reactor model
     if (thermo.type() != "IdealGas") {
-        throw CanteraError("IdealGasConstPressureMoleReactor::setThermoMgr",
+        throw CanteraError("IdealGasMoleReactor::setThermoMgr",
                            "Incompatible phase type provided");
     }
     Reactor::setThermoMgr(thermo);
 }
 
-void IdealGasConstPressureMoleReactor::getState(double* N)
+void IdealGasMoleReactor::getState(double* N)
 {
     if (m_thermo == 0) {
-        throw CanteraError("IdealGasConstPressureMoleReactor::getState",
+        throw CanteraError("IdealGasMoleReactor::getState",
                            "Error: reactor is empty.");
     }
     m_thermo->restoreState(m_state);
@@ -53,19 +53,17 @@ void IdealGasConstPressureMoleReactor::getState(double* N)
     getSurfaceInitialConditions(N + m_nsp + m_sidx);
 }
 
-void IdealGasConstPressureMoleReactor::initialize(double t0)
+void IdealGasMoleReactor::initialize(double t0)
 {
-    MoleReactor::initialize(t0);
-    m_hk.resize(m_nsp, 0.0);
+   MoleReactor::initialize(t0);
+    m_uk.resize(m_nsp, 0.0);
 }
 
-void IdealGasConstPressureMoleReactor::updateState(double* N)
+void IdealGasMoleReactor::updateState(double* N)
 {
     // The components of N are: [0] the temperature,
     // [1...K+1) are the moles of each species, and [K+1...] are the
     // coverages of surface species on each wall.
-    m_thermo->setMolesNoNorm(N + m_sidx);
-    m_thermo->setState_TP(N[0], m_pressure);
     // get mass
     std::vector<double> mass(m_nv-m_sidx);
     const std::vector<double>& mw = m_thermo->molecularWeights();
@@ -73,15 +71,17 @@ void IdealGasConstPressureMoleReactor::updateState(double* N)
     transform(mass.begin(), mass.end(), mw.begin(),
               mass.begin(), multiplies<double>());
     m_mass = accumulate(mass.begin(), mass.end(), 0.0);
-    m_vol = m_mass / m_thermo->density();
+    // Set state
+    m_thermo->setMolesNoNorm(N + m_sidx);
+    m_thermo->setState_TR(N[0], m_mass / m_vol);
     updateSurfaceState(N + m_nsp + m_sidx);
-    updateConnected(false);
+    updateConnected(true);
 }
 
-void IdealGasConstPressureMoleReactor::evalEqs(double time, double* N,
+void IdealGasMoleReactor::evalEqs(double time, double* N,
                                    double* Ndot, double* params)
 {
-    double mcpdTdt = 0.0; // m * c_p * dT/dt
+    double mcvdTdt = 0.0; // m * c_v * dT/dt
     double* dNdt = Ndot + m_sidx; //kmol per s
 
     applySensitivity(params);
@@ -90,7 +90,7 @@ void IdealGasConstPressureMoleReactor::evalEqs(double time, double* N,
     m_thermo->restoreState(m_state);
     evalSurfaces(time, dNdt + m_nsp);
 
-    m_thermo->getPartialMolarEnthalpies(&m_hk[0]);
+    m_thermo->getPartialMolarIntEnergies(&m_uk[0]);
     const std::vector<double>& imw = m_thermo->inverseMolecularWeights();
 
     if (m_chem) {
@@ -98,12 +98,12 @@ void IdealGasConstPressureMoleReactor::evalEqs(double time, double* N,
     }
 
     // external heat transfer
-    mcpdTdt -= m_Q;
+    mcvdTdt += - m_pressure * m_vdot - m_Q;
 
     for (size_t n = 0; n < m_nsp; n++) {
         // heat release from gas phase and surface reactions
-        mcpdTdt -= m_wdot[n] * m_hk[n] * m_vol;
-        mcpdTdt -= m_sdot[n] * m_hk[n];
+        mcvdTdt -= m_wdot[n] * m_uk[n] * m_vol;
+        mcvdTdt -= m_sdot[n] * m_uk[n];
         // production in gas phase and from surfaces
         dNdt[n] = (m_wdot[n] * m_vol + m_sdot[n]);
     }
@@ -114,22 +114,24 @@ void IdealGasConstPressureMoleReactor::evalEqs(double time, double* N,
             // flow of species into system and dilution by other species
             dNdt[n] -= outlet->outletSpeciesMolarFlowRate(n);
         }
+        double mdot = outlet->massFlowRate();
+        mcvdTdt -= mdot * m_pressure * m_vol / m_mass; // flow work
     }
 
     // add terms for inlets
     for (auto inlet : m_inlet) {
         double mdot = inlet->massFlowRate();
-        mcpdTdt += inlet->enthalpy_mass() * mdot;
+        mcvdTdt += inlet->enthalpy_mass() * mdot;
         for (size_t n = 0; n < m_nsp; n++) {
             double mdot_spec = inlet->outletSpeciesMassFlowRate(n);
             // flow of species into system and dilution by other species
             dNdt[n] += inlet->outletSpeciesMolarFlowRate(n);
-            mcpdTdt -= m_hk[n] * imw[n] * mdot_spec;
+            mcvdTdt -= m_uk[n] * imw[n] * mdot_spec;
         }
     }
 
     if (m_energy) {
-        Ndot[0] = mcpdTdt / (m_mass * m_thermo->cp_mass());
+        Ndot[0] = mcvdTdt / (m_mass * m_thermo->cv_mass());
     } else {
         Ndot[0] = 0.0;
     }
@@ -137,7 +139,7 @@ void IdealGasConstPressureMoleReactor::evalEqs(double time, double* N,
     resetSensitivity(params);
 }
 
-void IdealGasConstPressureMoleReactor::acceptPreconditioner(PreconditionerBase *preconditioner, double t, double* N, double* Ndot, double* params)
+void IdealGasMoleReactor::acceptPreconditioner(PreconditionerBase *preconditioner, double t, double* N, double* Ndot, double* params)
 {
     preconditioner->reactorLevelSetup(this, t, N, Ndot, params);
 }

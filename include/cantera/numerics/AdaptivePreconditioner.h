@@ -119,13 +119,17 @@ class AdaptivePreconditioner : public PreconditionerBase
         //! @param reactor A IdealGasConstPressureMoleReactor pointer
         void reactorLevelSetup(IdealGasConstPressureMoleReactor* reactor, double t, double* N, double* Ndot, double* params);
 
+        //! Function used to complete individual reactor setups
+        //! @param reactor A IdealGasMoleReactor pointer
+        void reactorLevelSetup(IdealGasMoleReactor* reactor, double t, double* N, double* Ndot, double* params);
+
         //! This function determines rate law derivatives of species
         //! with respect to other species specifically it determines the
         //! derivatives of the rate laws of all species with respect to
         //! other species in terms of moles.
         //! @param *reactor A pointer to the current reactor being used
         //! for preconditioning
-        void SpeciesSpeciesDerivatives(IdealGasConstPressureMoleReactor* reactor, double* N);
+        void SpeciesSpeciesDerivatives(MoleReactor* reactor, double* N);
 
         //! This function determines derivatives of Species and Temperature with respect to Temperature for jacobian preconditioning with a finite difference.
         //! @param reactor A pointer to the current reactor being precondition
@@ -134,7 +138,7 @@ class AdaptivePreconditioner : public PreconditionerBase
         //! @param Ndot A pointer to the current state derivatives
         //! passed from CVODES
         //! @param params A double pointer to sensitivty parameters.
-        void TemperatureDerivatives(IdealGasConstPressureMoleReactor* reactor, double t, double* N, double* Ndot, double* params);
+        void TemperatureDerivatives(MoleReactor* reactor, double t, double* N, double* Ndot, double* params);
 
         //! This function checks if there was an error with eigen and
         //! throws it if so.
@@ -190,6 +194,9 @@ class AdaptivePreconditioner : public PreconditionerBase
         //! Use this function to get the pertubation constant
         double getPerturbationConst(){return m_perturb;};
 
+        //! Use this function to get the ratio of nonzero preconditioner elements to the maximum number of elements
+        double getSparsityPercentage(){return 1.0 - m_precon_matrix.nonZeros()/m_nnz;};
+
         //! Use this function to get a strictly positive composition
         void getStrictlyPositiveComposition(size_t vlen, double* in, double* out)
         {
@@ -207,11 +214,7 @@ class AdaptivePreconditioner : public PreconditionerBase
         //! @param element double value to be inserted into matrix structure
         void setElement(size_t row, size_t col, double element)
         {
-            if (std::abs(element) >= m_threshold)
-            {
-                m_precon_matrix.coeffRef(row,col) = element;
-            }
-            else if( row == col)
+            if (std::abs(element) >= m_threshold || row == col)
             {
                 m_precon_matrix.coeffRef(row,col) = element;
             }

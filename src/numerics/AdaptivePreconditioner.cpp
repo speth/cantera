@@ -221,7 +221,22 @@ namespace Cantera
         }
     }
 
-    void AdaptivePreconditioner::SpeciesSpeciesDerivatives(IdealGasConstPressureMoleReactor* reactor, double* N)
+    void AdaptivePreconditioner::reactorLevelSetup(IdealGasMoleReactor* reactor, double t, double* N, double* Ndot, double* params)
+    {
+        // strictly positive composition
+        std::vector<double> NCopy(reactor->neq());
+        getStrictlyPositiveComposition(reactor->neq(), N, NCopy.data());
+        reactor->updateState(NCopy.data());
+        // Species Derivatives
+        SpeciesSpeciesDerivatives(reactor, NCopy.data());
+        // Temperature Derivatives
+        if (reactor->energyEnabled())
+        {
+            TemperatureDerivatives(reactor, t, NCopy.data(), Ndot, params);
+        }
+    }
+
+    void AdaptivePreconditioner::SpeciesSpeciesDerivatives(MoleReactor* reactor, double* N)
     {
         // Getting rate constant data
         auto kinetics = reactor->getKineticsMgr();
@@ -241,7 +256,7 @@ namespace Cantera
         m_reaction_derv_mgrs[m_ri].getDerivatives(concs.data(), m_values.data() + m_sizes[m_ri], kForward.data(), kBackward.data());
     }
 
-    void AdaptivePreconditioner::TemperatureDerivatives(IdealGasConstPressureMoleReactor* reactor, double t, double* N, double* Ndot, double* params)
+    void AdaptivePreconditioner::TemperatureDerivatives(MoleReactor* reactor, double t, double* N, double* Ndot, double* params)
     {
         auto kinetics = reactor->getKineticsMgr();
         auto thermo = reactor->getThermoMgr();

@@ -355,6 +355,11 @@ cdef class IdealGasReactor(Reactor):
     reactor_type = "IdealGasReactor"
 
 
+cdef class IdealGasMoleReactor(Reactor):
+    """ A constant volume, zero-dimensional reactor for ideal gas mixtures with a mole based state vector"""
+    reactor_type = "IdealGasMoleReactor"
+
+
 cdef class IdealGasConstPressureReactor(Reactor):
     """
     A homogeneous, constant pressure, zero-dimensional reactor for ideal gas
@@ -370,6 +375,7 @@ cdef class IdealGasConstPressureMoleReactor(Reactor):
     to keep the pressure constant.
     """
     reactor_type = "IdealGasConstPressureMoleReactor"
+
 
 cdef class FlowReactor(Reactor):
     """

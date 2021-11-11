@@ -1049,6 +1049,39 @@ class TestIdealGasConstPressureMoleReactor(TestIdealGasConstPressureReactor):
         self.integrate()
 
 
+class TestIdealGasMoleReactor(TestReactor):
+    reactorClass = ct.IdealGasMoleReactor
+
+    @unittest.expectedFailure
+    def test_wall_velocity(self):
+        self.make_reactors()
+        A = 0.2
+
+        V1 = 2.0
+        V2 = 5.0
+        self.r1.volume = V1
+        self.r2.volume = V2
+
+        self.add_wall(A=A)
+
+        def v(t):
+            if 0 < t <= 1:
+                return t
+            elif 1 <= t <= 2:
+                return 2 - t
+            else:
+                return 0.0
+
+        self.w.set_velocity(v)
+        self.net.advance(1.0)
+        self.assertNear(self.w.vdot(1.0), 1.0 * A, 1e-7)
+        self.net.advance(2.0)
+        self.assertNear(self.w.vdot(2.0), 0.0, 1e-7)
+
+        self.assertNear(self.r1.volume, V1 + 1.0 * A, 1e-7)
+        self.assertNear(self.r2.volume, V2 - 1.0 * A, 1e-7)
+
+
 class TestFlowReactor(utilities.CanteraTest):
     gas_def = """
     phases:

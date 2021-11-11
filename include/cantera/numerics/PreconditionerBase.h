@@ -19,6 +19,7 @@ namespace Cantera
 class ReactorNet;
 class Reactor;
 class IdealGasConstPressureMoleReactor;
+class IdealGasMoleReactor;
 
 //! Flag to indicate preconditioner is not set
 const int PRECONDITIONER_NOT_SET = 0;
@@ -42,8 +43,8 @@ class PreconditionerBase
         //! preconditioner contained in this matrix
         //! @param ReactorNet object for integrating
         //! @param[in] t time.
-        //! @param[in] c solution vector, length neq()
-        //! @param[out] cdot rate of change of solution vector, length neq()
+        //! @param[in] N solution vector, length neq()
+        //! @param[out] Ndot rate of change of solution vector, length neq()
         //! @param[in] rhs right hand side vector used in linear system
         //! @param[out] output guess vector used by GMRES
         virtual void solve(ReactorNet* network, double *rhs_vector, double* output){
@@ -55,9 +56,9 @@ class PreconditionerBase
         //! different reactor time
         //! @param ReactorNet object for integrating
         //! @param[in] t time.
-        //! @param[in] c solution vector, length neq()
-        //! @param[out] cdot rate of change of solution vector, length neq()
-        virtual void setup(ReactorNet* network, double t, double* c, double* cdot, double gamma){
+        //! @param[in] N solution vector, length neq()
+        //! @param[out] Ndot rate of change of solution vector, length neq()
+        virtual void setup(ReactorNet* network, double t, double* N, double* Ndot, double gamma){
             throw NotImplementedError("PreconditionerBase::setup");
         };
 
@@ -95,15 +96,22 @@ class PreconditionerBase
 
         //! Function used to complete individual reactor setups
         //! @param reactor A Reactor pointer
-        virtual void reactorLevelSetup(Reactor* reactor, double t, double* c, double* cdot, double* params){
+        virtual void reactorLevelSetup(Reactor* reactor, double t, double* N, double* Ndot, double* params){
         throw NotImplementedError("PreconditionerBase-Reactor::reactorLevelSetup");
         };
 
         //! Function used to complete individual reactor setups
         //! @param reactor A IdealGasConstPressureMoleReactor pointer
         //! @param reactorStart an size_t providing the index location in which the state of the given reactor starts
-        virtual void reactorLevelSetup(IdealGasConstPressureMoleReactor* reactor, double t, double* c, double* cdot, double* params){
+        virtual void reactorLevelSetup(IdealGasConstPressureMoleReactor* reactor, double t, double* N, double* Ndot, double* params){
         throw NotImplementedError("PreconditionerBase-IdealGasConstPressureMoleReactor::reactorLevelSetup");
+        };
+
+        //! Function used to complete individual reactor setups
+        //! @param reactor A IdealGasConstPressureMoleReactor pointer
+        //! @param reactorStart an size_t providing the index location in which the state of the given reactor starts
+        virtual void reactorLevelSetup(IdealGasMoleReactor* reactor, double t, double* N, double* Ndot, double* params){
+        throw NotImplementedError("PreconditionerBase-IdealGasMoleReactor::reactorLevelSetup");
         };
 
         //! Function used to set dimensions of the preconditioner

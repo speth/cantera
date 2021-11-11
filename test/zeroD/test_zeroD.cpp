@@ -4,6 +4,7 @@
 #include "cantera/thermo.h"
 #include "cantera/kinetics.h"
 #include "cantera/zerodim.h"
+#include "cantera/numerics/AdaptivePreconditioner.h"
 
 using namespace Cantera;
 
@@ -84,7 +85,116 @@ TEST(ZeroDim, test_get_thermo_from_reactor)
     EXPECT_EQ(thermo1->pressure(), thermo2->pressure());
 }
 
-TEST(MoleReactor, test_mole_reactor_get_state)
+TEST(MoleReactorTestSet, test_preconditioned_ideal_const_vol)
+{
+    // Reactor 1
+    auto sol1 = newSolution("h2o2.yaml");
+    sol1->thermo()->setState_TPX(1100.0, 10 * OneAtm, "H2:1.0, O2:0.5, AR:8.0");
+    IdealGasMoleReactor r1;
+    r1.insert(sol1);
+    // Reactor 2
+    auto sol2 = newSolution("h2o2.yaml");
+    sol2->thermo()->setState_TPX(1100.0, 10 * OneAtm, "H2:1.0, O2:0.5, AR:8.0");
+    IdealGasMoleReactor r2;
+    r2.insert(sol2);
+    // Network 1
+    ReactorNet net1;
+    net1.addReactor(r1);
+    AdaptivePreconditioner precon;
+    net1.setIntegratorType(&precon, GMRES);
+    net1.initialize();
+    // Network 2
+    ReactorNet net2;
+    net2.addReactor(r2);
+    net2.setIntegratorType(GMRES);
+    net2.initialize();
+    // Advancing
+    net1.advance(0.5);
+    net2.advance(0.5);
+    // Comparison
+    std::vector<double> state1(r1.neq(), 0.0);
+    std::vector<double> state2(r2.neq(), 0.0);
+    for (size_t i = 0; i < r1.neq(); i++)
+    {
+        EXPECT_NEAR(state1[i], state2[i], net1.atol());
+    }
+}
+
+TEST(MoleReactorTestSet, test_preconditioned_ideal_const_pressure)
+{
+    // Reactor 1
+    auto sol1 = newSolution("h2o2.yaml");
+    sol1->thermo()->setState_TPX(1100.0, 10 * OneAtm, "H2:1.0, O2:0.5, AR:8.0");
+    IdealGasConstPressureMoleReactor r1;
+    r1.insert(sol1);
+    // Reactor 2
+    auto sol2 = newSolution("h2o2.yaml");
+    sol2->thermo()->setState_TPX(1100.0, 10 * OneAtm, "H2:1.0, O2:0.5, AR:8.0");
+    IdealGasConstPressureMoleReactor r2;
+    r2.insert(sol2);
+    // Network 1
+    ReactorNet net1;
+    net1.addReactor(r1);
+    AdaptivePreconditioner precon;
+    net1.setIntegratorType(&precon, GMRES);
+    net1.initialize();
+    // Network 2
+    ReactorNet net2;
+    net2.addReactor(r2);
+    net2.setIntegratorType(GMRES);
+    net2.initialize();
+    // Advancing
+    net1.advance(0.5);
+    net2.advance(0.5);
+    // Comparison
+    std::vector<double> state1(r1.neq(), 0.0);
+    std::vector<double> state2(r2.neq(), 0.0);
+    for (size_t i = 0; i < r1.neq(); i++)
+    {
+        EXPECT_NEAR(state1[i], state2[i], net1.atol());
+    }
+}
+
+TEST(MoleReactorTestSet, test_preconditioned_ideal_network_integrations)
+{
+    // Network 1
+    auto sol1 = newSolution("h2o2.yaml");
+    sol1->thermo()->setState_TPX(1100.0, 10 * OneAtm, "H2:1.0, O2:0.5, AR:8.0");
+    IdealGasMoleReactor r1;
+    IdealGasConstPressureMoleReactor r2;
+    r1.insert(sol1);
+    r2.insert(sol1);
+    ReactorNet net1;
+    net1.addReactor(r1);
+    net1.addReactor(r2);
+    AdaptivePreconditioner precon;
+    net1.setIntegratorType(&precon, GMRES);
+    net1.initialize();
+    // Network 2
+    ReactorNet net2;
+    auto sol2 = newSolution("h2o2.yaml");
+    sol2->thermo()->setState_TPX(1100.0, 10 * OneAtm, "H2:1.0, O2:0.5, AR:8.0");
+    IdealGasMoleReactor r3;
+    IdealGasConstPressureMoleReactor r4;
+    r3.insert(sol1);
+    r4.insert(sol1);
+    net2.addReactor(r3);
+    net2.addReactor(r4);
+    net2.setIntegratorType(GMRES);
+    net2.initialize();
+    // Advancing
+    net1.advance(0.1);
+    net2.advance(0.1);
+    // Comparison
+    std::vector<double> state1(net1.neq(), 0.0);
+    std::vector<double> state2(net2.neq(), 0.0);
+    for (size_t i = 0; i < net1.neq(); i++)
+    {
+        EXPECT_NEAR(state1[i], state2[i], net1.atol());
+    }
+}
+
+TEST(MoleReactorTestSet, test_mole_reactor_get_state)
 {
     // Setting up solution object and thermo/kinetics pointers
     auto sol = newSolution("h2o2.yaml");
@@ -98,7 +208,6 @@ TEST(MoleReactor, test_mole_reactor_get_state)
     std::vector<double> updatedState(reactor.neq());
     // test get state
     auto thermo = reactor.getThermoMgr();
-    const double* Y = thermo->massFractions();
     const std::vector<double>& imw = thermo->inverseMolecularWeights();
     // prescribed state
     double mass = reactor.volume() * thermo->density();

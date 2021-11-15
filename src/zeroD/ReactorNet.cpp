@@ -9,6 +9,7 @@
 #include "cantera/base/utilities.h"
 #include "cantera/base/Array.h"
 #include "cantera/numerics/Integrator.h"
+#include "cantera/kinetics/ReactionDerivativeManager.h"
 
 using namespace std;
 
@@ -89,6 +90,7 @@ void ReactorNet::setSensitivityTolerances(double rtol, double atol)
 void ReactorNet::initialize()
 {
     m_nv = 0;
+    m_sparsity_percentage = 0.0;
     debuglog("Initializing reactor network.\n", m_verbose);
     if (m_reactors.empty()) {
         throw CanteraError("ReactorNet::initialize",
@@ -421,6 +423,42 @@ int ReactorNet::getNumNonlinIters()
 int ReactorNet::getNumLinIters()
 {
     return m_integ->getLinSolvIters();
+}
+
+double ReactorNet::getSparsityPercentage()
+{
+    if (m_init)
+    {
+        if (m_preconditioner != nullptr)
+        {
+            m_sparsity_percentage = m_preconditioner->getSparsityPercentage();
+        }
+        else if (m_sparsity_percentage == 0.0)
+        {
+            size_t nonzero_elements = 0;
+            size_t total_elements = m_nv * m_nv;
+            for (size_t i = 0; i < m_reactors.size(); i++)
+            {
+                std::string rtype = m_reactors[i]->typeStr();
+                if (rtype.find("Mole") != std::string::npos)
+                {
+                    ReactionDerivativeManager reaction_derv_mgr;
+                    reaction_derv_mgr.initialize(m_reactors[i]);
+                    nonzero_elements += reaction_derv_mgr.getNumNonzeros();
+                }
+                else
+                {
+                    nonzero_elements += m_reactors[i]->neq() * m_reactors[i]->neq();
+                }
+            }
+            m_sparsity_percentage = 1 - ((double) nonzero_elements) / ((double) total_elements);
+        }
+        return m_sparsity_percentage;
+    }
+    else
+    {
+        throw CanteraError("ReactorNet::getSparsityPercentage", "ReactorNet must first be initialized before obtaining sparsity percentages");
+    }
 }
 
 }

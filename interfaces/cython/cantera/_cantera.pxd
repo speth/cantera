@@ -760,6 +760,26 @@ cdef extern from "cantera/equil/MultiPhase.h" namespace "Cantera":
         double volume() except +translate_exception
 
 
+cdef extern from "cantera/numerics/PreconditionerBase.h" namespace "Cantera":
+    cdef cppclass CxxPreconditionerBase "Cantera::PreconditionerBase":
+        CxxPreconditionerBase()
+
+cdef extern from "cantera/numerics/AdaptivePreconditioner.h" namespace "Cantera":
+    cdef cppclass CxxAdaptivePreconditioner "Cantera::AdaptivePreconditioner" (CxxPreconditionerBase):
+        CxxAdaptivePreconditioner() except +
+        double getThreshold()
+        void setThreshold(double threshold)
+        void printPreconditioner()
+
+cdef extern from "cantera/numerics/PreconditionerFactory.h" namespace "Cantera":
+    cdef CxxPreconditionerBase* newPreconditioner(string) except +translate_exception
+
+cdef class PreconditionerBase:
+    cdef CxxPreconditionerBase* pbase
+
+cdef class AdaptivePreconditioner(PreconditionerBase):
+    cdef CxxAdaptivePreconditioner* preconditioner
+
 cdef extern from "cantera/zerodim.h" namespace "Cantera":
 
     cdef cppclass CxxWall "Cantera::Wall"
@@ -878,20 +898,6 @@ cdef extern from "cantera/zerodim.h" namespace "Cantera":
         void setPressureCoeff(double)
         void setMaster(CxxFlowDevice*)
 
-    # preconditioners
-
-    cdef extern from "cantera/numerics/PreconditionerBase.h" namespace "Cantera":
-        cdef cppclass CxxPreconditionerBase "Cantera::PreconditionerBase":
-            CxxPreconditionerBase()
-
-    cdef extern from "cantera/numerics/AdaptivePreconditioner.h" namespace "Cantera":
-        cdef cppclass CxxAdaptivePreconditioner "Cantera::AdaptivePreconditioner" (CxxPreconditionerBase):
-            CxxAdaptivePreconditioner() except +
-            double threshold
-            double getThreshold()
-            void setThreshold(double threshold)
-            void printPreconditioner()
-
     # reactor net
 
     cdef cppclass CxxReactorNet "Cantera::ReactorNet":
@@ -932,6 +938,7 @@ cdef extern from "cantera/zerodim.h" namespace "Cantera":
         int integratorType)
         int getNumNonlinIters()
         int getNumLinIters()
+        double getSparsityPercentage()
 
 
 cdef extern from "cantera/thermo/ThermoFactory.h" namespace "Cantera":

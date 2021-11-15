@@ -1,32 +1,25 @@
 cdef class PreconditionerBase:
-    cdef CxxPreconditionerBase * c_prec_base  # hold instance of preconditioner
+    """
+    Common base class for reactors and reservoirs.
+    """
+    precon_type = "PreconditionerBase"
+    def __cinit__(self, *args, **kwargs):
+        self.pbase = newPreconditioner(stringify(self.precon_type))
 
-    def __cinit__(self):
-        self.c_prec_base = new CxxPreconditionerBase()
-
-    def __del__(self):
-        del self.c_prec_base
-
-    def addToNetwork(self, ReactorNet network, int integratorType=16):
-        network.net.setIntegratorType(self.c_prec_base, integratorType)
+    def __dealloc__(self):
+        del self.pbase
 
 cdef class AdaptivePreconditioner(PreconditionerBase):
-    cdef CxxAdaptivePreconditioner * c_adapt_prec  # instance of preconditioner
+    precon_type = "AdaptivePreconditioner"
 
-    def __cinit__(self):
-        self.c_adapt_prec = new CxxAdaptivePreconditioner()
-
-    def __del__(self):
-        del self.c_adapt_prec
+    def __cinit__(self, *args, **kwargs):
+        self.preconditioner = <CxxAdaptivePreconditioner*>(self.pbase)
 
     def getThreshold(self):
-        return self.c_adapt_prec.getThreshold()
+        return self.preconditioner.getThreshold()
 
     def setThreshold(self, val):
-        self.c_adapt_prec.setThreshold(val)
-
-    def addToNetwork(self, ReactorNet network, int integratorType=16):
-        network.net.setIntegratorType(self.c_adapt_prec, integratorType)
+        self.preconditioner.setThreshold(val)
 
     def printContents(self):
-        self.c_adapt_prec.printPreconditioner()
+        self.preconditioner.printPreconditioner()

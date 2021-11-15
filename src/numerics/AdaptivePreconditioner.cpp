@@ -178,6 +178,8 @@ namespace Cantera
         m_identity.resize(m_dimensions[0], m_dimensions[1]);
         m_identity.setIdentity();
         m_identity.makeCompressed();
+        // Update initialized status
+        m_init = true;
     }
 
     void AdaptivePreconditioner::setup(ReactorNet* network, double t, double* N, double* Ndot, double gamma)

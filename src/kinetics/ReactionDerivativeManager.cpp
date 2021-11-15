@@ -130,3 +130,8 @@ void ReactionDerivativeManager::printDerivativeContributions(Reactor* reactor, d
         m_reaction_derivatives[i].__printDerivative(reactor, rateConst, state, derivatives);
     }
 }
+
+size_t ReactionDerivativeManager::getNumNonzeros()
+{
+    return m_reaction_derivatives.size();
+}

@@ -195,7 +195,12 @@ class AdaptivePreconditioner : public PreconditionerBase
         double getPerturbationConst(){return m_perturb;};
 
         //! Use this function to get the ratio of nonzero preconditioner elements to the maximum number of elements
-        double getSparsityPercentage(){return 1.0 - m_precon_matrix.nonZeros()/m_nnz;};
+        double getSparsityPercentage()
+        {
+            size_t totalElements = m_dimensions[0] * m_dimensions[0];
+            size_t p_nnz = (m_precon_matrix.nonZeros() > 0) ? m_precon_matrix.nonZeros() : m_nnz;
+            return 1.0 - p_nnz/totalElements;
+        };
 
         //! Use this function to get a strictly positive composition
         void getStrictlyPositiveComposition(size_t vlen, double* in, double* out)

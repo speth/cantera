@@ -33,6 +33,8 @@ class PreconditionerBase
         //! @param m_gamma gamma value used in M = I - gamma*J
         double m_gamma = 1.0;
 
+        //! @param m_init bool saying whether or not the preconditioner is initialized
+        bool m_init = false;
     public:
         PreconditionerBase(/* args */){}
         ~PreconditionerBase(){}
@@ -129,6 +131,18 @@ class PreconditionerBase
         std::vector<size_t>* getDimensions()
         {
             return &(this->m_dimensions);
+        }
+
+        //! Print preconditioner contents
+        virtual inline void printPreconditioner()
+        {
+            throw NotImplementedError("PreconditionerBase::printPreconditioner");
+        }
+
+        //! Get sparsity percentage of system based on preconditioner
+        virtual double getSparsityPercentage()
+        {
+            throw NotImplementedError("PreconditionerBase::getSparsityPercentage");
         }
 };
 

@@ -1045,7 +1045,7 @@ class TestIdealGasConstPressureMoleReactor(TestIdealGasConstPressureReactor):
         self.create_reactors()
         self.precon = ct.AdaptivePreconditioner()
         self.precon.setThreshold(1e-8)
-        self.precon.addToNetwork(self.net2)
+        self.net2.set_integrator_type(ct.gmres, self.precon)
         self.integrate()
 
 

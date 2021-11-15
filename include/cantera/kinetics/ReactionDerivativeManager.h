@@ -108,6 +108,7 @@ public:
     ReactionDerivativeManager(){};
     ~ReactionDerivativeManager(){};
     void initialize(Reactor* reactor);
+    size_t getNumNonzeros();
     void getDerivatives(double* state, double* derivatives, double* kFwd, double* kRev);
     void getDerivativeIndices(std::vector<int>* indexVector);
     void remapDerivativeIndices(std::unordered_map<int, int>* indexMap);

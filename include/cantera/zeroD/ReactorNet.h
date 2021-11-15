@@ -59,6 +59,9 @@ public:
     //!     const int BAND = 32;
     void setIntegratorType(PreconditionerBase* preconditioner, int integratorType=GMRES);
 
+    //! Get a measure of jacobian sparsity
+    double getSparsityPercentage();
+
     //! Set initial time. Default = 0.0 s. Restarts integration from this time
     //! using the current mixture state as the initial condition.
     void setInitialTime(double time);
@@ -337,6 +340,9 @@ protected:
     vector_fp m_ydot;
     vector_fp m_yest;
     vector_fp m_advancelimits;
+
+    //! Measurement of system sparsity percentage
+    double m_sparsity_percentage;
 };
 }
 

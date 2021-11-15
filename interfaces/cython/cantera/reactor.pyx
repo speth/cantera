@@ -1302,11 +1302,17 @@ cdef class ReactorNet:
     def __copy__(self):
         raise NotImplementedError('ReactorNet object is not copyable')
 
-    def setIntegratorType(self, int integratorType):
-        self.net.setIntegratorType(integratorType)
+    def set_integrator_type(self, int integratorType, PreconditionerBase precon=None):
+        if precon is not None:
+            self.net.setIntegratorType(precon.pbase, integratorType)
+        else:
+            self.net.setIntegratorType(integratorType)
 
-    def getNumNonlinIterations(self):
+    def get_num_nonlin_iters(self):
         return self.net.getNumNonlinIters()
 
-    def getNumLinIterations(self):
+    def get_num_lin_iters(self):
         return self.net.getNumLinIters()
+
+    def get_sparsity_percentage(self):
+        return self.net.getSparsityPercentage()

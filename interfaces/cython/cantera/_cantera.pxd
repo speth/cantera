@@ -759,7 +759,6 @@ cdef extern from "cantera/equil/MultiPhase.h" namespace "Cantera":
         double cp() except +translate_exception
         double volume() except +translate_exception
 
-
 cdef extern from "cantera/numerics/PreconditionerBase.h" namespace "Cantera":
     cdef cppclass CxxPreconditionerBase "Cantera::PreconditionerBase":
         CxxPreconditionerBase()
@@ -779,6 +778,14 @@ cdef class PreconditionerBase:
 
 cdef class AdaptivePreconditioner(PreconditionerBase):
     cdef CxxAdaptivePreconditioner* preconditioner
+
+cdef extern from "cantera/numerics/Integrator.h" namespace "Cantera":
+    cdef const int CxxDIAG "Cantera::DIAG"
+    cdef const int CxxDENSE "Cantera::DENSE"
+    cdef const int CxxNOJAC "Cantera::NOJAC"
+    cdef const int CxxJAC "Cantera::JAC"
+    cdef const int CxxGMRES "Cantera::GMRES"
+    cdef const int CxxBAND "Cantera::BAND"
 
 cdef extern from "cantera/zerodim.h" namespace "Cantera":
 
@@ -933,13 +940,11 @@ cdef extern from "cantera/zerodim.h" namespace "Cantera":
         double sensitivity(string&, size_t, int) except +translate_exception
         size_t nparams()
         string sensitivityParameterName(size_t) except +translate_exception
-        void setIntegratorType(int integratorType)
-        void setIntegratorType(CxxPreconditionerBase* preconditioner,
-        int integratorType)
+        void setProblemType(int integratorType)
+        void setPreconditioner(CxxPreconditionerBase& preconditioner)
         int getNumNonlinIters()
         int getNumLinIters()
         double getSparsityPercentage()
-
 
 cdef extern from "cantera/thermo/ThermoFactory.h" namespace "Cantera":
     cdef CxxThermoPhase* newPhase(string, string) except +translate_exception

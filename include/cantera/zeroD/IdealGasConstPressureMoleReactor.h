@@ -1,49 +1,76 @@
-//! @file ConstPressureReactor.h
+//! @file IdealGasConstPressureMoleReactor.h
 
-// This file is part of Cantera. See License.txt in the top-level directory or
-// at https://cantera.org/license.txt for license and copyright information.
+// This file is part of Cantera. See License.txt in the top-level
+// directory or at https://cantera.org/license.txt for license and
+// copyright information.
 
 #ifndef CT_IDEALGASCONSTPRESSMOLE_REACTOR_H
 #define CT_IDEALGASCONSTPRESSMOLE_REACTOR_H
 
-#include "MoleReactor.h"
+#include "cantera/zeroD/MoleReactor.h"
 
 namespace Cantera
 {
 
-/**
- * Class ConstPressureReactor is a class for constant-pressure reactors. The
- * reactor may have an arbitrary number of inlets and outlets, each of which may
- * be connected to a "flow device" such as a mass flow controller, a pressure
- * regulator, etc. Additional reactors may be connected to the other end of the
- * flow device, allowing construction of arbitrary reactor networks.
+/*!
+ * IdealGasConstPressureMoleReactor is a class for ideal gas
+ * constant-pressure reactors which use a state of moles. The reactor
+ * may have an arbitrary number of inlets and outlets, each of which may
+ * be connected to a "flow device" such as a mass flow controller, a
+ * pressure regulator, etc. Additional reactors may be connected to the
+ * other end of the flow device, allowing construction of arbitrary
+ * reactor networks.
  */
 class IdealGasConstPressureMoleReactor : public MoleReactor
 {
 public:
-    IdealGasConstPressureMoleReactor() {}
+    IdealGasConstPressureMoleReactor(){};
 
+    //! Deprecated function for returning type as a string
     virtual std::string typeStr() const {
         warn_deprecated("IdealGasConstPressureMoleReactor::typeStr",
                         "To be removed after Cantera 2.6. Use type() instead.");
         return "IdealGasConstPressureMoleReactor";
-    }
+    };
+
+    //! Use this function to return a string of reactor type
     virtual std::string type() const {
         return "IdealGasConstPressureMoleReactor";
-    }
+    };
+
+    //! Use this function to set the thermo manager of this reactor
     virtual void setThermoMgr(ThermoPhase& thermo);
+
+    //! Use this function to get the state in moles
     virtual void getState(double* N);
+
+    //! Use this function to initialize the reactor
     virtual void initialize(double t0 = 0.0);
-    virtual void evalEqs(double t, double* N,
-                         double* Ndot, double* params);
+
+    //! Right hand side function used to integrate by CVODES
+    //! @param t current time of the simulation
+    //! @param N state vector in moles
+    //! @param Ndot derivative vector in moles per second
+    //! @param params sensitivity parameters
+    virtual void evalEqs(double t, double* N, double* Ndot, double* params);
+
     //! Use to update state vector N
     virtual void updateState(double* N);
 
-    virtual void acceptPreconditioner(PreconditionerBase *preconditioner, double t, double* N, double* Ndot, double* params);
+    //! Use this function to precondition the supplied preconditioner
+    //! with state variable related derivatives. It can be overloaded
+    //! for multiple derivative types.
+    //! @param preconditioner the preconditioner being used by cvodes
+    //! @param t current time of the simulation
+    //! @param N state vector in moles
+    //! @param Ndot derivative vector in moles per second
+    //! @param params sensitivity parameters
+    virtual void StateDerivatives(AdaptivePreconditioner& preconditioner, double t, double* N, double* Ndot, double* params);
 
 protected:
-    std::vector<double> m_hk; //!< Species molar enthalpies
+    vector_fp m_hk; //!< Species molar enthalpies
 };
+
 }
 
 #endif

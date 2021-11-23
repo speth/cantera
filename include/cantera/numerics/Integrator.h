@@ -28,6 +28,18 @@ const int PRECONDITION = 64;
 
 /**
  * Specifies the method used to integrate the system of equations.
+ * Not all methods are supported by all integrators. This matches the sundials
+ * enumeration but is not defined as such because this is the abstract integrator class.
+ */
+enum PreconditionerType {
+    NO_PRECONDITION, //! No preconditioning
+    LEFT_PRECONDITION, //! Left side preconditioning
+    RIGHT_PRECONDITION, //! Right side preconditioning
+    BOTH_PRECONDITION //! Left and right side preconditioning
+};
+
+/**
+ * Specifies the method used to integrate the system of equations.
  * Not all methods are supported by all integrators.
  */
 enum MethodType {
@@ -95,6 +107,14 @@ public:
      */
     virtual void setProblemType(int probtype) {
         warn("setProblemType");
+    }
+
+    //! Set the preconditioner type.
+    /*!
+     * @param prectype    Type of the problem
+     */
+    virtual void setPreconditionerType(PreconditionerType prectype) {
+        warn("setPreconditionerType");
     }
 
     /**
@@ -220,12 +240,14 @@ public:
         return 0.0;
     }
 
+    //! Use this to get nonlinear iterations from the integrator
     virtual int getNonlinSolvIters() const
     {
         warn("getNonlinSolvIters");
         return 0;
     }
 
+    //! Use this to get linear iterators from the integrator
     virtual int getLinSolvIters() const
     {
         warn("getNonlinSolvIters");

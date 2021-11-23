@@ -15,11 +15,11 @@ cdef class AdaptivePreconditioner(PreconditionerBase):
     def __cinit__(self, *args, **kwargs):
         self.preconditioner = <CxxAdaptivePreconditioner*>(self.pbase)
 
-    def getThreshold(self):
+    def get_threshold(self):
         return self.preconditioner.getThreshold()
 
-    def setThreshold(self, val):
+    def set_threshold(self, val):
         self.preconditioner.setThreshold(val)
 
-    def printContents(self):
+    def print_contents(self):
         self.preconditioner.printPreconditioner()

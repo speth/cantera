@@ -35,31 +35,22 @@ public:
     //! @name Methods to set up a simulation.
     //! @{
 
-
-    //! Set the type of integrator to be used
-    //! @param integratorType type of integrator used, default: DENSE+NOJAC
-    //! Integrator Types:
+    //! Set the type of linear solver used in the integration.
+    //! @param probtype type of linear solver. Default type: DENSE + NOJAC.
+    //! Other options:
     //!     const int DIAG = 1;
     //!    const int DENSE = 2;
     //!     const int NOJAC = 4;
     //!     const int JAC = 8;
     //!     const int GMRES = 16;
     //!     const int BAND = 32;
-    void setIntegratorType(int integratorType=DENSE+NOJAC);
+    void setProblemType(int probtype = DENSE + NOJAC);
 
-    //! Set the type of integrator to be used
-    //! @param integratorType type of integrator used, default: GMRES
-    //! @param preconditioner a preconditioner object to be used
-    //! Integrator Types:
-    //!     const int DIAG = 1;
-    //!    const int DENSE = 2;
-    //!     const int NOJAC = 4;
-    //!     const int JAC = 8;
-    //!     const int GMRES = 16;
-    //!     const int BAND = 32;
-    void setIntegratorType(PreconditionerBase* preconditioner, int integratorType=GMRES);
+    //! Set preconditioner used by the linear solver
+    //! @param preconditioner preconditioner object used for the linear solver
+    void setPreconditioner(PreconditionerBase& preconditioner);
 
-    //! Get a measure of jacobian sparsity
+    //! Use this to get a measure of jacobian sparsity
     double getSparsityPercentage();
 
     //! Set initial time. Default = 0.0 s. Restarts integration from this time
@@ -143,6 +134,9 @@ public:
         return *m_reactors[n];
     }
 
+    //! Return the start of the ith reactor in the state
+    size_t reactor_start(int i){return m_start[i];};
+
     //! Returns `true` if verbose logging output is enabled.
     bool verbose() const {
         return m_verbose;
@@ -206,6 +200,11 @@ public:
     virtual size_t neq() {
         return m_nv;
     }
+
+    virtual size_t nreactors() {
+        return m_reactors.size();
+    }
+
     virtual void eval(doublereal t, doublereal* y,
                       doublereal* ydot, doublereal* p);
 
@@ -281,24 +280,28 @@ public:
     //! Retrieve absolute step size limits during advance
     bool getAdvanceLimits(double* limits);
 
-    //!  Evaluate the setup processes for the Jacobian preconditioner.
+    //!  Evaluate the setup processes for the preconditioner.
     //! @param[in] t time.
     //! @param[in] y solution vector, length neq()
     //! @param[out] ydot rate of change of solution vector, length neq()
+    //! @param[in] params sensitivity parameters
     //! @param gamma the gamma in M=I-gamma*J
-    void preconditionerSetup(double t, double* y, double* ydot, double gamma);
+    virtual void preconditionerSetup(double t, double* y, double* ydot, double* params, double gamma);
 
-    //! Evaluate the system using a Jacobian preconditioner. Called by the integrator.
+    //! Evaluate the preconditioned linear system used by the nonlinear
+    //! integrator.
     //! @param[in] t time.
     //! @param[in] y solution vector, length neq()
     //! @param[out] ydot rate of change of solution vector, length neq()
     //! @param[in] rhs right hand side vector used in linear system
     //! @param[out] output guess vector used by GMRES
-    void preconditionerSolve(double t, double* y, double* ydot, double* rhs, double* output);
+    virtual void preconditionerSolve(double t, double* y, double* ydot, double* rhs, double* output){m_preconditioner->solve(m_nv, rhs, output);}
 
-    int getNumNonlinIters();
+    //! Use this to get the number of nonlinear iterations from cvodes
+    int getNumNonlinIters(){return m_integ->getNonlinSolvIters();};
 
-    int getNumLinIters();
+    //! Use this to get the number of linear iterations from cvodes
+    int getNumLinIters(){return m_integ->getLinSolvIters();};
 
 protected:
     //! Make AdaptivePreconditioner able to access internal elements

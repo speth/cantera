@@ -65,9 +65,20 @@ public:
     }
     virtual double sensitivity(size_t k, size_t p);
 
+    //! Use this to get the number of iterations performed by the nonlinear solver
     virtual int getNonlinSolvIters() const;
 
+    //! Use this to get the number of iterations performed by the linear solver
     virtual int getLinSolvIters() const;
+
+    //! Use this function to throw an error if preconditioning is specified with an
+    //! invalid problem type
+    virtual void preconditionerError();
+
+    //! Use this to set the preconditioner type used by the integrator
+    virtual void setPreconditionerType(PreconditionerType prectype) {
+        m_prec_type = prectype;
+    }
 
     //! Returns a string listing the weighted error estimates associated
     //! with each solution component.
@@ -95,6 +106,7 @@ private:
     N_Vector m_y, m_abstol;
     N_Vector m_dky;
     int m_type;
+    int m_prec_type;
     int m_itol;
     int m_method;
     int m_maxord;

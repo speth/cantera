@@ -1044,13 +1044,41 @@ class TestIdealGasConstPressureMoleReactor(TestIdealGasConstPressureReactor):
     def test_preconditioned_integration(self):
         self.create_reactors()
         self.precon = ct.AdaptivePreconditioner()
-        self.precon.setThreshold(1e-8)
-        self.net2.set_integrator_type(ct.gmres, self.precon)
+        self.precon.set_threshold(1e-8)
+        self.net2.problem_type = "GMRES"
+        self.net2.preconditioner = self.precon
         self.integrate()
 
 
 class TestIdealGasMoleReactor(TestReactor):
     reactorClass = ct.IdealGasMoleReactor
+
+    def test_preconditioned_integration(self):
+        # Network one with non-mole reactor
+        net1 = ct.ReactorNet()
+        gas1 = ct.Solution('h2o2.yaml', transport_model=None)
+        gas1.TP = 300, ct.one_atm
+        gas1.set_equivalence_ratio(1, "H2", "O2:1, N2:3.76")
+        r1 = ct.IdealGasReactor(gas1)
+        net1.add_reactor(r1)
+        # Network two with mole reactor and preconditioner
+        net2 = ct.ReactorNet()
+        gas2 = ct.Solution('h2o2.yaml', transport_model=None)
+        gas2.TP = 300, ct.one_atm
+        gas2.set_equivalence_ratio(1, "H2", "O2:1, N2:3.76")
+        r2 = ct.IdealGasMoleReactor(gas2)
+        net2.add_reactor(r2)
+        # add preconditioner
+        precon = ct.AdaptivePreconditioner()
+        net2.problem_type = "GMRES"
+        net2.preconditioner = precon
+        # integrate
+        net1.advance(1.0)
+        net2.advance(1.0)
+        self.assertNear(r1.T, r2.T)
+        self.assertNear(r1.thermo.density, r2.thermo.density)
+        self.assertNear(r1.thermo.P, r1.thermo.P)
+        self.assertArrayNear(r1.thermo.X, r1.thermo.X)
 
     @unittest.expectedFailure
     def test_wall_velocity(self):

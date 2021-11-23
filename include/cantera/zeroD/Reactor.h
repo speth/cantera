@@ -12,7 +12,10 @@
 namespace Cantera
 {
 
+//! Forward Declaration
+class ReactionDerivativeManager;
 class Solution;
+class AdaptivePreconditioner;
 
 /**
  * Class Reactor is a general-purpose class for stirred reactors. The reactor
@@ -165,11 +168,55 @@ public:
     //! @param limit value for step size limit
     void setAdvanceLimit(const std::string& nm, const double limit);
 
-    //!This is a function to accept a preconditioner and perform an action based on reactor type.
-    //!@param preconditioner a preconditioner base subclass for preconditioning the system
-    //!@param reactorStart start of the reactor within the network
-    //!@param t, @param c, @param cdot, @param params double pointers used in integration
-    virtual void acceptPreconditioner(PreconditionerBase *preconditioner, double t, double* c, double* cdot, double* params);
+    //! This is a function to setup an associated portion of the
+    //! preconditioner for this reactor and is part of the visitor
+    //! design pattern.
+    //! @param preconditioner the preconditioner being used by cvodes
+    //! @param t current time of the simulation
+    //! @param N state vector in moles
+    //! @param Ndot derivative vector in moles per second
+    //! @param params sensitivity parameters
+    virtual void preconditionerSetup(PreconditionerBase& preconditioner, double t, double* N, double* Ndot, double* params)
+    {
+        throw NotImplementedError("Reactor::preconditionerSetup");
+    }
+
+    //! This function is the next level of preconditioner setup used in
+    //! the visitor design pattern. This is necessary for determining
+    //! specific types of both the reactor and preconditioner object
+    //! @param preconditioner the preconditioner being used by cvodes
+    //! @param t current time of the simulation
+    //! @param N state vector in moles
+    //! @param Ndot derivative vector in moles per second
+    //! @param params sensitivity parameters
+    virtual void reactorPreconditionerSetup(PreconditionerBase& preconditioner, double t, double* N, double* Ndot, double* params)
+    {
+        throw NotImplementedError("Reactor::reactorPreconditionerSetup");
+    }
+
+    //! This function is the next level of preconditioner setup used in
+    //! the visitor design pattern. This is necessary for determining
+    //! specific types of both the reactor and preconditioner object
+    //! @param preconditioner the preconditioner being used by cvodes
+    //! @param t current time of the simulation
+    //! @param N state vector in moles
+    //! @param Ndot derivative vector in moles per second
+    //! @param params sensitivity parameters
+    virtual void reactorPreconditionerSetup(AdaptivePreconditioner& preconditioner, double t, double* N, double* Ndot, double* params)
+    {
+        throw NotImplementedError("Reactor::reactorPreconditionerSetup");
+    }
+
+    //! Return the associated ReactionDerivativeManager object
+    virtual ReactionDerivativeManager& reaction_derivative_manager() {throw NotImplementedError("Reactor::reaction_derivative_manager");};
+
+    //! Return species start in state
+    virtual size_t species_start() {
+        throw NotImplementedError("Reactor::species_start");};
+
+    //! Return the number of nonzero jacobian elements
+    virtual size_t nonzero_jacobian_elements() {
+        return m_nv * m_nv;};
 
 protected:
     //! Set reaction rate multipliers based on the sensitivity variables in

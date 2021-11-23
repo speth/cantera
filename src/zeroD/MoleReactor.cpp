@@ -1,7 +1,9 @@
-//! @file IdealGasConstPressureMoleReactor.cpp A constant pressure zero-dimensional reactor
+//! @file MoleReactor.cpp A zero-dimensional reactor with a moles as the
+//! state
 
-// This file is part of Cantera. See License.txt in the top-level directory or
-// at https://cantera.org/license.txt for license and copyright information.
+// This file is part of Cantera. See License.txt in the top-level
+// directory or at https://cantera.org/license.txt for license and
+// copyright information.
 
 #include "cantera/zeroD/MoleReactor.h"
 #include "cantera/zeroD/FlowDevice.h"
@@ -36,6 +38,7 @@ void MoleReactor::initialize(double t0)
 {
     Reactor::initialize(t0);
     m_nv -= 2; // moles gives the state one fewer variables
+    m_reaction_derivative_mgr.initialize(*this);
 }
 
 void MoleReactor::updateSurfaceState(double* N)
@@ -113,9 +116,46 @@ std::string MoleReactor::componentName(size_t k) {
                        "Index is out of bounds.");
 }
 
-void MoleReactor::acceptPreconditioner(PreconditionerBase *preconditioner, double t, double* N, double* Ndot, double* params)
+void MoleReactor::reactorPreconditionerSetup(AdaptivePreconditioner& preconditioner, double t, double* N, double* Ndot, double* params)
 {
-    preconditioner->reactorLevelSetup(this, t, N, Ndot, params);
+    // strictly positive composition
+    vector_fp NCopy(m_nv);
+    preconditioner.getStrictlyPositiveComposition(m_nv, N, NCopy.data());
+    updateState(NCopy.data());
+    // species derivatives
+    SpeciesSpeciesDerivatives(preconditioner, NCopy.data());
+    // state derivatives
+    if (m_energy)
+    {
+        StateDerivatives(preconditioner, t, NCopy.data(), Ndot, params);
+    }
+}
+
+void MoleReactor::SpeciesSpeciesDerivatives(AdaptivePreconditioner& preconditioner, double* N)
+{
+    // getting rate constant data
+    size_t numberOfReactions = m_kin->nReactions();
+    std::vector<double> kForward (numberOfReactions, 0.0);
+    std::vector<double> kBackward (numberOfReactions, 0.0);
+    m_kin->getFwdRateConstants(kForward.data());
+    m_kin->getRevRateConstants(kBackward.data());
+    m_kin->thirdbodyConcMultiply(kForward.data());
+    m_kin->thirdbodyConcMultiply(kBackward.data());
+    // getting concentrations for derivatives
+    std::vector<double> concs(m_nv, 0.0);
+    m_thermo->getConcentrations(concs.data() + m_sidx);
+    // scale by volume for molar derivative
+    scale(kForward.begin(), kForward.end(), kForward.begin(), 1/m_vol);
+    scale(kBackward.begin(), kBackward.end(), kBackward.begin(), 1/m_vol);
+    // calculating derivatives with reaction manager
+    double* derivatives = preconditioner.m_values.data() +  preconditioner.m_sizes[preconditioner.m_ctr];
+    m_reaction_derivative_mgr.getDerivatives(concs.data(), derivatives, kForward.data(), kBackward.data());
+}
+
+size_t MoleReactor::nonzero_jacobian_elements()
+{
+    size_t nonzeros = 2 * m_sidx * m_nv - m_sidx;
+    return nonzeros + m_reaction_derivative_mgr.getNumNonzeros();
 }
 
 }

@@ -1,29 +1,34 @@
+/**
+ * @file ReactionDerivativeManager.h this file contains classes used in
+ *  determining rate of progress derivatives and is currently
+ *  implemented through the reactor system.
+ */
+
+// This file is part of Cantera. See License.txt in the top-level
+// directory or at https://cantera.org/license.txt for license and
+// copyright information.
+
 #ifndef REACTION_DERIVATIVE_MANAGER_H
 #define REACTION_DERIVATIVE_MANAGER_H
 
-#include "cantera/zerodim.h"
-#include "cantera/kinetics.h"
+
+#include "cantera/kinetics/Kinetics.h"
 #include <vector>
 #include <unordered_map>
 #include <utility>
+#include "cantera/base/ct_defs.h"
 
 namespace Cantera
 {
-
+//! Forward Declarations
+class Reactor;
+//! ReactionDerivative represents a single derivative associated with
+//! each chemical reaction. These derivatives are managed by the
+//! ReactionDerivativeManager class
 class ReactionDerivative
 {
-protected:
-    // first element is always the independent variable
-    std::vector<size_t> m_indices;
-    std::vector<double> m_coeffs;
-    size_t m_didx; // derivative index
-    bool m_rev; // uses reverse reaction rate or not
-    size_t m_rxn; // reaction idx
-    double m_multiplier;
-
 public:
-    ReactionDerivative(size_t compLen, size_t dervIdx, size_t reactIdx, size_t* indices, double* coeffs, bool rev, double multiplier)
-    {
+    ReactionDerivative(size_t compLen, size_t dervIdx, size_t reactIdx, size_t* indices, double* coeffs, bool rev, double multiplier){
         m_rev = rev;
         m_rxn = reactIdx;
         m_didx = dervIdx;
@@ -37,10 +42,9 @@ public:
         }
     };
     ~ReactionDerivative(){};
-
-    // Get derivatives
-    inline virtual void __getDerivative(double rateConst, double * state, double* derivatives)
-    {
+    //! Use this function to get the value of the derivative written to
+    //! a buffer
+    virtual void getDerivative(double rateConst, double * state, double* derivatives){
         double derv = m_multiplier * rateConst * std::pow(state[m_indices[0]], m_coeffs[0]-1);
         for (size_t i = 1; i < m_indices.size(); i++)
         {
@@ -48,92 +52,85 @@ public:
         }
         derivatives[m_didx] += derv;
     };
-
-    // Get derivatives
-    inline virtual void __printDerivative(Reactor* reactor, double rateConst, double* state, double* derivatives)
-    {
-        std::cout<<"-------ReactionDerivative-------"<<std::endl;
-        std::cout<<"m_rxn: "<<m_rxn<<std::endl;
-        std::cout<<"m_multiplier: "<<m_multiplier<<std::endl;
-        std::cout<<"rate constant:"<<rateConst<<std::endl;
-        std::string kstr = m_rev ? "kr" : "kf";
-        std::cout << m_multiplier * m_coeffs[0] << kstr << "_" << m_rxn;
-
-        if (m_coeffs[0]-1 != 0)
-        {
-            std::cout<<"[" << reactor->componentName(m_indices[0]) << "]^" << "(" << m_coeffs[0]-1 << ")";
-        }
-
-        for (size_t i = 1; i < m_indices.size(); i++)
-        {
-            std::cout << "[" << reactor->componentName(m_indices[i]) << "]^" << "(" << m_coeffs[i]<<")";
-        }
-        std::cout<<std::endl;
-    };
-
-    inline size_t __reactionNumber(){return m_rxn;};
-
-    inline bool __isRev(){return m_rev;};
-
-    inline size_t __getDerivativeIndex(){return m_didx;};
-
-    inline void __setDerivativeIndex(size_t nidx){m_didx = nidx;};
-
-    inline void __ones(double* derivatives){derivatives[m_didx] = 1;};
+    //! Use this function to get the associated reaction number
+    size_t reactionNumber(){return m_rxn;};
+    //! Use this function to determine if the associated reaction is
+    //! reversible
+    bool isRev(){return m_rev;};
+    //! Use this function to get the index of the derivative
+    size_t getDerivativeIndex(){return m_didx;};
+    //! Use this function to remap the index of the derivative
+    void setDerivativeIndex(size_t nidx){m_didx = nidx;};
+protected:
+    // first element is always the independent variable
+    std::vector<size_t> m_indices;
+    // coefficients used in derivatives
+    std::vector<double> m_coeffs;
+    size_t m_didx; // derivative index
+    bool m_rev; // uses reverse reaction rate or not
+    size_t m_rxn; // reaction idx
+    double m_multiplier;
 };
-
+//! ReactionOneDerivative is a ReactionDerivative with purely ones for
+//! coefficients. This makes the calculation of the derivatives more
+//! efficient.
 class ReactionOneDerivative : public ReactionDerivative
 {
 public:
-    ReactionOneDerivative(size_t compLen, size_t dervIdx, size_t reactIdx, size_t* indices, double* coeffs, bool rev, double multiplier) : ReactionDerivative(compLen, dervIdx, reactIdx, indices, coeffs, rev, multiplier){};
+    using ReactionDerivative::ReactionDerivative;
     ~ReactionOneDerivative(){};
-    // Get derivatives
-    inline void __getDerivative(double rateConst, double * state, double* derivatives)
-    {
+    //! Use this function to get the value of the derivative written to
+    //! a buffer
+    void getDerivative(double rateConst, double * state, double* derivatives){
         double derv = m_multiplier * rateConst;
         for (size_t i = 1; i < m_indices.size(); i++)
         {
             derv *= state[m_indices[i]];
         }
         derivatives[m_didx] += derv;
-    }
+    };
 };
-
+//! Use this class to manager and interface with all reaction
+//! derivatives associated with a mechanism or reactor.
 class ReactionDerivativeManager
 {
-private:
-    std::vector<ReactionDerivative> m_reaction_derivatives;
-    size_t m_column_size;
 public:
     ReactionDerivativeManager(){};
     ~ReactionDerivativeManager(){};
-    void initialize(Reactor* reactor);
+    //! Use this to generate all reaction derivatives
+    void initialize(Reactor& reactor);
+    //! Use this to return the number of nonzero derivatives
     size_t getNumNonzeros();
+    //! Use this function to obtain all derivatives writting to the
+    //! derivatives buffer
     void getDerivatives(double* state, double* derivatives, double* kFwd, double* kRev);
-    void getDerivativeIndices(std::vector<int>* indexVector);
-    void remapDerivativeIndices(std::unordered_map<int, int>* indexMap);
+    //! Use this function to obtain all derivative indices
+    void getDerivativeIndices(vector_int* indexVector);
+    //! Use this function to remap derivative indices based on the given
+    //! indexMap
+    void remapDerivativeIndices(std::unordered_map<int, int>* indexMap, bool warnRemapped=true);
+    //! Use this function to reset this object which requires
+    //! reinitialization
+    void reset();
+    //! Check if this object has been initialized
+    bool isInit(){return !m_init;};
+protected:
+    //! Adds a ReactionDerivative element to vector
     void addDerivative(bool isOne, size_t compLen, size_t dervIdx, size_t reactIdx, size_t* indices, double* coeffs, bool rev, double multiplier);
+    //! Checks reaction for all ones as coefficients
     bool checkOneCoeffs(Composition currComp);
-    void derivativeLoop(size_t nReaction, Reactor* reactor, Composition* c1, Composition* c2, Composition* c3, bool isOne, bool rev);
-    void printDerivativeContributions(Reactor* reactor, double* state, double* derivatives, double* kFwd, double* kRev);
-
-    // Debugging function to print indices
-    inline void printIndices()
-    {
-        for (size_t i = 0; i < m_reaction_derivatives.size(); i++)
-        {
-            std::cout<<m_reaction_derivatives[i].__getDerivativeIndex()<<std::endl;
-        }
-    }
-
-    // Debugging function to set ones
-    inline void setOnes(double* derivatives)
-    {
-        for (size_t i = 0; i < m_reaction_derivatives.size(); i++)
-        {
-            m_reaction_derivatives[i].__ones(derivatives);
-        }
-    }
+    //! Loop to go through all reactions
+    void derivativeLoop(size_t nReaction, Reactor& reactor, Composition* c1, Composition* c2, Composition* c3, bool isOne, bool rev);
+    //! Vector storing all reaction derivatives
+    std::vector<ReactionDerivative> m_reaction_derivatives;
+    //! Jacobian species dimensions
+    size_t m_column_size;
+    //! Says whether object needs initialized or not
+    bool m_init = true;
+    //! Says whether object has been remapped or not
+    bool m_remapped = true;
+    //! Number of nonzero elements
+    size_t m_nnz = 0;
 };
 
 }

@@ -50,22 +50,3 @@ permeability_0 = CxxPermeability_0
 
 #: Permittivity of free space (Farads/m = C^2/N/m^2)
 epsilon_0 = CxxEpsilon_0
-
-
-cdef extern from "cantera/numerics/Integrator.h" namespace "Cantera":
-    cdef const int CxxDIAG "Cantera::DIAG"
-    cdef const int CxxDENSE "Cantera::DENSE"
-    cdef const int CxxNOJAC "Cantera::NOJAC"
-    cdef const int CxxJAC "Cantera::JAC"
-    cdef const int CxxGMRES "Cantera::GMRES"
-    cdef const int CxxBAND "Cantera::BAND"
-    cdef const int CxxPRECONDITION "Cantera::PRECONDITION"
-
-# solver constants for setting network integrator type
-diag = CxxDIAG
-dense = CxxDENSE
-nojac = CxxNOJAC
-jac = CxxJAC
-gmres = CxxGMRES
-band = CxxBAND
-precondition = CxxPRECONDITION

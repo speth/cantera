@@ -585,7 +585,7 @@ public:
     //! @}
 
     //! Get the state in moles
-    virtual std::vector<double> getMoles(double vol) const;
+    virtual vector_fp getMoles(double vol) const;
 
     //! Set the state of the object with moles in [kmol]
     virtual void setMolesNoNorm(const double* const N);

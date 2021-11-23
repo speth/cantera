@@ -36,17 +36,6 @@ ReactorNet::~ReactorNet()
 {
 }
 
-void ReactorNet::setIntegratorType(int integratorType)
-{
-    m_integ->setProblemType(integratorType);
-}
-
-void ReactorNet::setIntegratorType(PreconditionerBase* preconditioner, int integratorType)
-{
-    m_preconditioner=preconditioner;
-    m_integ->setProblemType(integratorType+PRECONDITION);
-}
-
 void ReactorNet::setInitialTime(double time)
 {
     m_time = time;
@@ -130,7 +119,7 @@ void ReactorNet::initialize()
     // Initialize preconditioner if it isn't null
     if (m_preconditioner != nullptr)
     {
-        m_preconditioner->initialize(this);
+        m_preconditioner->initialize(*this);
     }
     m_integ->initialize(m_time, *this);
     m_integrator_init = true;
@@ -142,10 +131,28 @@ void ReactorNet::reinitialize()
     if (m_init) {
         debuglog("Re-initializing reactor network.\n", m_verbose);
         m_integ->reinitialize(m_time, *this);
+        if (m_preconditioner != nullptr)
+        {
+            m_preconditioner->initialize(*this);
+        }
+        m_sparsity_percentage = 0;
         m_integrator_init = true;
     } else {
         initialize();
     }
+}
+
+void ReactorNet::setProblemType(int probtype)
+{
+    m_integ->setProblemType(probtype);
+    m_integrator_init = false;
+}
+
+void ReactorNet::setPreconditioner(PreconditionerBase& preconditioner)
+{
+    m_preconditioner=&preconditioner;
+    m_integ->setPreconditionerType(m_preconditioner->getPreconditionerType());
+    m_integrator_init = false;
 }
 
 void ReactorNet::setMaxSteps(int nmax)
@@ -403,55 +410,39 @@ size_t ReactorNet::registerSensitivityParameter(
     return m_sens_params.size() - 1;
 }
 
-void ReactorNet::preconditionerSetup(double t, double* y,
-                      double* ydot, double gamma)
+void ReactorNet::preconditionerSetup(double t, double* N,
+                      double* Ndot, double* params, double gamma)
 {
-    m_preconditioner->setup(this, t, y, ydot, gamma);
-}
-
-void ReactorNet::preconditionerSolve(double t, double* y,
-                      double* ydot, double* rhs, double* output)
-{
-    m_preconditioner->solve(this, rhs, output);
-}
-
-int ReactorNet::getNumNonlinIters()
-{
-    return m_integ->getNonlinSolvIters();
-}
-
-int ReactorNet::getNumLinIters()
-{
-    return m_integ->getLinSolvIters();
+    // Reset preconditioner
+    m_preconditioner->reset();
+    // Set gamma value for M =I - gamma*J
+    m_preconditioner->setGamma(gamma);
+    for (size_t i = 0; i < m_reactors.size(); i++)
+    {
+        m_preconditioner->m_ctr = i;
+        m_reactors[i]->preconditionerSetup(*m_preconditioner, t, N + m_start[i], Ndot + m_start[i], params);
+    }
+    // post reactor setup operations
+    m_preconditioner->setup();
 }
 
 double ReactorNet::getSparsityPercentage()
 {
     if (m_init)
-    {
+    {   // get sparsity percentage from preconditioner if it is not null
         if (m_preconditioner != nullptr)
         {
             m_sparsity_percentage = m_preconditioner->getSparsityPercentage();
         }
         else if (m_sparsity_percentage == 0.0)
-        {
+        {   // loop through reactors for sparisty percentage instead if it is not set
             size_t nonzero_elements = 0;
             size_t total_elements = m_nv * m_nv;
             for (size_t i = 0; i < m_reactors.size(); i++)
             {
-                std::string rtype = m_reactors[i]->typeStr();
-                if (rtype.find("Mole") != std::string::npos)
-                {
-                    ReactionDerivativeManager reaction_derv_mgr;
-                    reaction_derv_mgr.initialize(m_reactors[i]);
-                    nonzero_elements += reaction_derv_mgr.getNumNonzeros();
-                }
-                else
-                {
-                    nonzero_elements += m_reactors[i]->neq() * m_reactors[i]->neq();
-                }
+                nonzero_elements += m_reactors[i]->nonzero_jacobian_elements();
             }
-            m_sparsity_percentage = 1 - ((double) nonzero_elements) / ((double) total_elements);
+            m_sparsity_percentage = 1.0 - ((double) nonzero_elements) / ((double) total_elements);
         }
         return m_sparsity_percentage;
     }

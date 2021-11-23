@@ -644,9 +644,9 @@ void Phase::setConcentrationsNoNorm(const double* const conc)
     compositionChanged();
 }
 
-std::vector<double> Phase::getMoles(double vol) const
+vector_fp Phase::getMoles(double vol) const
 {
-    std::vector<double> moles(m_kk);
+    vector_fp moles(m_kk);
     getConcentrations(moles.data());
     scale(moles.begin(), moles.end(), moles.begin(), vol);
     return moles;

@@ -50,7 +50,7 @@ namespace Cantera
 {
 
 extern "C" {
-    /**
+    /*!
      * Function called by cvodes to evaluate ydot given y.  The CVODE integrator
      * allows passing in a void* pointer to access external data. This pointer
      * is cast to a pointer to a instance of class FuncEval. The equations to be
@@ -84,13 +84,13 @@ extern "C" {
                 if(!jok)
                 {
                     FuncEval* f = (FuncEval*) f_data;
-                    (*jcurPtr)=true; // Jacobian data was recomputed
+                    (*jcurPtr)=true; // jacobian data was recomputed
                     return f->preconditioner_setup_nothrow(t, NV_DATA_S(y), NV_DATA_S(ydot), gamma);
                 }
                 else
                 {
                     (*jcurPtr)=false; // indicates that Jacobian data was not recomputed
-                    return 0; // No error because not recomputed
+                    return 0; // no error because not recomputed
                 }
         }
 
@@ -116,6 +116,7 @@ CVodesIntegrator::CVodesIntegrator() :
     m_abstol(0),
     m_dky(0),
     m_type(DENSE+NOJAC),
+    m_prec_type(NO_PRECONDITION),
     m_itol(CV_SS),
     m_method(CV_BDF),
     m_maxord(0),
@@ -417,36 +418,40 @@ void CVodesIntegrator::applyOptions()
                 CVDense(m_cvode_mem, N);
             #endif
         #endif
+        preconditionerError();
     }
     else if (m_type == DIAG) {
         CVDiag(m_cvode_mem);
+        preconditionerError();
     }
     else if (m_type == GMRES)
     {
-        #if CT_SUNDIALS_VERSION >= 30
-            # if CT_SUNDIALS_VERSION >= 40
-                m_linsol = SUNLinSol_SPGMR(m_y, PREC_NONE, 0);
-            # else
-                m_linsol = SUNSPGMR(m_y, PREC_NONE, 0);
-            #endif
-            CVSpilsSetLinearSolver(m_cvode_mem, (SUNLinearSolver) m_linsol);
-        #else
-            CVSpgmr(m_cvode_mem, PREC_NONE, 0);
-        #endif
-    }
-    else if (m_type == GMRES + PRECONDITION) // Added for adaptive preconditioner
-    {
-        #if CT_SUNDIALS_VERSION >= 40
-            m_linsol = SUNLinSol_SPGMR(m_y, PREC_LEFT, 0);
+        # if CT_SUNDIALS_VERSION >= 40
+            m_linsol = SUNLinSol_SPGMR(m_y, PREC_NONE, 0);
             CVodeSetLinearSolver(m_cvode_mem, (SUNLinearSolver) m_linsol, nullptr);
-            CVodeSetPreconditioner(m_cvode_mem, cvodes_prec_setup, cvodes_prec_solve);
+            if (m_prec_type != NO_PRECONDITION)
+            {
+                SUNLinSol_SPGMRSetPrecType((SUNLinearSolver) m_linsol, m_prec_type);
+                CVodeSetPreconditioner(m_cvode_mem, cvodes_prec_setup, cvodes_prec_solve);
+            }
         #elif CT_SUNDIALS_VERSION >= 30
-            m_linsol = SUNSPGMR(m_y, PREC_LEFT, 0);
+            m_linsol = SUNSPGMR(m_y, PREC_NONE, 0);
             CVSpilsSetLinearSolver(m_cvode_mem, (SUNLinearSolver) m_linsol);
-            CVSpilsSetPreconditioner(m_cvode_mem, cvodes_prec_setup, cvodes_prec_solve);
+            if (m_prec_type != NO_PRECONDITION)
+            {
+                SUNSPGMRSetPrecType((SUNLinearSolver) m_linsol, m_prec_type);
+                CVSpilsSetPreconditioner(m_cvode_mem, cvodes_prec_setup, cvodes_prec_solve);
+            }
         #else
-            CVSpgmr(m_cvode_mem, PREC_LEFT, 0);
-            CVSpilsSetPreconditioner(m_cvode_mem, cvodes_prec_setup, cvodes_prec_solve);
+            if (m_prec_type != NO_PRECONDITION)
+            {
+                CVSpgmr(m_cvode_mem, m_prec_type, 0);
+                CVSpilsSetPreconditioner(m_cvode_mem, cvodes_prec_setup, cvodes_prec_solve);
+            }
+            else
+            {
+                CVSpgmr(m_cvode_mem, PREC_NONE, 0);
+            }
         #endif
     }
     else if (m_type == BAND + NOJAC) {
@@ -587,6 +592,14 @@ int CVodesIntegrator::getLinSolvIters() const
         throw CanteraError("CVodesIntegrator::getLinSolvIters", "Function not supported with sundials versions less than 4.");
     #endif
     return numIters;
+}
+
+void CVodesIntegrator::preconditionerError()
+{
+    if (m_prec_type!=NO_PRECONDITION)
+    {
+        throw CanteraError("CVodesIntegrator::applyOptions", "Preconditioning is not available with the specified problem type.");
+    }
 }
 
 double CVodesIntegrator::sensitivity(size_t k, size_t p)

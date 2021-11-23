@@ -1302,11 +1302,24 @@ cdef class ReactorNet:
     def __copy__(self):
         raise NotImplementedError('ReactorNet object is not copyable')
 
-    def set_integrator_type(self, int integratorType, PreconditionerBase precon=None):
-        if precon is not None:
-            self.net.setIntegratorType(precon.pbase, integratorType)
-        else:
-            self.net.setIntegratorType(integratorType)
+    property preconditioner:
+        """Associated preconditioner"""
+        def __set__(self, PreconditionerBase precon):
+            self.net.setPreconditioner(deref(precon.pbase))
+
+    property problem_type:
+        """Associated problem type"""
+        def __set__(self, problem_type):
+            if (problem_type == "GMRES"):
+                self.net.setProblemType(CxxGMRES)
+            elif (problem_type == "DIAG"):
+                self.net.setProblemType(CxxDIAG)
+            elif (problem_type == "BAND + NOJAC"):
+                self.net.setProblemType(CxxBAND + CxxNOJAC)
+            else:
+                self.net.setProblemType(CxxDENSE + CxxNOJAC)
+                if (problem_type != "DENSE + NOJAC"):
+                    warnings.warn("Problem type not found, set to \"DENSE + NOJAC\"")
 
     def get_num_nonlin_iters(self):
         return self.net.getNumNonlinIters()

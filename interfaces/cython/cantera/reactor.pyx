@@ -472,10 +472,6 @@ cdef class DelegatedReactor(Reactor):
     delegatable_methods = {
         'initialize': ('initialize', 'void(double)'),
         'sync_state': ('syncState', 'void()'),
-        'get_state': ('getState', 'void(double*)'),
-        'update_state': ('updateState', 'void(double*)'),
-        'update_surface_state': ('updateSurfaceState', 'void(double*)'),
-        'get_surface_initial_condition': ('getSurfaceInitialCondition', 'void(double*)'),
         'update_connected': ('updateConnected', 'void(bool)'),
         'eval': ('eval', 'void(double, double*)'),
         'eval_walls': ('evalWalls', 'void(double)'),
@@ -490,6 +486,26 @@ cdef class DelegatedReactor(Reactor):
 
     def __init__(self, *args, **kwargs):
         assign_delegates(self, dynamic_cast[CxxDelegatorPtr](self.rbase))
+
+        cdef CxxDelegatedIdealGasReactorPtr delegator
+        delegator = dynamic_cast[CxxDelegatedIdealGasReactorPtr](self.rbase)
+        cdef string cxx_when
+        for when in ['before', 'after', 'replace']:
+            cxx_when = stringify(when)
+            if hasattr(self, f"{when}_get_state"):
+                method = getattr(self, f"{when}_get_state")
+                pyOverride(<PyObject*>method, callback_v_dp)
+                delegator.setGetState(pyOverride(<PyObject*>method, callback_v_dp), cxx_when)
+            if hasattr(self, f"{when}_update_state"):
+                method = getattr(self, f"{when}_update_state")
+                delegator.setUpdateState(pyOverride(<PyObject*>method, callback_v_dp), cxx_when)
+            if hasattr(self, f"{when}_update_surface_state"):
+                method = getattr(self, f"{when}_update_surface_state")
+                delegator.setUpdateSurfaceState(pyOverride(<PyObject*>method, callback_v_dp), cxx_when)
+            if hasattr(self, f"{when}_get_surface_initial_condition"):
+                method = getattr(self, f"{when}_get_surface_initial_condition")
+                delegator.setGetSurfaceInitialConditions(pyOverride(<PyObject*>method, callback_v_dp), cxx_when)
+
         super().__init__(*args, **kwargs)
 
     property n_vars:

@@ -194,7 +194,6 @@ cdef extern from "cantera/base/Delegator.h" namespace "Cantera":
         void setDelegate(string&, function[void()], string&) except +translate_exception
         void setDelegate(string&, function[void(cbool)], string&) except +translate_exception
         void setDelegate(string&, function[void(double)], string&) except +translate_exception
-        void setDelegate(string&, function[void(size_array1, double*)], string&) except +translate_exception
         void setDelegate(string&, function[void(size_array1, double, double*)], string&) except +translate_exception
         void setDelegate(string&, function[int(double&, size_array1, double, double*)], string&) except +translate_exception
         void setDelegate(string&, function[int(string&, size_t)], string&) except +translate_exception
@@ -923,6 +922,14 @@ cdef extern from "cantera/zeroD/ReactorDelegator.h" namespace "Cantera":
         void setQdot(double)
         void restoreThermoState() except +translate_exception
         void restoreSurfaceState(size_t) except +translate_exception
+
+    cdef cppclass CxxDelegatedIdealGasReactor "Cantera::DelegatedIdealGasReactor" (CxxDelegator):
+        void setGetState(function[void(size_array1, double*)], string&) except +translate_exception
+        void setUpdateState(function[void(size_array1, double*)], string&) except +translate_exception
+        void setUpdateSurfaceState(function[void(size_array1, double*)], string&) except +translate_exception
+        void setGetSurfaceInitialConditions(function[void(size_array1, double*)], string&) except +translate_exception
+
+ctypedef CxxDelegatedIdealGasReactor* CxxDelegatedIdealGasReactorPtr
 
 ctypedef CxxReactorAccessor* CxxReactorAccessorPtr
 

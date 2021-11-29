@@ -158,9 +158,6 @@ cdef void assign_delegates(obj, CxxDelegator* delegator):
         if callback == 'void(double)':
             delegator.setDelegate(cxx_name,
                 pyOverride(<PyObject*>method, callback_v_d), cxx_when)
-        if callback == 'void(double*)':
-            delegator.setDelegate(cxx_name,
-                pyOverride(<PyObject*>method, callback_v_dp), cxx_when)
         if callback == 'void(bool)':
             delegator.setDelegate(cxx_name,
                 pyOverride(<PyObject*>method, callback_v_b), cxx_when)

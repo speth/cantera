@@ -10,6 +10,7 @@
 #include "cantera/base/Delegator.h"
 #include "cantera/zeroD/ReactorSurface.h"
 #include "cantera/thermo/SurfPhase.h"
+#include "IdealGasReactor.h"
 
 namespace Cantera
 {
@@ -130,57 +131,59 @@ public:
         }
     }
 
-    // For functions with the signature void(double*)
-    virtual void setDelegate(
-        const std::string& name,
-        const std::function<void(std::array<size_t, 1>, double*)>& func,
-        const std::string& when) override
+    void setGetState(const std::function<void(std::array<size_t, 1>, double*)>& func,
+                     const std::string& when)
     {
-        if (name == "getState") {
-            m_getState = makeDelegate<1>(func,
-                [this]() {
-                    return std::array<size_t, 1>{R::neq()};
-                },
-                when,
-                [this](double* y) {
-                    R::getState(y);
-                }
-            );
-        } else if (name == "updateState") {
-            m_updateState = makeDelegate<1>(func,
-                [this]() {
-                    return std::array<size_t, 1>{R::neq()};
-                },
-                when,
-                [this](double* y) {
-                    R::updateState(y);
-                }
-            );
-        } else if (name == "updateSurfaceState") {
-            m_updateSurfaceState = makeDelegate<1>(func,
-                [this]() {
-                    return std::array<size_t, 1>{R::m_nv_surf};
-                },
-                when,
-                [this](double* y) {
-                    R::updateSurfaceState(y);
-                }
-            );
-        } else if (name == "getSurfaceInitialConditions") {
-            m_getSurfaceInitialConditions = makeDelegate<1>(func,
-                [this]() {
-                    return std::array<size_t, 1>{R::m_nv_surf};
-                },
-                when,
-                [this](double* y) {
-                    R::getSurfaceInitialConditions(y);
-                }
-            );
-        } else {
-            throw NotImplementedError("ReactorDelegator::setDelegate",
-                "For function named '{}' with signature"
-                " void(array<size_t, 1>, double*)", name);
-        }
+        m_getState = makeDelegate<1>(func,
+            [this]() {
+                return std::array<size_t, 1>{R::neq()};
+            },
+            when,
+            [this](double* y) {
+                R::getState(y);
+            }
+        );
+    }
+
+    void setUpdateState(const std::function<void(std::array<size_t, 1>, double*)>& func,
+                     const std::string& when)
+    {
+        m_updateState = makeDelegate<1>(func,
+            [this]() {
+                return std::array<size_t, 1>{R::neq()};
+            },
+            when,
+            [this](double* y) {
+                R::updateState(y);
+            }
+        );
+    }
+
+    void setUpdateSurfaceState(const std::function<void(std::array<size_t, 1>, double*)>& func,
+                     const std::string& when)
+    {
+        m_updateSurfaceState = makeDelegate<1>(func,
+            [this]() {
+                return std::array<size_t, 1>{R::m_nv_surf};
+            },
+            when,
+            [this](double* y) {
+                R::updateSurfaceState(y);
+            }
+        );
+    }
+    void setGetSurfaceInitialConditions(const std::function<void(std::array<size_t, 1>, double*)>& func,
+                     const std::string& when)
+    {
+        m_getSurfaceInitialConditions = makeDelegate<1>(func,
+            [this]() {
+                return std::array<size_t, 1>{R::m_nv_surf};
+            },
+            when,
+            [this](double* y) {
+                R::getSurfaceInitialConditions(y);
+            }
+        );
     }
 
     // For functions with the signature void(double, double*)
@@ -376,6 +379,8 @@ private:
     std::function<size_t(const std::string&)> m_componentIndex;
     std::function<size_t(const std::string&)> m_speciesIndex;
 };
+
+typedef ReactorDelegator<IdealGasReactor> DelegatedIdealGasReactor;
 
 }
 #endif

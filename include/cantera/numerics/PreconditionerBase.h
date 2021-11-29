@@ -73,24 +73,6 @@ public:
         throw NotImplementedError("PreconditionerBase::initialize");
     };
 
-    //! Function used to set a specific element of the matrix
-    //! structure
-    //! @param row size_t specifying the row location
-    //! @param col size_t specifying the column location
-    //! @param element double value to be inserted into matrix
-    //! structure
-    virtual void setElement(size_t row, size_t col, double element){
-        throw NotImplementedError("PreconditionerBase::setElement");
-    };
-
-    //! Function used to get a specific element of the matrix
-    //! structure
-    //! @param row size_t specifying the row location
-    //! @param col size_t specifying the column location
-    virtual double getElement(size_t row, size_t col){
-        throw NotImplementedError("PreconditionerBase::getElement");
-    };
-
     //! Print preconditioner contents
     virtual void printPreconditioner(){
         throw NotImplementedError("PreconditionerBase::printPreconditioner");

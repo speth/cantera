@@ -107,12 +107,6 @@ public:
         return jacobian;
     };
 
-    //! Function used to get a specific element of the preconditioner
-    //! matrix
-    //! @param row size_t specifying the row location
-    //! @param col size_t specifying the column location
-    double getElement(size_t row, size_t col){return m_precon_matrix.coeffRef(row, col);};
-
     //! Function used to return pointer to preconditioner matrix
     Eigen::SparseMatrix<double>* getMatrix(){return &(m_precon_matrix);};
 
@@ -128,7 +122,7 @@ public:
     double getSparsityPercentage(){
         size_t totalElements = m_dimensions[0] * m_dimensions[0];
         size_t p_nnz = (m_precon_matrix.nonZeros() > 0) ? m_precon_matrix.nonZeros() : m_nnz;
-        return 1.0 - p_nnz/totalElements;
+        return 1.0 - ((double) p_nnz)/((double) totalElements);
     };
 
     //! Use this function to get a strictly positive composition
@@ -136,18 +130,6 @@ public:
         for (size_t i = 0; i < vlen; i++)
         {
             out[i] = std::max(in[i], m_atol);
-        }
-    };
-
-    //! Function used to set a specific element of the preconditioner
-    //! matrix
-    //! @param row size_t specifying the row location
-    //! @param col size_t specifying the column location
-    //! @param element double value to be inserted into matrix structure
-    void setElement(size_t row, size_t col, double element){
-        if (std::abs(element) >= m_threshold || row == col)
-        {
-            m_precon_matrix.coeffRef(row,col) = element;
         }
     };
 

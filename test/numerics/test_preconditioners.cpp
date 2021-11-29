@@ -384,39 +384,9 @@ TEST(AdaptivePreconditionerTestSet, test_utilities_get_set)
     AdaptivePreconditioner precon;
     auto precon_mat = precon.getMatrix();
     precon_mat->resize(dims[0], dims[1]);
-    // Ensure all elements are zero
-    precon_mat->setZero();
     // Set threshold
     double thresh = (double) base+2;
     precon.setThreshold(thresh);
-    // Random values to put in matrix
-    std::queue<size_t> values;
-    for(size_t i=0; i<base; i++)
-    {
-        values.push(std::rand() % 100);
-        values.push(std::rand() % dims[1]);
-        values.push(std::rand() % dims[0]);
-    }
-    // Check set and get elements
-    for(size_t i=0; i<base; i++)
-    {
-        double currElement = (double) values.front();
-        values.pop();
-        size_t col = values.front();
-        values.pop();
-        size_t row = values.front();
-        values.pop();
-        precon.setElement(row, col, currElement);
-        double returnedElement = precon.getElement(row, col);
-        if(std::abs(currElement) >= thresh || row == col)
-        {
-            EXPECT_DOUBLE_EQ (returnedElement, currElement);
-        }
-        else
-        {
-            EXPECT_DOUBLE_EQ (returnedElement, 0.0);
-        }
-    }
     // Set dimensions randomly
     precon.setDimensions(&dims);
     // Get dimensions newly
@@ -443,9 +413,6 @@ TEST(PreconditionerBaseTestSet, test_preconditioner_base)
     EXPECT_THROW(precon.solve(0, nullptr, nullptr), NotImplementedError);
     EXPECT_THROW(precon.setup(), NotImplementedError);
     EXPECT_EQ(PRECONDITIONER_NOT_SET, precon.getPreconditionerMethod());
-    EXPECT_THROW(precon.initialize(network), NotImplementedError);
-    EXPECT_THROW(precon.setElement(0, 0, 0.0), NotImplementedError);
-    EXPECT_THROW(precon.getElement(0, 0), NotImplementedError);
 }
 
 TEST(PreconditionerBaseTestSet, test_funceval_precon_funcs)

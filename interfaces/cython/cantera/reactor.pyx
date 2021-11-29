@@ -487,8 +487,8 @@ cdef class DelegatedReactor(Reactor):
     def __init__(self, *args, **kwargs):
         assign_delegates(self, dynamic_cast[CxxDelegatorPtr](self.rbase))
 
-        cdef CxxDelegatedIdealGasReactorPtr delegator
-        delegator = dynamic_cast[CxxDelegatedIdealGasReactorPtr](self.rbase)
+        cdef CxxReactorDelegatorBasePtr delegator
+        delegator = dynamic_cast[CxxReactorDelegatorBasePtr](self.rbase)
         cdef string cxx_when
         for when in ['before', 'after', 'replace']:
             cxx_when = stringify(when)

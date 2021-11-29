@@ -10,7 +10,6 @@
 #include "cantera/base/Delegator.h"
 #include "cantera/zeroD/ReactorSurface.h"
 #include "cantera/thermo/SurfPhase.h"
-#include "IdealGasReactor.h"
 
 namespace Cantera
 {
@@ -49,9 +48,25 @@ public:
     virtual void restoreSurfaceState(size_t n) = 0;
 };
 
+class ReactorDelegatorBase : public Delegator
+{
+public:
+    virtual void setGetState(const std::function<void(std::array<size_t, 1>, double*)>& func,
+                             const std::string& when) = 0;
+
+    virtual void setUpdateState(const std::function<void(std::array<size_t, 1>, double*)>& func,
+                                const std::string& when) = 0;
+
+    virtual void setUpdateSurfaceState(const std::function<void(std::array<size_t, 1>, double*)>& func,
+                                       const std::string& when) = 0;
+
+    virtual void setGetSurfaceInitialConditions(const std::function<void(std::array<size_t, 1>, double*)>& func,
+                                                const std::string& when) = 0;
+};
+
 //! Delegate methods of the Reactor class to external functions
 template <class R>
-class ReactorDelegator : public Delegator, public R, public ReactorAccessor
+class ReactorDelegator : public ReactorDelegatorBase, public R, public ReactorAccessor
 {
 public:
     ReactorDelegator() {
@@ -131,8 +146,8 @@ public:
         }
     }
 
-    void setGetState(const std::function<void(std::array<size_t, 1>, double*)>& func,
-                     const std::string& when)
+    virtual void setGetState(const std::function<void(std::array<size_t, 1>, double*)>& func,
+                             const std::string& when) override
     {
         m_getState = makeDelegate<1>(func,
             [this]() {
@@ -145,8 +160,8 @@ public:
         );
     }
 
-    void setUpdateState(const std::function<void(std::array<size_t, 1>, double*)>& func,
-                     const std::string& when)
+    virtual void setUpdateState(const std::function<void(std::array<size_t, 1>, double*)>& func,
+                                const std::string& when) override
     {
         m_updateState = makeDelegate<1>(func,
             [this]() {
@@ -159,8 +174,8 @@ public:
         );
     }
 
-    void setUpdateSurfaceState(const std::function<void(std::array<size_t, 1>, double*)>& func,
-                     const std::string& when)
+    virtual void setUpdateSurfaceState(const std::function<void(std::array<size_t, 1>, double*)>& func,
+                                       const std::string& when) override
     {
         m_updateSurfaceState = makeDelegate<1>(func,
             [this]() {
@@ -172,8 +187,8 @@ public:
             }
         );
     }
-    void setGetSurfaceInitialConditions(const std::function<void(std::array<size_t, 1>, double*)>& func,
-                     const std::string& when)
+    virtual void setGetSurfaceInitialConditions(const std::function<void(std::array<size_t, 1>, double*)>& func,
+                                                const std::string& when) override
     {
         m_getSurfaceInitialConditions = makeDelegate<1>(func,
             [this]() {
@@ -379,8 +394,6 @@ private:
     std::function<size_t(const std::string&)> m_componentIndex;
     std::function<size_t(const std::string&)> m_speciesIndex;
 };
-
-typedef ReactorDelegator<IdealGasReactor> DelegatedIdealGasReactor;
 
 }
 #endif

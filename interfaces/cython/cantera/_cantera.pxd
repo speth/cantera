@@ -923,13 +923,13 @@ cdef extern from "cantera/zeroD/ReactorDelegator.h" namespace "Cantera":
         void restoreThermoState() except +translate_exception
         void restoreSurfaceState(size_t) except +translate_exception
 
-    cdef cppclass CxxDelegatedIdealGasReactor "Cantera::DelegatedIdealGasReactor" (CxxDelegator):
+    cdef cppclass CxxReactorDelegatorBase "Cantera::ReactorDelegatorBase" (CxxDelegator):
         void setGetState(function[void(size_array1, double*)], string&) except +translate_exception
         void setUpdateState(function[void(size_array1, double*)], string&) except +translate_exception
         void setUpdateSurfaceState(function[void(size_array1, double*)], string&) except +translate_exception
         void setGetSurfaceInitialConditions(function[void(size_array1, double*)], string&) except +translate_exception
 
-ctypedef CxxDelegatedIdealGasReactor* CxxDelegatedIdealGasReactorPtr
+ctypedef CxxReactorDelegatorBase* CxxReactorDelegatorBasePtr
 
 ctypedef CxxReactorAccessor* CxxReactorAccessorPtr
 

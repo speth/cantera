@@ -14,7 +14,7 @@ using namespace Cantera;
 
 void twoStepManualPrecondition(AdaptivePreconditioner& externalPrecon, MoleReactor& reactor, double* N, double* Ndot, double t=0.0, size_t loc=0)
     {
-        auto thermo = reactor.getThermoMgr();
+        const ThermoPhase& thermo = reactor.contents();
         auto kinetics = reactor.getKineticsMgr();
         double volInv = 1/reactor.volume();
         // Getting data for manual calculations
@@ -23,8 +23,8 @@ void twoStepManualPrecondition(AdaptivePreconditioner& externalPrecon, MoleReact
         vector_fp kf(numberOfReactions, 0.0);
         vector_fp kr(numberOfReactions, 0.0);
         // getting actual data
-        vector_fp C(thermo->nSpecies(), 0.0);
-        thermo->getConcentrations(C.data());
+        vector_fp C(thermo.nSpecies(), 0.0);
+        thermo.getConcentrations(C.data());
         kinetics->getFwdRateConstants(kf.data());
         kinetics->getRevRateConstants(kr.data());
         // Assign concentrations to species
@@ -246,7 +246,7 @@ TEST(AdaptivePreconditionerTestSet, test_one_step_mechanism_network)
     // Getting data for manual calculations
     vector_fp kf(kinetics->nReactions(), 0.0);
     kinetics->getFwdRateConstants(kf.data());
-    kinetics->thirdbodyConcMultiply(kf.data());
+    kinetics->processThirdBodies(kf.data());
     vector_fp C(thermo->nSpecies(), 0.0);
     thermo->getConcentrations(C.data());
     // Assign concentrations to species

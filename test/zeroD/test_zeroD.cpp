@@ -68,20 +68,6 @@ TEST(ZeroDim, test_get_reaction_from_reactor)
     EXPECT_EQ(reaction1->equation(), "CO + 0.5 O2 <=> CO2");
 }
 
-TEST(ZeroDim, test_get_thermo_from_reactor)
-{
-    // Setting up solution to insert in reactor
-    auto sol = newSolution("h2o2.yaml");
-    auto thermo1 = sol->thermo();
-    // Set up reactor object
-    Reactor reactor;
-    reactor.setThermoMgr(*thermo1);
-    // Get thermo from reactor
-    auto thermo2 = reactor.getThermoMgr();
-    // Compare two thermo objects
-    ASSERT_TRUE(thermo1.get()==thermo2);
-}
-
 TEST(MoleReactorTestSet, test_preconditioned_ideal_const_vol)
 {
     // Reactor 1
@@ -214,10 +200,10 @@ TEST(MoleReactorTestSet, test_mole_reactor_get_state)
     vector_fp state(reactor.neq());
     vector_fp updatedState(reactor.neq());
     // test get state
-    auto thermo = reactor.getThermoMgr();
-    const vector_fp& imw = thermo->inverseMolecularWeights();
+    const ThermoPhase& thermo = reactor.contents();
+    const vector_fp& imw = thermo.inverseMolecularWeights();
     // prescribed state
-    double mass = reactor.volume() * thermo->density();
+    double mass = reactor.volume() * thermo.density();
     size_t H2I = reactor.componentIndex("H2")-1;
     size_t O2I = reactor.componentIndex("O2")-1;
     double O2_Moles = imw[O2I] * 0.5 * mass;
@@ -254,7 +240,7 @@ TEST(MoleReactorTestSet, test_reinitialize_preconditioned_mole_reactors)
     r1.insert(sol1);
     r2.insert(sol1);
     // Set second reactor to different temperature
-    r2.getThermoMgr()->setState_TP(1000, OneAtm);
+    r2.contents().setState_TP(1000, OneAtm);
     r2.syncState();
     // Create network
     ReactorNet net1;
@@ -271,9 +257,9 @@ TEST(MoleReactorTestSet, test_reinitialize_preconditioned_mole_reactors)
     double T1a = r1.temperature();
     double T2a = r2.temperature();
     // Sync states
-    r1.getThermoMgr()->setState_TR(300, r1.getThermoMgr()->density());
+    r1.contents().setState_TR(300, r1.contents().density());
     r1.syncState();
-    r2.getThermoMgr()->setState_TR(1000, r2.getThermoMgr()->density());
+    r2.contents().setState_TR(1000, r2.contents().density());
     r2.syncState();
     // Compare values
     ASSERT_NEAR(r1.temperature(), 300, 1e-8);

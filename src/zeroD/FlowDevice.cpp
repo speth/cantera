@@ -77,8 +77,8 @@ double FlowDevice::outletSpeciesMolarFlowRate(size_t k)
     if (ki == npos) {
         return 0.0;
     }
-    auto thermo = m_in->getThermoMgr();
-    return m_mdot / thermo->meanMolecularWeight() * thermo->moleFraction(ki);
+    const ThermoPhase& thermo = m_in->contents();
+    return m_mdot / thermo.meanMolecularWeight() * thermo.moleFraction(ki);
 }
 
 double FlowDevice::enthalpy_mass()

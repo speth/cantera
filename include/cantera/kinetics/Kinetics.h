@@ -709,10 +709,12 @@ public:
         throw NotImplementedError("Kinetics::getFwdRateConstants");
     }
 
-    //! function added to multiply by third body concentrations
-    virtual void thirdbodyConcMultiply(double* data){
-        throw NotImplementedError("Kinetics::getFwdRateConstants");
+    //! Multiply rate with third-body collider concentrations
+    virtual void processThirdBodies(double* rop)
+    {
+        throw NotImplementedError("Kinetics::processThirdBodies");
     }
+
     /**
      * Return the reverse rate constants.
      *

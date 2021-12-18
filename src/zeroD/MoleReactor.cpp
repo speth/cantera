@@ -139,8 +139,8 @@ void MoleReactor::SpeciesSpeciesDerivatives(AdaptivePreconditioner& precondition
     std::vector<double> kBackward (numberOfReactions, 0.0);
     m_kin->getFwdRateConstants(kForward.data());
     m_kin->getRevRateConstants(kBackward.data());
-    m_kin->thirdbodyConcMultiply(kForward.data());
-    m_kin->thirdbodyConcMultiply(kBackward.data());
+    m_kin->processThirdBodies(kForward.data());
+    m_kin->processThirdBodies(kBackward.data());
     // getting concentrations for derivatives
     std::vector<double> concs(m_nv, 0.0);
     m_thermo->getConcentrations(concs.data() + m_sidx);

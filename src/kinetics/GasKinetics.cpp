@@ -241,19 +241,6 @@ void GasKinetics::updateROP()
     m_ROP_ok = true;
 }
 
-void GasKinetics::thirdbodyConcMultiply(double* data)
-{
-    // multiply ropf by enhanced 3b conc for all 3b rxns
-    if (!concm_3b_values.empty()) {
-        m_3b_concm.multiply(data, concm_3b_values.data());
-    }
-
-    // reactions involving third body
-    for (auto& index : m_multi_indices) {
-        data[index] *= m_concm[index];
-    }
-}
-
 void GasKinetics::getFwdRateConstants(double* kfwd)
 {
     processFwdRateCoefficients(m_ropf.data());

@@ -16,6 +16,8 @@
 using namespace std;
 namespace bmt = boost::math::tools;
 
+static const double fast_nan = 1.2345e300;
+
 namespace Cantera
 {
 
@@ -71,10 +73,10 @@ void RedlichKwongMFTP::setSpeciesCoeffs(const std::string& species,
         }
 
         // a_coeff_vec(0) is initialized to NaN to mark uninitialized species
-        if (isnan(a_coeff_vec(0, j + m_kk * j))) {
+        if (a_coeff_vec(0, j + m_kk * j) == fast_nan) {
             // The diagonal element of the jth species has not yet been defined.
             continue;
-        } else if (isnan(a_coeff_vec(0, j + m_kk * k))) {
+        } else if (a_coeff_vec(0, j + m_kk * k) == fast_nan) {
             // Only use the mixing rules if the off-diagonal element has not already been defined by a
             // user-specified crossFluidParameters entry:
             double a0kj = sqrt(a_coeff_vec(0, j + m_kk * j) * a0);
@@ -388,8 +390,8 @@ bool RedlichKwongMFTP::addSpecies(shared_ptr<Species> spec)
 
         // Initialize a_vec and b_vec to NaN, to screen for species with
         //     pureFluidParameters which are undefined in the input file:
-        b_vec_Curr_.push_back(NAN);
-        a_coeff_vec.resize(2, m_kk * m_kk, NAN);
+        b_vec_Curr_.push_back(fast_nan);
+        a_coeff_vec.resize(2, m_kk * m_kk, fast_nan);
 
         m_pp.push_back(0.0);
         m_coeffs_from_db.push_back(false);
@@ -412,7 +414,7 @@ void RedlichKwongMFTP::initThermoXML(XML_Node& phaseNode, const std::string& id)
         // Reset any coefficients which may have been set using values from
         // 'critical-properties.yaml' as part of non-XML initialization, so that
         // off-diagonal elements can be correctly initialized
-        a_coeff_vec.data().assign(a_coeff_vec.data().size(), NAN);
+        a_coeff_vec.data().assign(a_coeff_vec.data().size(), fast_nan);
 
         // Go get all of the coefficients and factors in the
         // activityCoefficients XML block
@@ -449,7 +451,7 @@ void RedlichKwongMFTP::initThermoXML(XML_Node& phaseNode, const std::string& id)
             size_t counter = iSpecies + m_kk * iSpecies;
 
             // If not, then search the database:
-            if (isnan(a_coeff_vec(0, counter))) {
+            if (a_coeff_vec(0, counter) == fast_nan) {
 
                 vector<double> coeffArray;
 
@@ -460,7 +462,7 @@ void RedlichKwongMFTP::initThermoXML(XML_Node& phaseNode, const std::string& id)
 
                 // Check if species was found in the database of critical properties,
                 // and assign the results
-                if (!isnan(coeffArray[0])) {
+                if (coeffArray[0] != fast_nan) {
                     //Assuming no temperature dependence (i,e a1 = 0)
                     setSpeciesCoeffs(iName, coeffArray[0], 0.0, coeffArray[1]);
                     m_coeffs_from_db[i] = true;
@@ -481,7 +483,7 @@ void RedlichKwongMFTP::initThermo()
     for (auto& item : m_species) {
         auto& data = item.second->input;
         size_t k = speciesIndex(item.first);
-        if (!isnan(a_coeff_vec(0, k + m_kk * k))) {
+        if (a_coeff_vec(0, k + m_kk * k) != fast_nan) {
             continue;
         }
         bool foundCoeffs = false;
@@ -531,7 +533,7 @@ void RedlichKwongMFTP::initThermo()
         }
 
         // Coefficients have not been populated from model-specific input
-        double Tc = NAN, Pc = NAN;
+        double Tc = fast_nan, Pc = fast_nan;
         if (data.hasKey("critical-parameters")) {
             // Use critical state information stored in the species entry to
             // calculate a and b
@@ -557,7 +559,7 @@ void RedlichKwongMFTP::initThermo()
         }
 
         // Check if critical properties were found in either location
-        if (!isnan(Tc)) {
+        if (Tc != fast_nan) {
             // Assuming no temperature dependence (i.e. a1 = 0)
             double a = omega_a * pow(GasConstant, 2) * pow(Tc, 2.5) / Pc;
             double b = omega_b * GasConstant * Tc / Pc;
@@ -615,7 +617,7 @@ vector<double> RedlichKwongMFTP::getCoeff(const std::string& iName)
     warn_deprecated("RedlichKwongMFTP::getCoeff", "To be removed after Cantera 2.6. "
                     "Use of critical-properties.yaml is integrated into initThermo() "
                     "for YAML input files.");
-    vector_fp spCoeff{NAN, NAN};
+    vector_fp spCoeff{fast_nan, fast_nan};
     AnyMap data = AnyMap::fromYamlFile("critical-properties.yaml");
     const auto& species = data["species"].asMap("name");
 
@@ -921,11 +923,11 @@ void RedlichKwongMFTP::updateMixingExpressions()
             m_a_current += a_vec_Curr_[i * m_kk + j] * moleFractions_[i] * moleFractions_[j];
         }
     }
-    if (isnan(m_b_current)) {
+    if (m_b_current == fast_nan) { // does not work
         // One or more species do not have specified coefficients.
         fmt::memory_buffer b;
         for (size_t k = 0; k < m_kk; k++) {
-            if (isnan(b_vec_Curr_[k])) {
+            if (b_vec_Curr_[k] == fast_nan) {
                 if (b.size() > 0) {
                     fmt_append(b, ", {}", speciesName(k));
                 } else {

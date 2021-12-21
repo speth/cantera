@@ -61,7 +61,7 @@ struct ReactionData
     //! assumed to be constant, like the reaction rate parameters or the number of
     //! reactions.
     virtual void invalidateCache() {
-        temperature = NAN;
+        temperature = 1.2345e300;
     }
 
     double temperature; //!< temperature
@@ -129,13 +129,13 @@ struct FalloffData : public ReactionData
     virtual void update(double T, double M) override;
 
     virtual void resize(size_t n_species, size_t n_reactions) override {
-        conc_3b.resize(n_reactions, NAN);
+        conc_3b.resize(n_reactions, 1.2345e300);
         ready = true;
     }
 
     virtual void invalidateCache() override {
         ReactionData::invalidateCache();
-        molar_density = NAN;
+        molar_density = 1.2345e300;
     }
 
     bool ready; //!< boolean indicating whether vectors are accessible
@@ -154,7 +154,7 @@ protected:
  */
 struct PlogData : public ReactionData
 {
-    PlogData() : pressure(NAN), logP(0.) {}
+    PlogData() : pressure(1.2345e300), logP(0.) {}
 
     virtual void update(double T) override;
 
@@ -168,7 +168,7 @@ struct PlogData : public ReactionData
 
     virtual void invalidateCache() override {
         ReactionData::invalidateCache();
-        pressure = NAN;
+        pressure = 1.2345e300;
     }
 
     double pressure; //!< pressure
@@ -183,7 +183,7 @@ struct PlogData : public ReactionData
  */
 struct ChebyshevData : public ReactionData
 {
-    ChebyshevData() : pressure(NAN), log10P(0.) {}
+    ChebyshevData() : pressure(1.2345e300), log10P(0.) {}
 
     virtual void update(double T) override;
 
@@ -197,7 +197,7 @@ struct ChebyshevData : public ReactionData
 
     virtual void invalidateCache() override {
         ReactionData::invalidateCache();
-        pressure = NAN;
+        pressure = 1.2345e300;
     }
 
     double pressure; //!< pressure

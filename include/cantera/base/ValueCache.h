@@ -31,8 +31,8 @@ namespace Cantera
 template <class T>
 struct CachedValue {
     CachedValue() :
-        state1(std::numeric_limits<double>::quiet_NaN()),
-        state2(std::numeric_limits<double>::quiet_NaN()),
+        state1(1.2345e300),
+        state2(1.2345e300),
         stateNum(std::numeric_limits<int>::min()),
         value(T())
     {

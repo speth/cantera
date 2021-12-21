@@ -278,6 +278,8 @@ void IdealGasPhase::_updateThermo() const
 
     // If the temperature has changed since the last time these
     // properties were computed, recompute them.
+    // writelog("IdealGasPhase::_update: checking {} versus {}: do update = {}\n",
+    //     cached.state1, tnow, cached.state1 != tnow);
     if (cached.state1 != tnow) {
         m_spthermo.update(tnow, &m_cp0_R[0], &m_h0_RT[0], &m_s0_R[0]);
         cached.state1 = tnow;

@@ -29,10 +29,10 @@ bool ArrheniusData::update(const ThermoPhase& bulk, const Kinetics& kin)
 
 BlowersMaselData::BlowersMaselData()
     : ready(false)
-    , density(NAN)
+    , density(1.2345e300)
     , m_state_mf_number(-1)
 {
-    dH.resize(1, NAN);
+    dH.resize(1, 1.2345e300);
 }
 
 void BlowersMaselData::update(double T)
@@ -69,10 +69,10 @@ bool BlowersMaselData::update(const ThermoPhase& bulk, const Kinetics& kin)
 
 FalloffData::FalloffData()
     : ready(false)
-    , molar_density(NAN)
+    , molar_density(1.2345e300)
     , m_state_mf_number(-1)
 {
-    conc_3b.resize(1, NAN);
+    conc_3b.resize(1, 1.2345e300);
 }
 
 void FalloffData::update(double T)

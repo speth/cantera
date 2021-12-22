@@ -136,6 +136,23 @@ void IdealGasConstPressureMoleReactor::evalEqs(double time, double* N,
     resetSensitivity(params);
 }
 
+void IdealGasConstPressureMoleReactor::reactorPreconditionerSetup(AdaptivePreconditioner& preconditioner, double t, double* N, double* Ndot, double* params)
+{
+    // strictly positive composition
+    vector_fp NCopy(m_nv);
+    preconditioner.getStrictlyPositiveComposition(m_nv, N, NCopy.data());
+    updateState(NCopy.data());
+    // This part handles the species terms
+    MoleReactor::SpeciesSpeciesDerivatives(preconditioner, N);
+    // state derivatives
+    if (m_energy)
+    {
+        StateDerivatives(preconditioner, t, NCopy.data(), Ndot, params);
+    }
+    // species derivatives
+    SpeciesSpeciesDerivatives(preconditioner, NCopy.data());
+}
+
 void IdealGasConstPressureMoleReactor::StateDerivatives(AdaptivePreconditioner& preconditioner, double t, double* N, double* Ndot, double* params)
 {
     // getting perturbed state for finite difference
@@ -197,8 +214,6 @@ void IdealGasConstPressureMoleReactor::StateDerivatives(AdaptivePreconditioner& 
 
 void IdealGasConstPressureMoleReactor::SpeciesSpeciesDerivatives(AdaptivePreconditioner& preconditioner, double* N)
 {
-    // This part handles the species terms
-    MoleReactor::SpeciesSpeciesDerivatives(preconditioner, N);
     // This part handles the volume terms
     double coeff = m_vol/accumulate(N, N + m_nv, 0.0);
     vector_fp additions(m_nv);

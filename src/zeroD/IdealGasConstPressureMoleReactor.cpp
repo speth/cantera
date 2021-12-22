@@ -177,6 +177,7 @@ void IdealGasConstPressureMoleReactor::StateDerivatives(AdaptivePreconditioner& 
     double CkCpkSum = 0;
     double hkwkSum = 0;
     double inverseVolume = 1/volume();
+    double cp_mole = m_thermo->cp_mole();
     for (size_t i = 0; i < m_nsp; i++)
     {
         hkwkSum += enthalpy[i] * netProductionRates[i];
@@ -190,7 +191,7 @@ void IdealGasConstPressureMoleReactor::StateDerivatives(AdaptivePreconditioner& 
             hkdwkdnjSum += enthalpy[k] * preconditioner(k+m_sidx, j + m_sidx);
         }
         // set appropriate column of preconditioner
-        preconditioner(0, j + m_sidx) = (hkdwkdnjSum * CkCpkSum - specificHeat[j] * inverseVolume * hkwkSum) / (CkCpkSum * CkCpkSum);
+        preconditioner(0, j + m_sidx) = -(hkdwkdnjSum * CkCpkSum - (specificHeat[j] - cp_mole) * inverseVolume * hkwkSum) / (CkCpkSum * CkCpkSum);
     }
 }
 

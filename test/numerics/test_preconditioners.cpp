@@ -130,7 +130,7 @@ void TwoStepMechanism(bool energy)
     }
 }
 
-TEST(AdaptivePreconditionerTestSet, test_two_step_mechanism)
+TEST(DISABLED_AdaptivePreconditionerTestSet, test_two_step_mechanism)
 {
     // testing with energy off
     TwoStepMechanism(false);
@@ -138,7 +138,7 @@ TEST(AdaptivePreconditionerTestSet, test_two_step_mechanism)
     TwoStepMechanism(true);
 }
 
-TEST(AdaptivePreconditionerTestSet, test_two_step_multitype_network)
+TEST(DISABLED_AdaptivePreconditionerTestSet, test_two_step_multitype_network)
 {
     // Constants
     double volume = 0.2;
@@ -196,7 +196,7 @@ TEST(AdaptivePreconditionerTestSet, test_two_step_multitype_network)
     }
 }
 
-TEST(AdaptivePreconditionerTestSet, test_one_step_mechanism_network)
+TEST(DISABLED_AdaptivePreconditionerTestSet, test_one_step_mechanism_network)
 {
     // Constants
     double volume = 0.2;

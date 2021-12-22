@@ -52,6 +52,14 @@ public:
         }
         derivatives[m_didx] += derv;
     };
+    //! Use this function to add to already formed derivatives
+    //! @param derivatives double ptr to sparse derivative representation
+    //! @param additions double ptr to additions that are the length of state vector.
+    //! The additions vector uses the state element to add to the derivative.
+    virtual void addToDerivative(double* derivatives, double* additions)
+    {
+        derivatives[m_didx] += additions[m_indices[0]];
+    }
     //! Use this function to get the associated reaction number
     size_t reactionNumber(){return m_rxn;};
     //! Use this function to determine if the associated reaction is
@@ -101,6 +109,8 @@ public:
     void initialize(Reactor& reactor);
     //! Use this to return the number of nonzero derivatives
     size_t getNumNonzeros();
+    //! Use this function to obtain add values in additions to derivatives
+    void addToDerivatives(double* derivatives, double* additions);
     //! Use this function to obtain all derivatives writting to the
     //! derivatives buffer
     void getDerivatives(double* state, double* derivatives, double* kFwd, double* kRev);

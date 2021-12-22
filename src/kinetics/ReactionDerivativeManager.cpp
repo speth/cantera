@@ -21,6 +21,14 @@ void ReactionDerivativeManager::getDerivatives(double* state, double* derivative
     }
 }
 
+void ReactionDerivativeManager::addToDerivatives(double* derivatives, double* additions)
+{
+    for (size_t i = 0; i < m_reaction_derivatives.size(); i++)
+    {
+        m_reaction_derivatives[i].addToDerivative(derivatives, additions);
+    }
+}
+
 void ReactionDerivativeManager::remapDerivativeIndices(std::unordered_map<int, int>* indexMap, bool warnRemapped)
 {
     if (m_remapped)

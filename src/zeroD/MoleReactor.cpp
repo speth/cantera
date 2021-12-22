@@ -144,9 +144,6 @@ void MoleReactor::SpeciesSpeciesDerivatives(AdaptivePreconditioner& precondition
     // getting concentrations for derivatives
     std::vector<double> concs(m_nv, 0.0);
     m_thermo->getConcentrations(concs.data() + m_sidx);
-    // scale by volume for molar derivative
-    scale(kForward.begin(), kForward.end(), kForward.begin(), 1/m_vol);
-    scale(kBackward.begin(), kBackward.end(), kBackward.begin(), 1/m_vol);
     // calculating derivatives with reaction manager
     double* derivatives = preconditioner.m_values.data() +  preconditioner.m_sizes[preconditioner.m_ctr];
     m_reaction_derivative_mgr.getDerivatives(concs.data(), derivatives, kForward.data(), kBackward.data());

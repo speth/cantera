@@ -66,6 +66,15 @@ public:
     //! @param Ndot derivative vector in moles per second
     //! @param params sensitivity parameters
     virtual void StateDerivatives(AdaptivePreconditioner& preconditioner, double t, double* N, double* Ndot, double* params);
+    //! Use this function to precondition the supplied preconditioner
+    //! with species variable related derivatives. It can be overloaded
+    //! for multiple derivative types.
+    //! @param preconditioner the preconditioner being used by cvodes
+    //! @param t current time of the simulation
+    //! @param N state vector in moles
+    //! @param Ndot derivative vector in moles per second
+    //! @param params sensitivity parameters
+    virtual void SpeciesSpeciesDerivatives(AdaptivePreconditioner& preconditioner, double* N);
 
 protected:
     vector_fp m_hk; //!< Species molar enthalpies

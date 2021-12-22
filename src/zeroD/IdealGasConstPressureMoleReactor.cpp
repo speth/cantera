@@ -195,4 +195,21 @@ void IdealGasConstPressureMoleReactor::StateDerivatives(AdaptivePreconditioner& 
     }
 }
 
+void IdealGasConstPressureMoleReactor::SpeciesSpeciesDerivatives(AdaptivePreconditioner& preconditioner, double* N)
+{
+    // This part handles the species terms
+    MoleReactor::SpeciesSpeciesDerivatives(preconditioner, N);
+    // This part handles the volume terms
+    double coeff = m_vol/accumulate(N, N + m_nv, 0.0);
+    vector_fp additions(m_nv);
+    m_kin->getNetProductionRates(&additions[1]); // "omega dot"
+    // form V/N*omega_dot with size of state
+    for (size_t i = 1; i < additions.size(); i++)
+    {
+        additions[i] *= coeff;
+    }
+    double* derivatives = preconditioner.m_values.data() +  preconditioner.m_sizes[preconditioner.m_ctr];
+    m_reaction_derivative_mgr.addToDerivatives(derivatives, additions.data());
+}
+
 }

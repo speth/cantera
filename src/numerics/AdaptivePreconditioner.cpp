@@ -181,6 +181,8 @@ void AdaptivePreconditioner::initialize(ReactorNet& network)
     m_identity.resize(m_dimensions[0], m_dimensions[1]);
     m_identity.setIdentity();
     m_identity.makeCompressed();
+    m_solver.setDroptol(1e-10);
+    m_solver.setFillfactor(m_dimensions[0] / 4);
     // update initialized status
     m_init = true;
 }
@@ -207,8 +209,7 @@ void AdaptivePreconditioner::setup()
     // compressing sparse matrix structure
     m_precon_matrix.makeCompressed();
     // analyze and factorize
-    m_solver.analyzePattern(m_precon_matrix);
-    m_solver.factorize(m_precon_matrix);
+    m_solver.compute(m_precon_matrix);
     // check for errors
     preconditionerErrorCheck();
 }
@@ -217,23 +218,14 @@ void AdaptivePreconditioner::transformJacobianToPreconditioner()
 {
     Eigen::Map<Eigen::SparseMatrix<double>> jacobian(m_dimensions[0], m_dimensions[1], m_nnz, m_outer.data(), m_inner.data(), m_values.data());
     m_precon_matrix = m_identity - m_gamma * jacobian;
-    for (int k=0; k<m_precon_matrix.outerSize(); ++k)
-    {
-        for (Eigen::SparseMatrix<double>::InnerIterator it(m_precon_matrix, k); it; ++it)
-        {
-            if (std::abs(it.value()) < m_threshold && it.row() != it.col())
-            {
-                m_precon_matrix.coeffRef(it.row(), it.col()) = 0;
-            }
-        }
-    }
 }
 
 void AdaptivePreconditioner::preconditionerErrorCheck()
 {
     if (m_solver.info() != Eigen::Success)
     {
-        throw CanteraError("AdaptivePreconditioner::solve", m_solver.lastErrorMessage());
+        throw CanteraError("AdaptivePreconditioner::solve",
+                           "error code: {}", m_solver.info());
     }
 }
 

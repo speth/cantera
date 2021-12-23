@@ -174,6 +174,17 @@ public:
         Eigen::Map<Eigen::SparseMatrix<double>> jacobian(m_dimensions[0], m_dimensions[1], m_nnz, m_outer.data(), m_inner.data(), m_values.data());
         std::cout<<Eigen::MatrixXd(jacobian)<<std::endl;
     };
+
+    //! Set the fill factor for factorizing the ILUT preconditioner
+    void setFillFactor(int n) {
+        m_solver.setFillfactor(n);
+    }
+
+    //! Set the tolerance for dropping elements when factorizing the ILUT preconditioner
+    void setDropTol(double tol) {
+        m_solver.setDroptol(tol);
+    }
+
 protected:
     //! Container for the values that are mapped to m_jacobian
     vector_fp m_values;
@@ -207,7 +218,7 @@ protected:
     Eigen::SparseMatrix<double> m_precon_matrix;
 
     //! Solver used in solving the linear system
-    Eigen::SparseLU<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int>> m_solver;
+    Eigen::IncompleteLUT<double> m_solver;
 
     //! Minimum value a non-diagonal element must be to be included in
     //! the preconditioner

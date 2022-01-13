@@ -121,7 +121,7 @@ public:
         efficiencies.setFromTriplets(
             m_efficiencyList.begin(), m_efficiencyList.end());
 
-        // Jacobian matrix multipliers
+        // derivative matrix multipliers
         std::vector<Eigen::Triplet<double>> triplets;
         triplets.reserve(nRxn * nSpc);
         for (size_t i = 0; i < m_default.size(); i++) {
@@ -160,7 +160,7 @@ public:
     /*!
      *  @param product   Product of law of mass action and rate terms.
      */
-    Eigen::SparseMatrix<double> jacobian(const double* product) {
+    Eigen::SparseMatrix<double> derivatives(const double* product) {
         Eigen::Map<const Eigen::VectorXd> mapped(product, m_multipliers.rows());
         return mapped.asDiagonal() * m_multipliers;
     }
@@ -214,7 +214,7 @@ protected:
     //! Each triplet corresponds to (reaction index, species index, efficiency)
     std::vector<Eigen::Triplet<double>> m_efficiencyList;
 
-    //! Sparse Jacobian multiplier matrix
+    //! Sparse derivative multiplier matrix
     Eigen::SparseMatrix<double> m_multipliers;
 };
 

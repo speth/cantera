@@ -150,7 +150,7 @@ bool BulkKinetics::addReaction(shared_ptr<Reaction> r, bool resize)
 
         // Add reaction rate to evaluator
         size_t index = m_bulk_types[rate->type()];
-        m_bulk_rates[index]->add(nReactions() - 1, *rate);
+        m_bulk_rates[index]->add(nReactions() - 1, rate);
 
         // Add reaction to third-body evaluator
         if (r->thirdBody() != nullptr) {
@@ -205,7 +205,7 @@ void BulkKinetics::modifyReaction(size_t i, shared_ptr<Reaction> rNew)
         rate->setRateIndex(i);
         rate->setContext(*rNew, *this);
 
-        m_bulk_rates[index]->replace(i, *rate);
+        m_bulk_rates[index]->replace(i, rate);
     }
 
     invalidateCache();

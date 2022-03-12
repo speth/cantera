@@ -30,30 +30,32 @@ public:
             throw CanteraError("MultiRate::type",
                  "Cannot determine type of empty rate handler.");
         }
-        return m_rxn_rates.at(0).second.type();
+        return m_rxn_rates.at(0).second->type();
     }
 
-    virtual void add(const size_t rxn_index, ReactionRate& rate) override {
+    virtual void add(const size_t rxn_index, shared_ptr<ReactionRate> rate) override {
         m_indices[rxn_index] = m_rxn_rates.size();
-        m_rxn_rates.emplace_back(rxn_index, dynamic_cast<RateType&>(rate));
+        m_rxn_rates.emplace_back(rxn_index, std::dynamic_pointer_cast<RateType>(rate));
         m_shared.invalidateCache();
     }
 
-    virtual bool replace(const size_t rxn_index, ReactionRate& rate) override {
+    virtual bool replace(const size_t rxn_index,
+                         shared_ptr<ReactionRate> rate) override
+    {
         if (!m_rxn_rates.size()) {
             throw CanteraError("MultiRate::replace",
                  "Invalid operation: cannot replace rate object "
                  "in empty rate handler.");
         }
-        if (rate.type() != type()) {
+        if (rate->type() != type()) {
             throw CanteraError("MultiRate::replace",
                  "Invalid operation: cannot replace rate object of type '{}' "
-                 "with a new rate of type '{}'.", type(), rate.type());
+                 "with a new rate of type '{}'.", type(), rate->type());
         }
         m_shared.invalidateCache();
         if (m_indices.find(rxn_index) != m_indices.end()) {
             size_t j = m_indices[rxn_index];
-            m_rxn_rates.at(j).second = dynamic_cast<RateType&>(rate);
+            m_rxn_rates.at(j).second = std::dynamic_pointer_cast<RateType>(rate);
             return true;
         }
         return false;
@@ -66,7 +68,7 @@ public:
 
     virtual void getRateConstants(double* kf) override {
         for (auto& rxn : m_rxn_rates) {
-            kf[rxn.first] = rxn.second.evalFromStruct(m_shared);
+            kf[rxn.first] = rxn.second->evalFromStruct(m_shared);
         }
     }
 
@@ -136,7 +138,7 @@ protected:
         typename std::enable_if<has_update<T>::value, bool>::type = true>
     void _update() {
         for (auto& rxn : m_rxn_rates) {
-            rxn.second.updateFromStruct(m_shared);
+            rxn.second->updateFromStruct(m_shared);
         }
     }
 
@@ -167,7 +169,7 @@ protected:
         typename std::enable_if<has_ddT<T>::value, bool>::type = true>
     void _process_ddT(double* rop, const double* kf, double deltaT) {
         for (const auto& rxn : m_rxn_rates) {
-            rop[rxn.first] *= rxn.second.ddTScaledFromStruct(m_shared);
+            rop[rxn.first] *= rxn.second->ddTScaledFromStruct(m_shared);
         }
     }
 
@@ -184,7 +186,7 @@ protected:
         // apply numerical derivative
         for (auto& rxn : m_rxn_rates) {
             if (kf[rxn.first] != 0.) {
-                double k1 = rxn.second.evalFromStruct(m_shared);
+                double k1 = rxn.second->evalFromStruct(m_shared);
                 rop[rxn.first] *= dTinv * (k1 / kf[rxn.first] - 1.);
             } // else not needed: derivative is already zero
         }
@@ -205,7 +207,7 @@ protected:
 
         for (auto& rxn : m_rxn_rates) {
             if (kf[rxn.first] != 0. && m_shared.conc_3b[rxn.first] > 0.) {
-                double k1 = rxn.second.evalFromStruct(m_shared);
+                double k1 = rxn.second->evalFromStruct(m_shared);
                 rop[rxn.first] *= dMinv * (k1 / kf[rxn.first] - 1.);
                 rop[rxn.first] /= m_shared.conc_3b[rxn.first];
             } else {
@@ -242,7 +244,7 @@ protected:
 
         for (auto& rxn : m_rxn_rates) {
             if (kf[rxn.first] != 0.) {
-                double k1 = rxn.second.evalFromStruct(m_shared);
+                double k1 = rxn.second->evalFromStruct(m_shared);
                 rop[rxn.first] *= dPinv * (k1 / kf[rxn.first] - 1.);
             } // else not needed: derivative is already zero
         }
@@ -262,7 +264,7 @@ protected:
     }
 
     //! Vector of pairs of reaction rates indices and reaction rates
-    std::vector<std::pair<size_t, RateType>> m_rxn_rates;
+    std::vector<std::pair<size_t, shared_ptr<RateType>>> m_rxn_rates;
     std::map<size_t, size_t> m_indices; //! Mapping of indices
     DataType m_shared;
 };

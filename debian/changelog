@@ -1,3 +1,9 @@
+cantera (2.6.0b2-1+focal0) focal; urgency=medium
+
+  * New upstream release
+
+ -- Raymond Speth <speth@mit.edu>  Sun, 10 Apr 2022 22:21:00 -0400
+
 cantera (2.6.0b1-1+focal1) focal; urgency=medium
 
   * Add missing dependency on pip

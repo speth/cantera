@@ -77,50 +77,6 @@ void BinarySolutionTabulatedThermo::_updateThermo() const
     }
 }
 
-bool BinarySolutionTabulatedThermo::addSpecies(shared_ptr<Species> spec)
-{
-    bool added = ThermoPhase::addSpecies(spec);
-    if (added) {
-        if (m_kk == 1) {
-            // Obtain the reference pressure by calling the ThermoPhase function
-            // refPressure, which in turn calls the species thermo reference
-            // pressure function of the same name.
-            m_Pref = refPressure();
-        }
-
-        m_h0_RT.push_back(0.0);
-        m_g0_RT.push_back(0.0);
-        m_expg0_RT.push_back(0.0);
-        m_cp0_R.push_back(0.0);
-        m_s0_R.push_back(0.0);
-        m_pp.push_back(0.0);
-        if (spec->input.hasKey("equation-of-state")) {
-            auto& eos = spec->input["equation-of-state"].getMapWhere("model", "constant-volume");
-            double mv;
-            if (eos.hasKey("density")) {
-                mv = molecularWeight(m_kk-1) / eos.convert("density", "kg/m^3");
-            } else if (eos.hasKey("molar-density")) {
-                mv = 1.0 / eos.convert("molar-density", "kmol/m^3");
-            } else if (eos.hasKey("molar-volume")) {
-                mv = eos.convert("molar-volume", "m^3/kmol");
-            } else {
-                throw CanteraError("IdealSolidSolnPhase::addSpecies",
-                    "equation-of-state entry for species '{}' is missing "
-                    "'density', 'molar-volume', or 'molar-density' "
-                    "specification", spec->name);
-            }
-            m_speciesMolarVolume.push_back(mv);
-        } else if (spec->input.hasKey("molar_volume")) {
-            // @Deprecated - remove this case for Cantera 3.0 with removal of the XML format
-            m_speciesMolarVolume.push_back(spec->input["molar_volume"].asDouble());
-        } else {
-            throw CanteraError("IdealSolidSolnPhase::addSpecies",
-                "Molar volume not specified for species '{}'", spec->name);
-        }
-    }
-    return added;
-}
-
 void BinarySolutionTabulatedThermo::initThermo()
 {
     if (m_input.hasKey("tabulated-thermo")) {
@@ -193,6 +149,11 @@ void BinarySolutionTabulatedThermo::initThermo()
     }
 
     IdealSolidSolnPhase::initThermo();
+}
+
+bool BinarySolutionTabulatedThermo::ready() const
+{
+    return !m_molefrac_tab.empty();
 }
 
 void BinarySolutionTabulatedThermo::getParameters(AnyMap& phaseNode) const

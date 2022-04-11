@@ -191,8 +191,8 @@ public:
         return "BinarySolutionTabulatedThermo";
     }
 
-    virtual bool addSpecies(shared_ptr<Species> spec);
     virtual void initThermo();
+    virtual bool ready() const;
     virtual void getParameters(AnyMap& phaseNode) const;
     virtual void initThermoXML(XML_Node& phaseNode, const std::string& id_);
 

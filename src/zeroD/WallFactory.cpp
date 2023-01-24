@@ -18,6 +18,25 @@ WallFactory::WallFactory()
     reg("Wall", []() { return new Wall(); });
 }
 
+WallFactory* WallFactory::factory() {
+    std::unique_lock<std::mutex> lock(wall_mutex);
+    if (!s_factory) {
+        s_factory = new WallFactory;
+    }
+    return s_factory;
+}
+
+void WallFactory::deleteFactory() {
+    std::unique_lock<std::mutex> lock(wall_mutex);
+    delete s_factory;
+    s_factory = 0;
+}
+
+WallBase* newWall(const std::string& model)
+{
+    return WallFactory::factory()->newWall(model);
+}
+
 WallBase* WallFactory::newWall(const std::string& wallType)
 {
     return create(wallType);

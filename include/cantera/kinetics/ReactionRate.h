@@ -93,9 +93,7 @@ public:
     //! Set parameters
     //! @param node  AnyMap object containing reaction rate specification
     //! @param units  unit definitions specific to rate information
-    virtual void setParameters(const AnyMap& node, const UnitStack& units) {
-        m_input = node;
-    }
+    virtual void setParameters(const AnyMap& node, const UnitStack& units);
 
     //! Return the parameters such that an identical Reaction could be reconstructed
     //! using the newReaction() function. Behavior specific to derived classes is
@@ -107,7 +105,7 @@ public:
     }
 
     //! Check basic syntax and settings of reaction rate expression
-    virtual void check(const std::string& equation) {}
+    virtual void check(const string& equation);
 
     //! Check basic syntax and settings of reaction rate expression
     //! @deprecated  To be removed after Cantera 3.0.
@@ -119,7 +117,7 @@ public:
     }
 
     //! Validate the reaction rate expression
-    virtual void validate(const std::string& equation, const Kinetics& kin) {}
+    virtual void validate(const string& equation, const Kinetics& kin);
 
     //! Validate the reaction rate expression (legacy call)
     //! @deprecated  To be removed after Cantera 3.0.
@@ -195,10 +193,7 @@ protected:
     //! @param node  AnyMap containing rate information
     //! Store the parameters of a ReactionRate needed to reconstruct an identical
     //! object. Does not include user-defined fields available in the #m_input map.
-    virtual void getParameters(AnyMap& node) const {
-        throw NotImplementedError("ReactionRate::getParameters",
-                                  "Not implemented by '{}' object.", type());
-    }
+    virtual void getParameters(AnyMap& node) const;
 
     //! Input data used for specific models
     AnyMap m_input;

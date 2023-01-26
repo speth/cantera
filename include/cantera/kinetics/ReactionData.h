@@ -32,11 +32,7 @@ struct ReactionData
      * This method allows for testing of a reaction rate expression outside of
      * Kinetics reaction rate evaluators.
      */
-    virtual void update(double T) {
-        temperature = T;
-        logT = std::log(T);
-        recipT = 1./T;
-    }
+    virtual void update(double T);
 
     //! Update data container based on temperature *T* and an *extra* parameter
     /**
@@ -44,10 +40,7 @@ struct ReactionData
      * This method allows for testing of a reaction rate expression outside of
      * Kinetics reaction rate evaluators.
      */
-    virtual void update(double T, double extra) {
-        throw NotImplementedError("ReactionData::update",
-            "ReactionData type does not use extra scalar argument.");
-    }
+    virtual void update(double T, double extra);
 
     //! Update data container based on temperature *T* and a vector parameter *extra*
     /**
@@ -58,10 +51,7 @@ struct ReactionData
      * @warning  This method is an experimental part of the %Cantera API and
      *      may be changed or removed without notice.
      */
-    virtual void update(double T, const vector_fp& extra) {
-        throw NotImplementedError("ReactionData::update",
-            "ReactionData type does not use extra vector argument.");
-    }
+    virtual void update(double T, const vector_fp& extra);
 
     //! Update data container based on thermodynamic phase state
     /**
@@ -76,35 +66,19 @@ struct ReactionData
      * The method is used for the evaluation of numerical derivatives.
      * @param  deltaT  relative temperature perturbation
      */
-    void perturbTemperature(double deltaT) {
-        if (m_temperature_buf > 0.) {
-            throw CanteraError("ReactionData::perturbTemperature",
-                "Cannot apply another perturbation as state is already perturbed.");
-        }
-        m_temperature_buf = temperature;
-        ReactionData::update(temperature * (1. + deltaT));
-    }
+    void perturbTemperature(double deltaT);
 
     //! Restore data container after a perturbation
-    virtual void restore() {
-        // only restore if there is a valid buffered value
-        if (m_temperature_buf < 0.) {
-            return;
-        }
-        ReactionData::update(m_temperature_buf);
-        m_temperature_buf = -1.;
-    }
+    virtual void restore();
 
     //! Update number of species, reactions and phases
-    virtual void resize(size_t nSpecies, size_t nReactions, size_t nPhases) {}
+    virtual void resize(size_t nSpecies, size_t nReactions, size_t nPhases);
 
     //! Force shared data and reaction rates to be updated next time. This is called by
     //! functions that change quantities affecting rate calculations that are normally
     //! assumed to be constant, like the reaction rate parameters or the number of
     //! reactions.
-    virtual void invalidateCache() {
-        temperature = NAN;
-    }
+    virtual void invalidateCache();
 
     double temperature; //!< temperature
     double logT; //!< logarithm of temperature

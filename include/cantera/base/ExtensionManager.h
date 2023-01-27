@@ -44,6 +44,18 @@ public:
         throw NotImplementedError("ExtensionManager::registerRateBuilders");
     };
 
+    virtual void registerRateBuilder(const string& extensionName,
+        const string& className, const string& rateName)
+    {
+        throw NotImplementedError("ExtensionManager::registerRateBuilder");
+    }
+
+    virtual void registerRateDataBuilder(const string& extensionName,
+        const string& className, const string& rateName)
+    {
+        throw NotImplementedError("ExtensionManager::registerRateDataBuilder");
+    }
+
     //! Create an object in an external language that wraps the specified ReactionData
     //! object
     //!

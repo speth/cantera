@@ -38,16 +38,16 @@ binary: build
 	mkdir -p debian/cantera-python3/usr/lib/python3/dist-packages
 	mkdir -p debian/cantera-python3/usr/lib/cantera
 
-	rm -rf stage/usr/local/lib/python3.*/dist-packages/cantera/data
+	rm -rf stage/usr/lib/python3.*/site-packages/cantera/data
 	find stage -name __pycache__ | xargs rm -rf
-	rm -f stage/usr/local/lib/python3.*/dist-packages/Cantera-*.dist-info/INSTALLER
-	rm -f stage/usr/local/lib/python3.*/dist-packages/Cantera-*.dist-info/LICENSE.txt
-	rm -f stage/usr/local/lib/python3.*/dist-packages/Cantera-*.dist-info/direct_url.json
-	rm -f stage/usr/local/lib/python3.*/dist-packages/Cantera-*.dist-info/REQUESTED
+	rm -f stage/usr/lib/python3.*/site-packages/Cantera-*.dist-info/INSTALLER
+	rm -f stage/usr/lib/python3.*/site-packages/Cantera-*.dist-info/LICENSE.txt
+	rm -f stage/usr/lib/python3.*/site-packages/Cantera-*.dist-info/direct_url.json
+	rm -f stage/usr/lib/python3.*/site-packages/Cantera-*.dist-info/REQUESTED
 	patchelf --replace-needed libcantera.so libcantera.so.${SO_VERSION} stage/usr/lib/libcantera_python*.so
-	patchelf --replace-needed libcantera.so libcantera.so.${SO_VERSION} stage/usr/local/lib/python3.*/dist-packages/cantera/_cantera*.so
-	mv stage/usr/local/lib/python3.*/dist-packages/cantera debian/cantera-python3/usr/lib/python3/dist-packages/
-	mv stage/usr/local/lib/python3.*/dist-packages/Cantera-*.dist-info debian/cantera-python3/usr/lib/python3/dist-packages/
+	patchelf --replace-needed libcantera.so libcantera.so.${SO_VERSION} stage/usr/lib/python3.*/site-packages/cantera/_cantera*.so
+	mv stage/usr/lib/python3.*/site-packages/cantera debian/cantera-python3/usr/lib/python3/dist-packages/
+	mv stage/usr/lib/python3.*/site-packages/Cantera-*.dist-info debian/cantera-python3/usr/lib/python3/dist-packages/
 	mv stage/usr/lib/libcantera_python*.so debian/cantera-python3/usr/lib/cantera/
 	ln -s /usr/share/cantera/data debian/cantera-python3/usr/lib/python3/dist-packages/cantera/
 

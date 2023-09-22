@@ -2083,3 +2083,213 @@ class TestBlowersMaselStickReaction(StickReactionTests, utilities.CanteraTest):
         """
     _rc_units = ct.Units("m^3 / kmol / s")
     _value = 195563866595.97
+
+class BurkeLab_ReactionRateTests:
+    # test suite for reaction rate expressions
+
+    _cls = None # reaction rate object to be tested
+    _type = None # name of reaction rate
+    _index = None # index of reaction in "kineticsfromscratch.yaml"
+    _parts = {}
+    _input = None # input parameters (dict corresponding to YAML)
+    _yaml = None # yaml string specifying parameters
+
+    @classmethod
+    def setUpClass(cls):
+        utilities.CanteraTest.setUpClass()
+        cls.soln = ct.Solution("kineticsfromscratch_LMRtest.yaml")
+
+    def setUp(self):
+        self.soln.X = "H2:0.1, H2O:0.2, O2:0.7, O:1e-4, OH:1e-5, H:2e-5, H2O2:1e-7"
+        self.soln.TP = 900, 2 * ct.one_atm
+
+    def finalize(self, rate):
+        # perform additional setup after construction (whenever applicable)
+        return rate
+
+    def from_parts(self):
+        # create reaction rate object from parts
+        return self.finalize(self._cls(**self._parts))
+
+    def from_input(self, input=None):
+        # create reaction rate object from input_data
+        if input is None:
+            input = self._input
+        else:
+            self.assertIsInstance(input, dict)
+        return self.finalize(self._cls(input_data=input))
+
+    def from_yaml(self):
+        # create reaction rate object from yaml
+        return self.finalize(ct.ReactionRate.from_yaml(self._yaml))
+
+    def from_dict(self, input=None):
+        # create reaction rate object from dictionary
+        if input is None:
+            input = self.from_yaml().input_data
+        else:
+            self.assertIsInstance(input, dict)
+        return self.finalize(ct.ReactionRate.from_dict(input))
+
+    def eval(self, rate):
+        # evaluate rate expression
+        return rate(self.soln.T)
+
+    def check_rate(self, rate):
+        # check rates
+        self.assertEqual(self._type, rate.type)
+        self.assertIn(self._cls.__name__, f"{rate}")
+        value = self.eval(rate)
+        self.assertIsFinite(value)
+        self.assertNear(value, self.soln.forward_rate_constants[self._index])
+
+    def test_from_parts(self):
+        # check constructors (from argument list)
+        self.check_rate(self.from_parts())
+
+    def test_from_yaml(self):
+        # check constructors (from yaml input)
+        self.check_rate(self.from_yaml())
+
+    def test_from_dict(self):
+        # check constructors (from dictionary)
+        self.check_rate(self.from_dict())
+
+    def test_from_input(self):
+        # check constructors (from 'input_data' argument)
+        self.check_rate(self.from_input())
+
+    def test_unconfigured(self):
+        # check behavior of unconfigured rate object
+        rate0 = self.from_input({})
+        self.assertIsNaN(self.eval(rate0))
+        input_data = rate0.input_data
+        rate1 = self.from_dict(input_data)
+        self.assertEqual(rate1.type, self._type)
+        self.assertIsNaN(self.eval(rate1))
+
+    def test_roundtrip(self):
+        # check round-trip instantiation via input_data
+        rate0 = self.from_yaml()
+        input_data = rate0.input_data
+        rate1 = self.from_dict(input_data)
+        self.check_rate(rate1)
+
+    def test_with_units(self):
+        # test custom units. Sticking coefficients are dimensionless, so this is only
+        # a concern for other rate types
+        units = "units: {length: cm, quantity: mol}"
+        yaml = f"{textwrap.dedent(self._yaml)}\n{units}"
+        if "sticking" not in yaml:
+            with self.assertRaisesRegex(Exception, "undefined units"):
+                ct.ReactionRate.from_yaml(yaml)
+
+    @pytest.mark.usefixtures("has_temperature_derivative_warnings")
+    def test_derivative_ddT(self):
+        # check temperature derivative against numerical derivative
+        deltaT = self.soln.derivative_settings["rtol-delta"]
+        deltaT *= self.soln.T
+        rate = self.from_yaml()
+        k0 = self.eval(rate)
+
+        # derivative at constant pressure
+        dcdt = - self.soln.density_mole / self.soln.T
+        drate = self.soln.forward_rate_constants_ddT
+        drate += self.soln.forward_rate_constants_ddC * dcdt
+        self.soln.TP = self.soln.T + deltaT, self.soln.P
+        k1 = self.eval(rate)
+        self.assertNear((k1 - k0) / deltaT, drate[self._index], 1e-6)
+
+    def test_derivative_ddP(self):
+        # check pressure derivative against numerical derivative
+        deltaP = self.soln.derivative_settings["rtol-delta"]
+        deltaP *= self.soln.P
+        rate = self.from_yaml()
+        k0 = self.eval(rate)
+
+        drate = self.soln.forward_rate_constants_ddP
+        self.soln.TP = self.soln.T, self.soln.P + deltaP
+        k1 = self.eval(rate)
+        self.assertNear((k1 - k0) / deltaP, drate[self._index], 1e-6)
+
+class TestBurkeLab(BurkeLab_ReactionRateTests, utilities.CanteraTest):
+    # test Plog rate expressions
+    _cls = ct.LmrRate
+    _type = "LMR_R"
+    _index = 3
+    _input = {"rate-constants": [
+        {"P": 1013.25, "A": 1.2124e+16, "b": -0.5779, "Ea": 45491376.8},
+        {"P": 101325., "A": 4.9108e+31, "b": -4.8507, "Ea": 103649395.2},
+        {"P": 1013250., "A": 1.2866e+47, "b": -9.0246, "Ea": 166508556.0},
+        {"P": 10132500., "A": 5.9632e+56, "b": -11.529, "Ea": 220076726.4}]}
+    _yaml = """
+        type: LMR_R
+        rate-constants:
+        - {P: 0.01 atm, A: 1.2124e+16, b: -0.5779, Ea: 1.08727e+04 cal/mol}
+        - {P: 1.0 atm, A: 4.9108e+31, b: -4.8507, Ea: 2.47728e+04 cal/mol}
+        - {P: 10.0 atm, A: 1.2866e+47, b: -9.0246, Ea: 3.97965e+04 cal/mol}
+        - {P: 100.0 atm, A: 5.9632e+56, b: -11.529, Ea: 5.25996e+04 cal/mol}
+        """
+
+    @classmethod
+    def setUpClass(cls):
+        BurkeLab_ReactionRateTests.setUpClass()
+        cls._parts = {
+            "rates": [(rc["P"], ct.Arrhenius(rc["A"], rc["b"], rc["Ea"]))
+                      for rc in cls._input["rate-constants"]],
+            }
+
+    def eval(self, rate):
+        # check evaluation as a function of temperature and pressure
+        print(rate(self.soln.T, self.soln.P))
+        return rate(self.soln.T, self.soln.P)
+
+    def test_get_rates(self):
+        # test getter for property rates
+        rate = self.from_parts()
+        rates = rate.rates
+        self.assertIsInstance(rates, list)
+
+        other = self._input["rate-constants"]
+        self.assertEqual(len(rates), len(other))
+        for index, item in enumerate(rates):
+            P, rate = item
+            self.assertNear(P, other[index]["P"])
+            self.assertNear(rate.pre_exponential_factor, other[index]["A"])
+            self.assertNear(rate.temperature_exponent, other[index]["b"])
+            self.assertNear(rate.activation_energy, other[index]["Ea"])
+
+    def test_set_rates(self):
+        # test setter for property rates
+        other = [
+            {"P": 100., "A": 1.2124e+16, "b": -1., "Ea": 45491376.8},
+            {"P": 10000., "A": 4.9108e+31, "b": -2., "Ea": 103649395.2},
+            {"P": 1000000., "A": 1.2866e+47, "b": -3., "Ea": 166508556.0}]
+        rate = ct.LmrRate([(o["P"], ct.Arrhenius(o["A"], o["b"], o["Ea"]))
+                            for o in other])
+        rates = rate.rates
+        self.assertEqual(len(rates), len(other))
+
+        for index, item in enumerate(rates):
+            P, rate = item
+            self.assertNear(P, other[index]["P"])
+            self.assertNear(rate.pre_exponential_factor, other[index]["A"])
+            self.assertNear(rate.temperature_exponent, other[index]["b"])
+            self.assertNear(rate.activation_energy, other[index]["Ea"])
+
+    def test_no_rates(self):
+        # test instantiation of empty rate
+        rate = ct.LmrRate()
+        self.assertIsInstance(rate.rates, list)
+
+    def test_standalone(self):
+        yaml = """
+            type: LMR_R
+            rate-constants:
+            - {P: 0.01 atm, A: 1.2124e+16, b: -0.5779, Ea: 1.08727e+04 cal/mol}
+            - {P: 1.0 atm, A: 4.9108e+31 cm^6/mol^2/s, b: -4.8507, Ea: 2.47728e+04 cal/mol}
+            - {P: 10.0 atm, A: 1.2866e+47, b: -9.0246, Ea: 3.97965e+04 cal/mol}
+            - {P: 100.0 atm, A: 5.9632e+56, b: -11.529, Ea: 5.25996e+04 cal/mol}
+            """
+        with self.assertRaisesRegex(Exception, "undefined units"):
+            ct.ReactionRate.from_yaml(yaml)

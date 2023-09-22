@@ -12,7 +12,7 @@
     #include <Eigen/Dense>
     #endif
 #else
-#include "cantera/ext/Eigen/Dense"
+#include "cantera/ext/eigen/Eigen/Dense"
 #endif
 
 namespace Cantera

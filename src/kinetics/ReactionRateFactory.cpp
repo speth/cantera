@@ -15,6 +15,7 @@
 #include "cantera/kinetics/Falloff.h"
 #include "cantera/kinetics/InterfaceRate.h"
 #include "cantera/kinetics/PlogRate.h"
+#include "cantera/kinetics/LmrRate.h"
 #include "cantera/kinetics/TwoTempPlasmaRate.h"
 
 namespace Cantera
@@ -67,6 +68,11 @@ ReactionRateFactory::ReactionRateFactory()
     // PlogRate evaluator
     reg("pressure-dependent-Arrhenius", [](const AnyMap& node, const UnitStack& rate_units) {
         return new PlogRate(node, rate_units);
+    });
+
+    // LmrRate evaluator
+    reg("LMR_R", [](const AnyMap& node, const UnitStack& rate_units) {
+        return new LmrRate(node, rate_units);
     });
 
     // ChebyshevRate evaluator

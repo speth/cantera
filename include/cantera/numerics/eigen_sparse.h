@@ -12,7 +12,7 @@
     #include <Eigen/Sparse>
     #endif
 #else
-#include "cantera/ext/Eigen/Sparse"
+#include "cantera/ext/eigen/Eigen/Sparse"
 #endif
 
 namespace Cantera

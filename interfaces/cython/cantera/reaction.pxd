@@ -169,6 +169,13 @@ cdef extern from "cantera/kinetics/PlogRate.h" namespace "Cantera":
         CxxPlogRate(CxxAnyMap) except +translate_exception
         CxxPlogRate(multimap[double, CxxArrheniusRate])
         multimap[double, CxxArrheniusRate] getRates()
+    
+cdef extern from "cantera/kinetics/LmrRate.h" namespace "Cantera":
+    cdef cppclass CxxLmrRate "Cantera::LmrRate" (CxxReactionRate):
+        CxxLmrRate()
+        CxxLmrRate(CxxAnyMap) except +translate_exception
+        CxxLmrRate(multimap[double, CxxArrheniusRate])
+        multimap[double, CxxArrheniusRate] getRates()
 
 
 cdef extern from "cantera/kinetics/ChebyshevRate.h" namespace "Cantera":

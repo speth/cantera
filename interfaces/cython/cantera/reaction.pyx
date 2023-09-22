@@ -599,6 +599,63 @@ cdef class PlogRate(ReactionRate):
             self._rate.reset(new CxxPlogRate(ratemap))
             self.rate = self._rate.get()
 
+cdef class LmrRate(ReactionRate):
+    r"""
+    A pressure-dependent reaction rate parameterized by logarithmically
+    interpolating between Arrhenius rate expressions at various pressures.
+    """
+    _reaction_rate_type = "LMR_R"
+
+    def __cinit__(self, rates=None, input_data=None, init=True):
+
+        if init and isinstance(rates, list):
+            self.rates = rates
+
+        elif init:
+            if isinstance(input_data, dict):
+                self._rate.reset(new CxxLmrRate(py_to_anymap(input_data)))
+            elif rates is None:
+                self._rate.reset(new CxxLmrRate(py_to_anymap({})))
+            elif input_data:
+                raise TypeError("Invalid parameter 'input_data'")
+            else:
+                raise TypeError("Invalid parameter 'rates'")
+            self.set_cxx_object()
+
+    def __call__(self, double temperature, double pressure):
+        """
+        Evaluate rate expression based on temperature and pressure.
+        """
+        return self.rate.eval(temperature, pressure)
+
+    cdef CxxLmrRate* cxx_object(self):
+        return <CxxLmrRate*>self.rate
+
+    property rates:
+        """
+        Get/Set the rate coefficients for this reaction, which are given as a
+        list of (pressure, `Arrhenius`) tuples.
+        """
+        def __get__(self):
+            rates = []
+            cdef multimap[double, CxxArrheniusRate] cxxrates
+            cdef pair[double, CxxArrheniusRate] p_rate
+            cxxrates = self.cxx_object().getRates()
+            for p_rate in cxxrates:
+                rates.append((p_rate.first, copyArrhenius(&p_rate.second)))
+            return rates
+
+        def __set__(self, rates):
+            cdef multimap[double, CxxArrheniusRate] ratemap
+            cdef Arrhenius rate
+            cdef pair[double, CxxArrheniusRate] item
+            for p, rate in rates:
+                item.first = p
+                item.second = deref(rate.base)
+                ratemap.insert(item)
+
+            self._rate.reset(new CxxLmrRate(ratemap))
+            self.rate = self._rate.get()
 
 cdef class ChebyshevRate(ReactionRate):
     r"""

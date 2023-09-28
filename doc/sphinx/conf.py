@@ -207,8 +207,8 @@ def setup(app):
 autoclass_content = 'both'
 
 doxylink = {
-    'ct': (os.path.abspath('../../doc/Cantera.tag'),
-            '../../doxygen/html/')
+    'ct': (os.path.abspath('cpp/html/tagfile.xml'),
+           'cpp/html/')
 }
 
 intersphinx_mapping = {
@@ -295,6 +295,7 @@ html_theme = 'pydata_sphinx_theme'
 
 html_theme_options = {
     "show_toc_level": 2,
+    "navigation_depth": 6,
     "navbar_center": ["cantera-org-links", "navbar-nav"],
     "navbar_end": ["version-switcher", "theme-switcher", "navbar-icon-links"],
     "logo": {

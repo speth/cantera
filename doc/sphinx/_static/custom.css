@@ -8,3 +8,15 @@ p + div.math {
     display: none;
     visibility: hidden;
 }
+
+div.navpath {
+    /* Hide namespace-level navigation from Doxygen */
+    display: none;
+    visibility: hidden;
+}
+
+div.ingroups {
+    /* Hide group-based navigation from Doxygen */
+    display: none;
+    visibility: hidden;
+}

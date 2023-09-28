@@ -345,13 +345,13 @@ jobs:
           mv config-options-dev.rst build/doc/scons/
       - name: Create archive for docs output
         run: |
-          cd build
-          tar -czf docs.tar.gz doc
+          cd build/doc
+          tar -czf docs.tar.gz html
         if: failure() || success()
       - name: Store archive of docs output
         uses: actions/upload-artifact@v3
         with:
-          path: build/docs.tar.gz
+          path: build/doc/docs.tar.gz
           name: docs
           retention-days: 14
         if: failure() || success()

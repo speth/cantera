@@ -11,6 +11,4 @@ This pages provide detailed reference documentation for Cantera.
    yaml/index
    cython/index
    matlab/index
-
-
-`C++ API Documentation <../../doxygen/html/index.html>`__
+   C++ Interface <cpp/html/index>

@@ -96,8 +96,8 @@ def get_function_name(function_string):
     else:
         return sig
 
-if localenv['doxygen_docs']:
-    docs = build(localenv.Command('#build/doc/doxygen/html/index.html',
+if localenv['doxygen_docs'] or localenv['sphinx_docs']:
+    docs = build(localenv.Command('#build/doc/sphinx/cpp/html/index.html',
                                   'doxygen/Doxyfile', 'doxygen $SOURCE'))
     env.Depends(docs, env.Glob('#doc/doxygen/*') +
                       multi_glob(env, '#include/cantera', 'h') +
@@ -114,7 +114,7 @@ if localenv['sphinx_docs']:
         if env['logging'] == 'debug':
             cmd.append('-v')
         cmd += ('-b', 'html', '-d', 'build/doc/sphinx/doctrees', 'build/doc/sphinx',
-                'build/doc/sphinx/html')
+                'build/doc/html')
         code = subprocess.call(cmd, env=env['ENV'])
         if code:
             raise Errors.BuildError(target, action=env['sphinx_cmd'])
@@ -156,6 +156,8 @@ if localenv['sphinx_docs']:
         env.Depends(sphinxdocs,
                     localenv.Command(f"#build/doc/samples/clib/{clib_file.name}",
                                      clib_file, Copy("$TARGET", "$SOURCE")))
+
+    # Process the Doxygen docs for inclusion in Sphinx
 
     # Create a list of MATLAB classes to document. This uses the NamedTuple
     # structure defined at the top of the file. The @Data and @Utilities

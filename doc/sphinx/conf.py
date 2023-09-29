@@ -208,8 +208,8 @@ def setup(app):
 autoclass_content = 'both'
 
 doxylink = {
-    'ct': (os.path.abspath('../../doc/Cantera.tag'),
-            '../../doxygen/html/')
+    'ct': (os.path.abspath('../Cantera.tag'),
+           'cxx/')
 }
 
 intersphinx_mapping = {

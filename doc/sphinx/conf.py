@@ -44,7 +44,7 @@ extensions = [
               'sphinxcontrib.doxylink',
               'sphinxcontrib.bibtex',
               'sphinx.ext.intersphinx',
-              'myst_parser',
+              'myst_nb',
               'sphinx_gallery.gen_gallery',
               'sphinx_tags',
               'sphinx_design',

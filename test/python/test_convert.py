@@ -10,7 +10,7 @@ from . import utilities
 from .utilities import allow_deprecated
 
 import cantera as ct
-from cantera import ck2yaml, cti2yaml, ctml2yaml, yaml2ck
+from cantera import ck2yaml, cti2yaml, ctml2yaml, yaml2ck, lxcat2yaml
 
 class ck2yamlTest(utilities.CanteraTest):
     def convert(self, inputFile, thermo=None, transport=None,
@@ -1383,3 +1383,84 @@ class ctml2yamlTest(utilities.CanteraTest):
             self.convert("duplicate-speciesData-ids")
         with self.assertWarnsRegex(UserWarning, "Duplicate 'reactionData' id"):
             self.convert("duplicate-reactionData-ids")
+
+class lxcat2yamlTest(utilities.CanteraTest):
+    def convert(self, inputFile=None, database=None, mechFile=None, phase=None,
+                insert=True, output=None):
+        if inputFile is not None:
+            inputFile = self.test_data_path / inputFile
+        if mechFile is not None:
+            mechFile = self.test_data_path / mechFile
+        if output is None:
+            output = Path(inputFile).stem  # strip '.xml'
+        # output to work dir
+        output = self.test_work_path / output
+
+        lxcat2yaml.convert(inputFile, database, mechFile, phase, insert, output)
+        return output
+
+    def test_mechanism_with_lxcat(self):
+
+        # get Solution from the mechanism file
+        phase = "isotropic-electron-energy-plasma"
+        mechFile = "lxcat-test-convert.yaml"
+        gas1 = ct.Solution(self.test_data_path / mechFile,
+                           phase=phase, transport_model=None)
+
+        # get a stand-alone collisions
+        standAloneFile = "stand-alone-lxcat.yaml"
+        self.convert(inputFile='lxcat-test-convert.xml', database="test",
+                     mechFile=mechFile, insert=False,
+                     output=standAloneFile)
+
+        # add collisions to the reaction list
+        rxn_list = ct.Reaction.list_from_file(self.test_work_path / standAloneFile,
+                                       gas1, section="collisions")
+        for R in rxn_list:
+            gas1.add_reaction(R)
+
+        # get Solution from the putput file
+        output = "output-lxcat.yaml"
+        self.convert(inputFile="lxcat-test-convert.xml", database="test",
+                     mechFile=mechFile, insert=True,
+                     output=output)
+        gas2 = ct.Solution(self.test_work_path / output,
+                           phase=phase, transport_model=None)
+
+        # check number of reactions
+        self.assertEqual(gas1.n_reactions, 4)
+        self.assertEqual(gas1.n_reactions, gas2.n_reactions)
+        for i in range(1, gas1.n_reactions):
+            self.assertArrayNear(gas1.reaction(i).rate.energy_levels,
+                                 gas2.reaction(i).rate.energy_levels)
+            self.assertArrayNear(gas1.reaction(i).rate.cross_sections,
+                                 gas2.reaction(i).rate.cross_sections)
+
+    def test_stand_alone_lxcat(self):
+
+        outfile = "stand-alone-lxcat-without-mech.yaml"
+        self.convert(inputFile='lxcat-test-convert.xml',
+                     database="test", insert=False,
+                     output=outfile)
+
+        # get Solution from the mechanism file
+        phase = "isotropic-electron-energy-plasma"
+        mechFile = "lxcat-test-convert.yaml"
+        gas = ct.Solution(self.test_data_path / mechFile,
+                           phase=phase, transport_model=None)
+
+        # add collisions to the reaction list
+        rxn_list = ct.Reaction.list_from_file(self.test_work_path / outfile,
+                                              gas, section="collisions")
+
+        # verify the data
+        self.assertEqual(len(rxn_list), 2)
+        self.assertEqual(rxn_list[0].equation, "O2 + e => O2(Total-Ionization)+ + e + e")
+        self.assertEqual(rxn_list[0].reaction_type, "three-body-electron-collision-plasma")
+        self.assertArrayNear(rxn_list[0].rate.energy_levels, [15., 20.])
+        self.assertArrayNear(rxn_list[0].rate.cross_sections, [0.0, 5.5e-22])
+
+        self.assertEqual(rxn_list[1].equation, "O2 + e => O2-")
+        self.assertEqual(rxn_list[1].reaction_type, "electron-collision-plasma")
+        self.assertArrayNear(rxn_list[1].rate.energy_levels, [0.0, 1.0])
+        self.assertArrayNear(rxn_list[1].rate.cross_sections, [0.0, 1.0e-22])

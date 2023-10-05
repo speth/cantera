@@ -54,11 +54,13 @@ void LmrRate::setParameters(const AnyMap& node, const UnitStack& rate_units){
                 ArrheniusRate eig0_i_ = ArrheniusRate(AnyValue(collider["low-P-rate-constant"]), node.units(), rate_units);       
                 map<double, pair<size_t, size_t>> pressures_i_;
                 vector<ArrheniusRate> rates_i_; 
+
                 std::multimap<double, ArrheniusRate> multi_rates;
                 auto& rates = collider["rate-constants"].asVector<AnyMap>();
                 for (const auto& rate : rates){
                     multi_rates.insert({rate.convert("P","Pa"),ArrheniusRate(AnyValue(rate), node.units(), rate_units)});
                 }
+
                 rates_i_.reserve(multi_rates.size());
                 m_valid = !multi_rates.empty(); //if rates object empty, m_valid==FALSE. if rates is not empty, m_valid==TRUE
                 size_t j = 0;
@@ -114,35 +116,42 @@ void LmrRate::setParameters(const AnyMap& node, const UnitStack& rate_units){
 //     rateNode["rate-constants"] = std::move(rateList);
 // }
 
-// void LmrRate::validate(const string& equation, const Kinetics& kin){ //[HAVEN'T YET MODIFIED THIS]
-//     if (!valid()) {
-//         throw InputFileError("LmrRate::validate", m_input,
-//             "Rate object for reaction '{}' is not configured.", equation);
-//     }
-//     fmt::memory_buffer err_reactions;
-//     double T[] = {300.0, 500.0, 1000.0, 2000.0, 5000.0, 10000.0};
-//     LmrData data;
-//     for (auto iter = ++pressures_.begin(); iter->first < 1000; iter++) {
-//         data.update(T[0], exp(iter->first)); // iter->first contains log(p)
-//         updateFromStruct(data);
-//         for (size_t i=0; i < 6; i++) {
-//             double k = 0;
-//             for (size_t p = ilow1_; p < ilow2_; p++) {
-//                 k += rates_.at(p).evalRate(log(T[i]), 1.0 / T[i]);
-//             }
-//             if (!(k > 0)) {
-//                 fmt_append(err_reactions,
-//                     "at P = {:.5g}, T = {:.1f}\n", std::exp(iter->first), T[i]);
-//             }
-//         }
-// v
-//     }
-//     if (err_reactions.size()) {
-//         throw InputFileError("LmrRate::validate", m_input,
-//             "\nInvalid rate coefficient for reaction '{}'\n{}",
-//             equation, to_string(err_reactions));
-//     }
-// }
+void LmrRate::validate(const string& equation, const Kinetics& kin){
+    if (!valid()) {
+        throw InputFileError("LmrRate::validate", m_input,
+            "Rate object for reaction '{}' is not configured.", equation);
+    }
+    fmt::memory_buffer err_reactions;
+    double T[] = {300.0, 500.0, 1000.0, 2000.0, 5000.0, 10000.0};
+    LmrData data;
+
+    // Iterate through the outer map (string to inner map)
+    for (const auto& outer_pair : pressures_) { // recall that pressures_ is a map within a map
+        const std::string& specieskey = outer_pair.first; //specieskey refers only to the species for which LMR data is provided in yaml (e.g. 'H2O', 'M')
+        const std::map<double, std::pair<size_t, size_t>>& inner_map = outer_pair.second;
+        vector<ArrheniusRate> rates_i_ = rates_[specieskey];
+        for (auto iter = ++inner_map.begin(); iter->first < 1000; iter++) {
+            data.update(T[0], exp(iter->first));
+            ilow1_ = iter->second.first;
+            ilow2_ = iter->second.second;       
+            for (size_t i=0; i < 6; i++) {
+                double k = 0;
+                for (size_t p = ilow1_; p < ilow2_; p++) {
+                    k += rates_i_.at(p).evalRate(log(T[i]), 1.0 / T[i]);
+                }
+                if (!(k > 0)) {
+                    fmt_append(err_reactions,
+                        "at P = {:.5g}, T = {:.1f}\n", std::exp(iter->first), T[i]);
+                }
+            }
+        }
+        if (err_reactions.size()) {
+            throw InputFileError("LmrRate::validate", m_input,
+                "\nInvalid rate coefficient for reaction '{}'\n{}",
+                equation, to_string(err_reactions));
+        }
+    }
+}
 
 
 //IF m_SPECIESLIST (see phase.h) element is in species in yaml, then attach corresponding data to that species. 

@@ -14,7 +14,7 @@ struct LmrData : public ReactionData{
         ReactionData::update(T);
         pressure = P;
     }
-    virtual bool update(const ThermoPhase& phase) override;
+    virtual bool update(const ThermoPhase& phase);
     using ReactionData::update;
     void perturbPressure(double deltaP);
     virtual void restore() override;
@@ -47,7 +47,7 @@ public:
     // }
     double computeSpeciesRate(const LmrData& shared_data);
     double evalFromStruct(const LmrData& shared_data);
-    void validate(const string& equation, const Kinetics& kin);
+    void validate(const string& equation);
 
     map<string, map<double, pair<size_t, size_t>>> pressures_;
     map<string, vector<ArrheniusRate>> rates_;

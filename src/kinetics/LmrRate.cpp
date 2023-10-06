@@ -114,7 +114,7 @@ void LmrRate::setParameters(const AnyMap& node, const UnitStack& rate_units){
 //     rateNode["rate-constants"] = std::move(rateList);
 // }
 
-void LmrRate::validate(const string& equation, const Kinetics& kin){
+void LmrRate::validate(const string& equation){
     if (!valid()) {
         throw InputFileError("LmrRate::validate", m_input,
             "Rate object for reaction '{}' is not configured.", equation);

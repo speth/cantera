@@ -27,17 +27,16 @@ struct LmrData : public ReactionData{
     // double moleFraction = NAN;
     double pressure = NAN; //!< pressure
     double logP = 0.0; //!< logarithm of pressure
+    vector<double> moleFractions;
+    int mfNumber; 
 protected:
     double m_pressure_buf = -1.0; //!< buffered pressure
-    vector<double> moleFractions;
-    int mfNumber;
 };
 
 class LmrRate final : public ReactionRate
 {
 public:
     LmrRate() = default;//! Default constructor.
-    explicit LmrRate(const std::multimap<double, ArrheniusRate>& rates);//! Constructor from Arrhenius rate expressions at a set of pressures
     LmrRate(const AnyMap& node, const UnitStack& rate_units={});
     unique_ptr<MultiRateBase> newMultiRate() const {
         return make_unique<MultiRate<LmrRate, LmrData>>();
@@ -48,15 +47,19 @@ public:
     // void getParameters(AnyMap& rateNode) const {
     //     return getParameters(rateNode, Units(0));
     // }
-    double computeSpeciesRate(const LmrData& shared_data, string s, double eig0_mix);
+    double computeSpeciesRate(const LmrData& shared_data);
     double evalFromStruct(const LmrData& shared_data);
     void validate(const string& equation, const Kinetics& kin);
 
-protected:
     map<string, map<double, pair<size_t, size_t>>> pressures_;
     map<string, vector<ArrheniusRate>> rates_;
     map<string,ArrheniusRate> eig0_;
+    double Xs_;
+    string s_;
+    double eig0_mix_ = 0.0;
+    double k_LMR_ = 0.0;
 
+protected:
     //species_ = FXNTOEXTRACTSPECIESLISTFROMSOLUTIONOBJECT
 
     double logP_ = -1000; //!< log(p) at the current state

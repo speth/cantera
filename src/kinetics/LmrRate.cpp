@@ -154,21 +154,19 @@ void LmrRate::validate(const string& equation, const Kinetics& kin){
     }
 }
 
-
-double LmrRate::computeSpeciesRate(const LmrData& shared_data, string s, double eig0_mix){
-    double Xs = shared_data.X[s];
-    double eig0 = eig0_[s].evalRate(shared_data.logT, shared_data.recipT);
-    double Xtilde=eig0*shared_data.Xs/eig0_mix; //DOESN'T WORK YET BC WE DON'T HAVE MF DATA FOR EACH SPECIES
+double LmrRate::computeSpeciesRate(const LmrData& shared_data){
+    double eig0 = eig0_[s_].evalRate(shared_data.logT, shared_data.recipT);
+    double Xtilde=eig0*Xs_/eig0_mix_; //DOESN'T WORK YET BC WE DON'T HAVE MF DATA FOR EACH SPECIES
     //STILL NEED TO ACCOUND FOR THE REDUCED PRESSURE, P_i *************************************************************************
     if (shared_data.logP != logP_) { 
-        logP_=log(shared_data.P*eig0_mix/eig0); //need to use natl log instead to align with code later on
+        logP_=log(shared_data.P*eig0_mix_/eig0); //need to use natl log instead to align with code later on
         if (logP_ > logP1_ && logP_ < logP2_) {
             return;
         }
-        auto iter = pressures_[s].upper_bound(logP_); //locate the pressure of interest
-        AssertThrowMsg(iter != pressures_[s].end(), "LmrRate::evalFromStruct",
+        auto iter = pressures_[s_].upper_bound(logP_); //locate the pressure of interest
+        AssertThrowMsg(iter != pressures_[s_].end(), "LmrRate::evalFromStruct",
                         "Pressure out of range: {}", logP_);
-        AssertThrowMsg(iter != pressures_[s].begin(), "LmrRate::evalFromStruct",
+        AssertThrowMsg(iter != pressures_[s_].begin(), "LmrRate::evalFromStruct",
                         "Pressure out of range: {}", logP_); 
         // upper interpolation pressure
         logP2_ = iter->first;
@@ -181,49 +179,51 @@ double LmrRate::computeSpeciesRate(const LmrData& shared_data, string s, double 
         rDeltaP_ = 1.0 / (logP2_ - logP1_);
         double log_k1, log_k2;
         if (ilow1_ == ilow2_) {
-            log_k1 = rates_[s][ilow1_].evalLog(shared_data.logT, shared_data.recipT);
+            log_k1 = rates_[s_][ilow1_].evalLog(shared_data.logT, shared_data.recipT);
         } else {
             double k = 1e-300; // non-zero to make log(k) finite
             for (size_t i = ilow1_; i < ilow2_; i++) {
-                k += rates_[s][i].evalRate(shared_data.logT, shared_data.recipT);
+                k += rates_[s_][i].evalRate(shared_data.logT, shared_data.recipT);
             }
             log_k1 = std::log(k);
         }
         if (ihigh1_ == ihigh2_) {
-            log_k2 = rates_[s][ihigh1_].evalLog(shared_data.logT, shared_data.recipT);
+            log_k2 = rates_[s_][ihigh1_].evalLog(shared_data.logT, shared_data.recipT);
         } else {
             double k = 1e-300; // non-zero to make log(k) finite
             for (size_t i = ihigh1_; i < ihigh2_; i++) {
-                k += rates_[s][i].evalRate(shared_data.logT, shared_data.recipT);
+                k += rates_[s_][i].evalRate(shared_data.logT, shared_data.recipT);
             }
             log_k2 = std::log(k);
         }
-        return Xtilde * std::exp(log_k1 + (log_k2-log_k1)/(logP2_-logP1_) * (logP_ - logP1_ + std::log(eig0_mix) - log(eig0)));
+        return Xtilde*exp(log_k1 + (log_k2-log_k1)/(logP2_-logP1_) * (logP_-logP1_+log(eig0_mix_)-log(eig0)));
     }
 }
 
 double LmrRate::evalFromStruct(const LmrData& shared_data){
-
-    double eig0_mix = 0.0; //eig_0_mix = np.sum(np.array(X) * np.array(eig_0))
-    for (string s : allYamlSpecies){ //testing each species listed at the top of yaml file
-        double Xs = shared_data.X[s]; //DOESN'T WORK YET BC WE DON'T HAVE MF DATA FOR EACH SPECIES
-        std::map<string, ArrheniusRate>::iterator it = eig0_.find(s);
+    for (size_t i=0; i<shared_data.allSpecies.size(); i++){ //testing each species listed at the top of yaml file
+        Xs_ = shared_data.moleFractions[i];
+        s_ = allSpecies[i];
+        std::map<string, ArrheniusRate>::iterator it = eig0_.find(s_);
         if (it != eig0_.end()) {//key found, i.e. s has corresponding LMR data  
-            eig0_mix += Xs*eig0_[s].evalRate(shared_data.logT, shared_data.recipT); 
+            eig0_mix_ += Xs_*eig0_[s_].evalRate(shared_data.logT, shared_data.recipT); 
         } else {//no LMR data for this species s, so use M data as default
-            eig0_mix += Xs*eig0_["M"].evalRate(shared_data.logT, shared_data.recipT);
+            s_ = "M";
+            eig0_mix_ += Xs_*eig0_[s_].evalRate(shared_data.logT, shared_data.recipT);
         }
     }
-    double k_LMR = 0.0;
-    for (string s : ){ //testing each species listed at the top of yaml file
-        std::map<string, ArrheniusRate>::iterator it = eig0_.find(s);
+    for (size_t i=0; i<shared_data.allSpecies.size(); i++){ //testing each species listed at the top of yaml file
+        Xs_ = shared_data.moleFractions[i];
+        s_ = allSpecies[i];
+        std::map<string, ArrheniusRate>::iterator it = eig0_.find(s_);
         if (it != eig0_.end()) {//key found, i.e. s has corresponding LMR data  
-            k_LMR += LmrRate::computeSpeciesRate(shared_data, s, eig0_mix);
+            k_LMR_ += LmrRate::computeSpeciesRate(shared_data);
         } else {//no LMR data for this species s, so use M data as default
-            k_LMR += LmrRate::computeSpeciesRate(shared_data, "M", eig0_mix);
+            s_ = "M";
+            k_LMR_ += LmrRate::computeSpeciesRate(shared_data);
         }
     }
-    return k_LMR;
+    return k_LMR_;
 }
 }
 

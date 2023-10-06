@@ -9,15 +9,13 @@
 namespace Cantera{
 struct LmrData : public ReactionData{
     LmrData() = default;
-    // ReactionData::ThermoPhase::Phase::speciesNames();
     virtual void update(double T) override;
     virtual void update(double T, double P) override {
         ReactionData::update(T);
         pressure = P;
-        // logP = std::log(P);
     }
-    virtual bool update(const ThermoPhase& phase, const Kinetics& kin) override; //This is the important one
-    using ReactionData::update; //this is where we get logT
+    virtual bool update(const ThermoPhase& phase) override;
+    using ReactionData::update;
     void perturbPressure(double deltaP);
     virtual void restore() override;
     virtual void invalidateCache() override {
@@ -64,17 +62,6 @@ protected:
     double P_ = 1e-300;
     double P1_ = 1e20;
     double P2_ = 1e-300;
-
-    // double Ptilde_; //reduced pressure, where P_tilde=P_*eig0_mix_/eig0[i]
-
-
-    // double logP_ = -1000; //!< log(p) at the current state
-    // double logP1_ = 1000; //!< log(p) at the lower pressure reference
-    // double logP2_ = -1000; //!< log(p) at the upper pressure reference
-    //! Indices to the ranges within rates_ for the lower / upper pressure, such
-    //! that rates_[ilow1_] through rates_[ilow2_] (inclusive) are the rates
-    //! expressions which are combined to form the rate at the lower reference
-    //! pressure.
     size_t ilow1_, ilow2_, ihigh1_, ihigh2_;
 };
 }

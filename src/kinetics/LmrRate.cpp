@@ -4,14 +4,13 @@
 
 #include "cantera/kinetics/LmrRate.h"
 #include "cantera/thermo/ThermoPhase.h"
-#include "cantera/kinetics/Kinetics.h" //! @todo remove after Cantera 3.0 (only used for deprecation)
 
 namespace Cantera{
 void LmrData::update(double T){
     throw CanteraError("LmrData::update",
         "Missing state information: 'LmrData' requires pressure.");
 }
-bool LmrData::update(const ThermoPhase& phase, const Kinetics& kin){
+bool LmrData::update(const ThermoPhase& phase){
     double T = phase.temperature();
     double P = phase.pressure(); //find out what units this is in
     int X = phase.stateMFNumber();
@@ -56,13 +55,11 @@ void LmrRate::setParameters(const AnyMap& node, const UnitStack& rate_units){
                 ArrheniusRate eig0_i_ = ArrheniusRate(AnyValue(collider["low-P-rate-constant"]), node.units(), rate_units);       
                 map<double, pair<size_t, size_t>> pressures_i_;
                 vector<ArrheniusRate> rates_i_; 
-
                 std::multimap<double, ArrheniusRate> multi_rates;
                 auto& rates = collider["rate-constants"].asVector<AnyMap>();
                 for (const auto& rate : rates){
                     multi_rates.insert({rate.convert("P","Pa"),ArrheniusRate(AnyValue(rate), node.units(), rate_units)});
                 }
-
                 rates_i_.reserve(multi_rates.size());
                 m_valid = !multi_rates.empty(); //if rates object empty, m_valid==FALSE. if rates is not empty, m_valid==TRUE
                 size_t j = 0;

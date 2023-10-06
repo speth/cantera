@@ -13,7 +13,7 @@ void LmrData::update(double T){
 }
 bool LmrData::update(const ThermoPhase& phase, const Kinetics& kin){
     double T = phase.temperature();
-    double P = phase.pressure();
+    double P = phase.pressure(); //find out what units this is in
     int X = phase.stateMFNumber();
     if (P != pressure || T != temperature || X != mfNumber) {
         update(T,P);
@@ -67,11 +67,10 @@ void LmrRate::setParameters(const AnyMap& node, const UnitStack& rate_units){
                 m_valid = !multi_rates.empty(); //if rates object empty, m_valid==FALSE. if rates is not empty, m_valid==TRUE
                 size_t j = 0;
                 for (const auto& [pressure, rate] : multi_rates) { 
-                    double logp = std::log(pressure);
-                    if (pressures_i_.empty() || pressures_i_.rbegin()->first != logp) {
-                        pressures_i_[logp] = {j, j+1};
+                    if (pressures_i_.empty() || pressures_i_.rbegin()->first != pressure) {
+                        pressures_i_[pressure] = {j, j+1};
                     } else {
-                        pressures_i_[logp].second = j+1;
+                        pressures_i_[pressure].second = j+1;
                     }
                     j++;
                     rates_i_.push_back(rate); 
@@ -79,7 +78,7 @@ void LmrRate::setParameters(const AnyMap& node, const UnitStack& rate_units){
                 if (!m_valid) { //runs if multi_rates is empty
                     // ensure that reaction rate can be evaluated (but returns NaN)
                     rates_i_.reserve(1);
-                    pressures_i_[std::log(OneBar)] = {0, 0};
+                    pressures_i_[OneBar] = {0, 0};
                     rates_i_.push_back(ArrheniusRate());
                 }
                 // Duplicate the first and last groups to handle P < P_0 and P > P_N
@@ -156,47 +155,44 @@ void LmrRate::validate(const string& equation, const Kinetics& kin){
 
 double LmrRate::computeSpeciesRate(const LmrData& shared_data){
     double eig0 = eig0_[s_].evalRate(shared_data.logT, shared_data.recipT);
-    double Xtilde=eig0*Xs_/eig0_mix_; //DOESN'T WORK YET BC WE DON'T HAVE MF DATA FOR EACH SPECIES
-    //STILL NEED TO ACCOUND FOR THE REDUCED PRESSURE, P_i *************************************************************************
-    if (shared_data.logP != logP_) { 
-        logP_=log(shared_data.P*eig0_mix_/eig0); //need to use natl log instead to align with code later on
-        if (logP_ > logP1_ && logP_ < logP2_) {
+    double Xtilde=eig0*Xs_/eig0_mix_;
+    if (shared_data.pressure != P_) {
+        P_=shared_data.pressure; 
+        double Ptilde=P_*eig0_mix_/eig0; //reduced pressure
+        if (P_ > P1_ && P_ < P2_) { //how does this make sense? Can't meet both conditions at once because P2_<P1_
             return;
         }
-        auto iter = pressures_[s_].upper_bound(logP_); //locate the pressure of interest
-        AssertThrowMsg(iter != pressures_[s_].end(), "LmrRate::evalFromStruct",
-                        "Pressure out of range: {}", logP_);
-        AssertThrowMsg(iter != pressures_[s_].begin(), "LmrRate::evalFromStruct",
-                        "Pressure out of range: {}", logP_); 
-        // upper interpolation pressure
-        logP2_ = iter->first;
+        auto iter = pressures_[s_].upper_bound(Ptilde); //locate the pressure of interest
+        AssertThrowMsg(iter != pressures_[s_].end(), "LmrRate::computeSpeciesRate",
+                        "Reduced-pressure out of range: {}", Ptilde);
+        AssertThrowMsg(iter != pressures_[s_].begin(), "LmrRate::computeSpeciesRate",
+                        "Reduced-pressure out of range: {}", Ptilde); 
+        P2_ = iter->first; // upper interpolation pressure
         ihigh1_ = iter->second.first;
         ihigh2_ = iter->second.second;
-        // lower interpolation pressure
-        logP1_ = (--iter)->first;
+        P1_ = (--iter)->first; // lower interpolation pressure
         ilow1_ = iter->second.first;
         ilow2_ = iter->second.second;
-        rDeltaP_ = 1.0 / (logP2_ - logP1_);
-        double log_k1, log_k2;
-        if (ilow1_ == ilow2_) {
-            log_k1 = rates_[s_][ilow1_].evalLog(shared_data.logT, shared_data.recipT);
+        double k1, k2;
+        if (ilow1_ == ilow2_) { //Not sure when this scenario would ever happen
+            k1 = rates_[s_][ilow1_].evalRate(shared_data.logT, shared_data.recipT);
         } else {
-            double k = 1e-300; // non-zero to make log(k) finite
+            double k = 1e-300;
             for (size_t i = ilow1_; i < ilow2_; i++) {
                 k += rates_[s_][i].evalRate(shared_data.logT, shared_data.recipT);
             }
-            log_k1 = std::log(k);
+            k1 = k;
         }
-        if (ihigh1_ == ihigh2_) {
-            log_k2 = rates_[s_][ihigh1_].evalLog(shared_data.logT, shared_data.recipT);
+        if (ihigh1_ == ihigh2_) { //Not sure when this scenario would ever happen
+            k2 = rates_[s_][ihigh1_].evalRate(shared_data.logT, shared_data.recipT);
         } else {
-            double k = 1e-300; // non-zero to make log(k) finite
+            double k = 1e-300;
             for (size_t i = ihigh1_; i < ihigh2_; i++) {
                 k += rates_[s_][i].evalRate(shared_data.logT, shared_data.recipT);
             }
-            log_k2 = std::log(k);
+            k2 = k;
         }
-        return Xtilde*exp(log_k1 + (log_k2-log_k1)/(logP2_-logP1_) * (logP_-logP1_+log(eig0_mix_)-log(eig0)));
+        return Xtilde*exp(log(k1) + (log(k2)-log(k1))/(log(P2_)-log(P1_)) * (log(Ptilde)-log(P1_)+log(eig0_mix_)-log(eig0)));
     }
 }
 

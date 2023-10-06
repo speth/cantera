@@ -14,7 +14,7 @@ struct LmrData : public ReactionData{
     virtual void update(double T, double P) override {
         ReactionData::update(T);
         pressure = P;
-        logP = std::log(P);
+        // logP = std::log(P);
     }
     virtual bool update(const ThermoPhase& phase, const Kinetics& kin) override; //This is the important one
     using ReactionData::update; //this is where we get logT
@@ -26,7 +26,7 @@ struct LmrData : public ReactionData{
     }
     // double moleFraction = NAN;
     double pressure = NAN; //!< pressure
-    double logP = 0.0; //!< logarithm of pressure
+    // double logP = 0.0; //!< logarithm of pressure
     vector<double> moleFractions;
     int mfNumber; 
 protected:
@@ -61,16 +61,21 @@ public:
 
 protected:
     //species_ = FXNTOEXTRACTSPECIESLISTFROMSOLUTIONOBJECT
+    double P_ = 1e-300;
+    double P1_ = 1e20;
+    double P2_ = 1e-300;
 
-    double logP_ = -1000; //!< log(p) at the current state
-    double logP1_ = 1000; //!< log(p) at the lower pressure reference
-    double logP2_ = -1000; //!< log(p) at the upper pressure reference
+    // double Ptilde_; //reduced pressure, where P_tilde=P_*eig0_mix_/eig0[i]
+
+
+    // double logP_ = -1000; //!< log(p) at the current state
+    // double logP1_ = 1000; //!< log(p) at the lower pressure reference
+    // double logP2_ = -1000; //!< log(p) at the upper pressure reference
     //! Indices to the ranges within rates_ for the lower / upper pressure, such
     //! that rates_[ilow1_] through rates_[ilow2_] (inclusive) are the rates
     //! expressions which are combined to form the rate at the lower reference
     //! pressure.
     size_t ilow1_, ilow2_, ihigh1_, ihigh2_;
-    double rDeltaP_ = -1.0; //!< reciprocal of (logP2 - logP1)
 };
 }
 #endif

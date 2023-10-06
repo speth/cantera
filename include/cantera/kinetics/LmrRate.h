@@ -9,12 +9,11 @@
 namespace Cantera{
 struct LmrData : public ReactionData{
     LmrData() = default;
-    ReactionData::ThermoPhase::Phase::speciesNames();
+    // ReactionData::ThermoPhase::Phase::speciesNames();
     virtual void update(double T) override;
     virtual void update(double T, double P) override {
         ReactionData::update(T);
         pressure = P;
-        // moleFraction = X;
         logP = std::log(P);
     }
     virtual bool update(const ThermoPhase& phase, const Kinetics& kin) override; //This is the important one
@@ -30,8 +29,8 @@ struct LmrData : public ReactionData{
     double logP = 0.0; //!< logarithm of pressure
 protected:
     double m_pressure_buf = -1.0; //!< buffered pressure
-    //somedatatype m_molefraction = someinitializedvalue
-    // vector<string> m_speciesNames;
+    vector<double> moleFractions;
+    int mfNumber;
 };
 
 class LmrRate final : public ReactionRate

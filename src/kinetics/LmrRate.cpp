@@ -14,9 +14,11 @@ void LmrData::update(double T){
 bool LmrData::update(const ThermoPhase& phase, const Kinetics& kin){
     double T = phase.temperature();
     double P = phase.pressure();
-    double X = phase.stateMFNumber(); //Need to figure out the correct way to write this
-    if (P != pressure || T != temperature) {
+    int X = phase.stateMFNumber();
+    if (P != pressure || T != temperature || X != mfNumber) {
         update(T,P);
+        phase.getMoleFractions(moleFractions.data());
+        mfNumber=X;
         return true;
     }
     return false;
@@ -92,7 +94,7 @@ void LmrRate::setParameters(const AnyMap& node, const UnitStack& rate_units){
     }
 }
 
-// void LmrRate::getParameters(AnyMap& rateNode, const Units& rate_units) const{ //COMBINES GETPARAMETERS AND GETRATES - CAN MAKE SIMPLIFICATIONS TO THIS CODE
+// void LmrRate::getParameters(AnyMap& rateNode, const Units& rate_units) const{
 //     vector<AnyMap> rateList;
 //     if (!valid()) {
 //         // object not fully set up
@@ -124,7 +126,6 @@ void LmrRate::validate(const string& equation, const Kinetics& kin){
     fmt::memory_buffer err_reactions;
     double T[] = {300.0, 500.0, 1000.0, 2000.0, 5000.0, 10000.0};
     LmrData data;
-
     // Iterate through the outer map (string to inner map)
     for (const auto& outer_pair : pressures_) { // recall that pressures_ is a map within a map
         const std::string& specieskey = outer_pair.first; //specieskey refers only to the species for which LMR data is provided in yaml (e.g. 'H2O', 'M')
@@ -154,15 +155,11 @@ void LmrRate::validate(const string& equation, const Kinetics& kin){
 }
 
 
-//IF m_SPECIESLIST (see phase.h) element is in species in yaml, then attach corresponding data to that species. 
-//Otherwise, attach data corresponding to "M" to that and all other species for which explicit data has not been provided
-
-
 double LmrRate::computeSpeciesRate(const LmrData& shared_data, string s, double eig0_mix){
     double Xs = shared_data.X[s];
     double eig0 = eig0_[s].evalRate(shared_data.logT, shared_data.recipT);
     double Xtilde=eig0*shared_data.Xs/eig0_mix; //DOESN'T WORK YET BC WE DON'T HAVE MF DATA FOR EACH SPECIES
-    //STILL NEED TO ACCOUND FOR THE REDUCED PRESSURE, P_i ***************************************************************
+    //STILL NEED TO ACCOUND FOR THE REDUCED PRESSURE, P_i *************************************************************************
     if (shared_data.logP != logP_) { 
         logP_=log(shared_data.P*eig0_mix/eig0); //need to use natl log instead to align with code later on
         if (logP_ > logP1_ && logP_ < logP2_) {

@@ -4,13 +4,15 @@
 
 #include "cantera/kinetics/LmrRate.h"
 #include "cantera/thermo/ThermoPhase.h"
+// @todo remove after Cantera 3.0 (only used for deprecation)
+#include "cantera/kinetics/Kinetics.h"
 
 namespace Cantera{
 void LmrData::update(double T){
     throw CanteraError("LmrData::update",
         "Missing state information: 'LmrData' requires pressure.");
 }
-bool LmrData::update(const ThermoPhase& phase){
+bool LmrData::update(const ThermoPhase& phase, const Kinetics& kin){
     double T = phase.temperature();
     double P = phase.pressure(); //find out what units this is in
     int X = phase.stateMFNumber();
@@ -64,10 +66,11 @@ void LmrRate::setParameters(const AnyMap& node, const UnitStack& rate_units){
                 m_valid = !multi_rates.empty(); //if rates object empty, m_valid==FALSE. if rates is not empty, m_valid==TRUE
                 size_t j = 0;
                 for (const auto& [pressure, rate] : multi_rates) { 
-                    if (pressures_i_.empty() || pressures_i_.rbegin()->first != pressure) {
-                        pressures_i_[pressure] = {j, j+1};
+                    double logp = std::log(pressure);
+                    if (pressures_i_.empty() || pressures_i_.rbegin()->first != logp) {
+                        pressures_i_[logp] = {j, j+1};
                     } else {
-                        pressures_i_[pressure].second = j+1;
+                        pressures_i_[logp].second = j+1;
                     }
                     j++;
                     rates_i_.push_back(rate); 
@@ -75,7 +78,7 @@ void LmrRate::setParameters(const AnyMap& node, const UnitStack& rate_units){
                 if (!m_valid) { //runs if multi_rates is empty
                     // ensure that reaction rate can be evaluated (but returns NaN)
                     rates_i_.reserve(1);
-                    pressures_i_[OneBar] = {0, 0};
+                    pressures_i_[std::log(OneBar)] = {0, 0};
                     rates_i_.push_back(ArrheniusRate());
                 }
                 // Duplicate the first and last groups to handle P < P_0 and P > P_N
@@ -90,51 +93,64 @@ void LmrRate::setParameters(const AnyMap& node, const UnitStack& rate_units){
     }
 }
 
-// void LmrRate::getParameters(AnyMap& rateNode, const Units& rate_units) const{
-//     vector<AnyMap> rateList;
-//     if (!valid()) {
+// //adapted from chebyshevrate
+// void LmrRate::getParameters(AnyMap& rateNode) const{
+//     if (!valid()) { //valid==FALSE makes if statement == TRUE
 //         // object not fully set up
 //         return;
 //     }
-//     std::multimap<double, ArrheniusRate> rateMap;
-//     // initial preincrement to skip rate for P --> 0
-//     for (auto iter = ++pressures_.begin();
-//             iter->first < 1000; // skip rates for (P --> infinity)
-//             ++iter) {
-//         for (size_t i = iter->second.first; i < iter->second.second; i++) {
-//             rateMap.insert({std::exp(iter->first), rates_[i]});
+//     auto& colliders = rateNode["collider-list"].asVector<AnyMap>();
+
+//     rateNode["collider-list"]["name"].setQuantity("Species_Name"); //incorrect syntax
+//     rateNode["temperature-range"].setQuantity({Tmin(), Tmax()}, "K");
+//     rateNode["pressure-range"].setQuantity({Pmin(), Pmax()}, "Pa");
+//     size_t nT = m_coeffs.nRows();
+//     size_t nP = m_coeffs.nColumns();
+//     vector<vector<double>> coeffs2d(nT, vector<double>(nP));
+//     for (size_t i = 0; i < nT; i++) {
+//         for (size_t j = 0; j < nP; j++) {
+//             coeffs2d[i][j] = m_coeffs(i, j);
 //         }
 //     }
-//     for (const auto& [pressure, rate] : rateMap) {
-//         AnyMap rateNode_;
-//         rateNode_["P"].setQuantity(pressure, "Pa");
-//         rate.getRateParameters(rateNode_);
-//         rateList.push_back(std::move(rateNode_));
-//     }
-//     rateNode["rate-constants"] = std::move(rateList);
+//     // Unit conversions must take place later, after the destination unit system
+//     // is known. A lambda function is used here to override the default behavior
+//     Units rate_units2 = conversionUnits();
+//     auto converter = [rate_units2](AnyValue& coeffs, const UnitSystem& units) {
+//         if (rate_units2.factor() != 0.0) {
+//             coeffs.asVector<vector<double>>()[0][0] += \
+//                 std::log10(units.convertFrom(1.0, rate_units2));
+//         } else if (units.getDelta(UnitSystem()).size()) {
+//             throw CanteraError("ChebyshevRate::getParameters lambda",
+//                 "Cannot convert rate constant with unknown dimensions to a "
+//                 "non-default unit system");
+//         }
+//     };
+//     AnyValue coeffs;
+//     coeffs = std::move(coeffs2d);
+//     rateNode["data"].setQuantity(coeffs, converter);
 // }
 
-void LmrRate::validate(const string& equation){
+void LmrRate::validate(const string& equation, const Kinetics& kin, const LmrData& data){
+    // STILL NEED TO FIGURE OUT HOW TO GET SPECIES NAME LIST FROM THERMOPHASE OBJECT
     if (!valid()) {
         throw InputFileError("LmrRate::validate", m_input,
             "Rate object for reaction '{}' is not configured.", equation);
     }
     fmt::memory_buffer err_reactions;
     double T[] = {300.0, 500.0, 1000.0, 2000.0, 5000.0, 10000.0};
-    LmrData data;
+
     // Iterate through the outer map (string to inner map)
-    for (const auto& outer_pair : pressures_) { // recall that pressures_ is a map within a map
-        const std::string& specieskey = outer_pair.first; //specieskey refers only to the species for which LMR data is provided in yaml (e.g. 'H2O', 'M')
+    for (const auto& outer_pair : pressures_) {
+        const std::string& s = outer_pair.first; //s refers only to the species for which LMR data is provided in yaml (e.g. 'H2O', 'M')
         const std::map<double, std::pair<size_t, size_t>>& inner_map = outer_pair.second;
-        vector<ArrheniusRate> rates_i_ = rates_[specieskey];
         for (auto iter = ++inner_map.begin(); iter->first < 1000; iter++) {
-            data.update(T[0], exp(iter->first));
+            data.update(T[0], exp(iter->first)); //WHY IS THERE AN ERROR HERE
             ilow1_ = iter->second.first;
             ilow2_ = iter->second.second;       
             for (size_t i=0; i < 6; i++) {
                 double k = 0;
                 for (size_t p = ilow1_; p < ilow2_; p++) {
-                    k += rates_i_.at(p).evalRate(log(T[i]), 1.0 / T[i]);
+                    k += rates_[s].at(p).evalRate(log(T[i]), 1.0 / T[i]);
                 }
                 if (!(k > 0)) {
                     fmt_append(err_reactions,
@@ -143,77 +159,78 @@ void LmrRate::validate(const string& equation){
             }
         }
         if (err_reactions.size()) {
-            throw InputFileError("LmrRate::validate", m_input,
-                "\nInvalid rate coefficient for reaction '{}'\n{}",
-                equation, to_string(err_reactions));
+            throw InputFileError("LmrRate::validate", m_input,"\nInvalid rate coefficient for reaction '{}'\n{}",equation, to_string(err_reactions));
         }
     }
 }
 
-double LmrRate::computeSpeciesRate(const LmrData& shared_data){
-    double eig0 = eig0_[s_].evalRate(shared_data.logT, shared_data.recipT);
-    double Xtilde=eig0*Xs_/eig0_mix_;
-    if (shared_data.pressure != P_) {
-        P_=shared_data.pressure; 
-        double Ptilde=P_*eig0_mix_/eig0; //reduced pressure
-        if (P_ > P1_ && P_ < P2_) { //how does this make sense? Can't meet both conditions at once because P2_<P1_
-            return;
-        }
-        auto iter = pressures_[s_].upper_bound(Ptilde); //locate the pressure of interest
-        AssertThrowMsg(iter != pressures_[s_].end(), "LmrRate::computeSpeciesRate",
-                        "Reduced-pressure out of range: {}", Ptilde);
-        AssertThrowMsg(iter != pressures_[s_].begin(), "LmrRate::computeSpeciesRate",
-                        "Reduced-pressure out of range: {}", Ptilde); 
-        P2_ = iter->first; // upper interpolation pressure
-        ihigh1_ = iter->second.first;
-        ihigh2_ = iter->second.second;
-        P1_ = (--iter)->first; // lower interpolation pressure
-        ilow1_ = iter->second.first;
-        ilow2_ = iter->second.second;
-        double k1, k2;
-        if (ilow1_ == ilow2_) { //Not sure when this scenario would ever happen
-            k1 = rates_[s_][ilow1_].evalRate(shared_data.logT, shared_data.recipT);
-        } else {
-            double k = 1e-300;
-            for (size_t i = ilow1_; i < ilow2_; i++) {
-                k += rates_[s_][i].evalRate(shared_data.logT, shared_data.recipT);
-            }
-            k1 = k;
-        }
-        if (ihigh1_ == ihigh2_) { //Not sure when this scenario would ever happen
-            k2 = rates_[s_][ihigh1_].evalRate(shared_data.logT, shared_data.recipT);
-        } else {
-            double k = 1e-300;
-            for (size_t i = ihigh1_; i < ihigh2_; i++) {
-                k += rates_[s_][i].evalRate(shared_data.logT, shared_data.recipT);
-            }
-            k2 = k;
-        }
-        return Xtilde*exp(log(k1) + (log(k2)-log(k1))/(log(P2_)-log(P1_)) * (log(Ptilde)-log(P1_)+log(eig0_mix_)-log(eig0)));
+//Similar to updateFromStruct, evalFromStruct in PlogRate.h but with minor modifications
+double LmrRate::speciesPlogRate(const LmrData& shared_data){ 
+    if (logPeff_ > logP1_ && logPeff_ < logP2_) {
+        return;
     }
+    auto iter = pressures_s_.upper_bound(logPeff_);
+    AssertThrowMsg(iter != pressures_s_.end(), "LmrRate::speciesPlogRate","Reduced-pressure out of range: {}", logPeff_);
+    AssertThrowMsg(iter != pressures_s_.begin(), "LmrRate::speciesPlogRate","Reduced-pressure out of range: {}", logPeff_); 
+    logP2_ = iter->first;
+    ihigh1_ = iter->second.first;
+    ihigh2_ = iter->second.second;
+    logP1_ = (--iter)->first;
+    ilow1_ = iter->second.first;
+    ilow2_ = iter->second.second;
+    rDeltaP_ = 1.0 / (logP2_ - logP1_);
+    double log_k1, log_k2;
+    if (ilow1_ == ilow2_) {
+        log_k1 = rates_s_[ilow1_].evalLog(shared_data.logT, shared_data.recipT);
+    } else {
+        double k = 1e-300;
+        for (size_t i = ilow1_; i < ilow2_; i++) {
+            k += rates_s_[i].evalRate(shared_data.logT, shared_data.recipT);
+        }
+        log_k1 = std::log(k);
+    }
+    if (ihigh1_ == ihigh2_) {
+        log_k2 = rates_s_[ihigh1_].evalLog(shared_data.logT, shared_data.recipT);
+    } else {
+        double k = 1e-300;
+        for (size_t i = ihigh1_; i < ihigh2_; i++) {
+            k += rates_s_[i].evalRate(shared_data.logT, shared_data.recipT);
+        }
+        log_k2 = std::log(k);
+    }
+    return exp(log_k1 + (log_k2-log_k1)*rDeltaP_*(logPeff_-logP1_));
 }
 
 double LmrRate::evalFromStruct(const LmrData& shared_data){
+    double eig0_mix;
+    double eig0_M=eig0_["M"].evalRate(shared_data.logT, shared_data.recipT);
     for (size_t i=0; i<shared_data.allSpecies.size(); i++){ //testing each species listed at the top of yaml file
-        Xs_ = shared_data.moleFractions[i];
-        s_ = allSpecies[i];
-        std::map<string, ArrheniusRate>::iterator it = eig0_.find(s_);
-        if (it != eig0_.end()) {//key found, i.e. s has corresponding LMR data  
-            eig0_mix_ += Xs_*eig0_[s_].evalRate(shared_data.logT, shared_data.recipT); 
-        } else {//no LMR data for this species s, so use M data as default
-            s_ = "M";
-            eig0_mix_ += Xs_*eig0_[s_].evalRate(shared_data.logT, shared_data.recipT);
+        double Xi = shared_data.moleFractions[i];
+        std::map<string, ArrheniusRate>::iterator it = eig0_.find(allSpecies[i]);
+        if (it != eig0_.end()) {//key found, i.e. species has corresponding LMR data  
+            eig0_mix += Xi*eig0_[allSpecies[i]].evalRate(shared_data.logT, shared_data.recipT);
+        } else {//no LMR data for this species, so use M data as default
+            eig0_mix += Xi*eig0_M;
         }
     }
+    double log_eig0_mix = std::log(eig0_mix);
     for (size_t i=0; i<shared_data.allSpecies.size(); i++){ //testing each species listed at the top of yaml file
-        Xs_ = shared_data.moleFractions[i];
-        s_ = allSpecies[i];
-        std::map<string, ArrheniusRate>::iterator it = eig0_.find(s_);
-        if (it != eig0_.end()) {//key found, i.e. s has corresponding LMR data  
-            k_LMR_ += LmrRate::computeSpeciesRate(shared_data);
-        } else {//no LMR data for this species s, so use M data as default
-            s_ = "M";
-            k_LMR_ += LmrRate::computeSpeciesRate(shared_data);
+        double Xi = shared_data.moleFractions[i];
+        double eig0; //eig0 val of a single species
+        std::map<string, ArrheniusRate>::iterator it = eig0_.find(allSpecies[i]);
+        if (it != eig0_.end()) {
+            eig0 = eig0_[allSpecies[i]].evalRate(shared_data.logT, shared_data.recipT);
+            pressures_s_=pressures_[allSpecies[i]];
+            rates_s_=rates_[allSpecies[i]];
+        } else {
+            eig0 = eig0_M;
+            pressures_s_=pressures_["M"];
+            rates_s_=rates_["M"];
+        }
+        if (shared_data.logP != logP_) { //WHAT IS THE PURPOSE OF THIS STEP?
+            logP_=shared_data.logP; 
+            logPeff_=logP_+log_eig0_mix-log(eig0); //Peff is the effective pressure, formerly called "Ptilde"
+            k_LMR_ += LmrRate::speciesPlogRate(shared_data)*eig0*Xi/eig0_mix; //Xtilde=eig0_s*Xi/eig0_mix
         }
     }
     return k_LMR_;

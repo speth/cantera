@@ -13,8 +13,9 @@ struct LmrData : public ReactionData{
     virtual void update(double T, double P) override {
         ReactionData::update(T);
         pressure = P;
+        logP = std::log(P);
     }
-    virtual bool update(const ThermoPhase& phase);
+    virtual bool update(const ThermoPhase& phase, const Kinetics& kin);
     using ReactionData::update;
     void perturbPressure(double deltaP);
     virtual void restore() override;
@@ -24,7 +25,7 @@ struct LmrData : public ReactionData{
     }
     // double moleFraction = NAN;
     double pressure = NAN; //!< pressure
-    // double logP = 0.0; //!< logarithm of pressure
+    double logP = 0.0; //!< logarithm of pressure
     vector<double> moleFractions;
     int mfNumber; 
 protected:
@@ -45,24 +46,32 @@ public:
     // void getParameters(AnyMap& rateNode) const {
     //     return getParameters(rateNode, Units(0));
     // }
-    double computeSpeciesRate(const LmrData& shared_data);
+    double speciesPlogRate(const LmrData& shared_data);
     double evalFromStruct(const LmrData& shared_data);
-    void validate(const string& equation);
+    void validate(const string& equation, const Kinetics& kin, const LmrData& data);
 
     map<string, map<double, pair<size_t, size_t>>> pressures_;
     map<string, vector<ArrheniusRate>> rates_;
     map<string,ArrheniusRate> eig0_;
-    double Xs_;
-    string s_;
+
+    map<double, pair<size_t, size_t>> pressures_s_;
+    vector<ArrheniusRate> rates_s_;
+    double logPeff_;
+    // double Xs_;
+    // string s_;
     double eig0_mix_ = 0.0;
+    double log_eig0_mix_ = 0.0;
     double k_LMR_ = 0.0;
 
 protected:
+
+    // const vector<string>& Phase::speciesNames() allSpecies;
     //species_ = FXNTOEXTRACTSPECIESLISTFROMSOLUTIONOBJECT
-    double P_ = 1e-300;
-    double P1_ = 1e20;
-    double P2_ = 1e-300;
+    double logP_ = -1000;
+    double logP1_ = 1000;
+    double logP2_ = -1000;
     size_t ilow1_, ilow2_, ihigh1_, ihigh2_;
+    double rDeltaP_ = -1.0; //!< reciprocal of (logP2 - logP1)
 };
 }
 #endif

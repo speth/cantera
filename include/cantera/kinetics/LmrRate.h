@@ -41,14 +41,13 @@ public:
         return make_unique<MultiRate<LmrRate, LmrData>>();
     } 
     const string type() const { return "LMR_R"; } //! Identifier of reaction rate type
+    
     void setParameters(const AnyMap& node, const UnitStack& rate_units);
-    // void getParameters(AnyMap& rateNode, const Units& rate_units) const;
-    // void getParameters(AnyMap& rateNode) const {
-    //     return getParameters(rateNode, Units(0));
-    // }
+    void validate(const string& equation, const Kinetics& kin);
     double speciesPlogRate(const LmrData& shared_data);
     double evalFromStruct(const LmrData& shared_data);
-    void validate(const string& equation, const Kinetics& kin);
+    void getParameters(AnyMap& rateNode, const Units& rate_units) const;
+    
 
     vector<string> allSpecies_; //list of all yaml species (not just those for which LMRR data exists)
     map<string, map<double, pair<size_t, size_t>>> pressures_;
@@ -57,16 +56,11 @@ public:
     map<double, pair<size_t, size_t>> pressures_s_;
     vector<ArrheniusRate> rates_s_;
     double logPeff_;
-    // double Xs_;
-    // string s_;
     double eig0_mix_ = 0.0;
     double log_eig0_mix_ = 0.0;
     double k_LMR_ = 0.0;
 
 protected:
-
-    // const vector<string>& Phase::speciesNames() allSpecies;
-    //species_ = FXNTOEXTRACTSPECIESLISTFROMSOLUTIONOBJECT
     double logP_ = -1000;
     double logP1_ = 1000;
     double logP2_ = -1000;

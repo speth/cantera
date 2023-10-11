@@ -94,43 +94,6 @@ void LmrRate::setParameters(const AnyMap& node, const UnitStack& rate_units){
     }
 }
 
-// //adapted from chebyshevrate
-// void LmrRate::getParameters(AnyMap& rateNode) const{
-//     if (!valid()) { //valid==FALSE makes if statement == TRUE
-//         // object not fully set up
-//         return;
-//     }
-//     auto& colliders = rateNode["collider-list"].asVector<AnyMap>();
-
-//     rateNode["collider-list"]["name"].setQuantity("Species_Name"); //incorrect syntax
-//     rateNode["temperature-range"].setQuantity({Tmin(), Tmax()}, "K");
-//     rateNode["pressure-range"].setQuantity({Pmin(), Pmax()}, "Pa");
-//     size_t nT = m_coeffs.nRows();
-//     size_t nP = m_coeffs.nColumns();
-//     vector<vector<double>> coeffs2d(nT, vector<double>(nP));
-//     for (size_t i = 0; i < nT; i++) {
-//         for (size_t j = 0; j < nP; j++) {
-//             coeffs2d[i][j] = m_coeffs(i, j);
-//         }
-//     }
-//     // Unit conversions must take place later, after the destination unit system
-//     // is known. A lambda function is used here to override the default behavior
-//     Units rate_units2 = conversionUnits();
-//     auto converter = [rate_units2](AnyValue& coeffs, const UnitSystem& units) {
-//         if (rate_units2.factor() != 0.0) {
-//             coeffs.asVector<vector<double>>()[0][0] += \
-//                 std::log10(units.convertFrom(1.0, rate_units2));
-//         } else if (units.getDelta(UnitSystem()).size()) {
-//             throw CanteraError("ChebyshevRate::getParameters lambda",
-//                 "Cannot convert rate constant with unknown dimensions to a "
-//                 "non-default unit system");
-//         }
-//     };
-//     AnyValue coeffs;
-//     coeffs = std::move(coeffs2d);
-//     rateNode["data"].setQuantity(coeffs, converter);
-// }
-
 void LmrRate::validate(const string& equation, const Kinetics& kin){
     //Get the list of all species in yaml (not just the ones for which LMRR data exists)
     ThermoPhase::Phase phase;
@@ -181,7 +144,6 @@ void LmrRate::validate(const string& equation, const Kinetics& kin){
 
 }
 
-//Similar to updateFromStruct, evalFromStruct in PlogRate.h but with minor modifications
 double LmrRate::speciesPlogRate(const LmrData& shared_data){ 
     if (logPeff_ > logP1_ && logPeff_ < logP2_) {
         return;
@@ -251,6 +213,46 @@ double LmrRate::evalFromStruct(const LmrData& shared_data){
         }
     }
     return k_LMR_;
+}
+
+void LmrRate::getParameters(AnyMap& rateNode, const Units& rate_units) const{
+    vector<AnyMap> topLevelList;
+    for (const auto& entry : eig0_) {
+        if (!valid()) { //WHERE TO PUT THIS CONDITIONAL STATEMENT?
+            return;
+        }
+        const string& s = entry.first; //a species for which LMRR data exists (does NOT refer to all species in yaml in general)
+        AnyMap speciesNode; //will be filled with all LMR data for a single collider (species)
+
+        //1) Save name of species to "name"
+        speciesNode["name"]=s;
+
+        //2) Save single set of arrhenius params for eig0 to "low-P-rate-constant"
+        AnyMap tempNode;
+        eig0_[s].getRateParameters(tempNode);
+        if (!tempNode.empty()){
+            speciesNode["low-P-rate-constant"]=std::move(tempNode);
+        }
+        tempNode.clear();
+
+        //3) Save list of rate constant params to "rate-constants"
+        std::multimap<double, ArrheniusRate> rateMap;
+        for (auto iter = ++pressures_[s].begin(); iter->first < 1000; ++iter) {
+            for (size_t i = iter->second.first; i < iter->second.second; i++) {
+                rateMap.insert({std::exp(iter->first), rates_[s][i]});
+            }
+        }
+        vector<AnyMap> rateList;
+        for (const auto& [pressure, rate] : rateMap) {
+            tempNode["P"].setQuantity(pressure, "atm");
+            rate.getRateParameters(tempNode);
+            rateList.push_back(std::move(tempNode));
+            tempNode.clear();
+        }    
+        speciesNode["rate-constants"] = std::move(rateList);
+        topLevelList.push_back(std::move(speciesNode));
+    }
+    rateNode["collider-list"]=std::move(topLevelList);
 }
 }
 

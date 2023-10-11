@@ -8,18 +8,19 @@
 #include "cantera/kinetics/Kinetics.h"
 
 namespace Cantera{
-void LmrData::update(double T){
-    throw CanteraError("LmrData::update",
-        "Missing state information: 'LmrData' requires pressure.");
+LmrData::LmrData(){ //THIS METHOD WAS ADAPTED SOMEWHAT BLINDLY FROM FALLOFF.CPP, PLEASE VERIFY IF CORRECT
+    moleFractions.resize(1, NAN);
 }
 bool LmrData::update(const ThermoPhase& phase, const Kinetics& kin){
     double T = phase.temperature();
     double P = phase.pressure(); //find out what units this is in
     int X = phase.stateMFNumber();
     if (P != pressure || T != temperature || X != mfNumber) {
-        update(T,P);
-        phase.getMoleFractions(moleFractions.data());
+        ReactionData::update(T);
+        pressure = P;
+        logP = std::log(P);
         mfNumber=X;
+        phase.getMoleFractions(moleFractions.data()); //IS THIS THE CORRECT WAY TO UPDATE THE MOLE FRACTION VECTOR
         return true;
     }
     return false;
@@ -140,12 +141,14 @@ void LmrRate::validate(const string& equation, const Kinetics& kin){
     fmt::memory_buffer err_reactions2; //for eig0-related errors
     double T[] = {300.0, 500.0, 1000.0, 2000.0, 5000.0, 10000.0};
     LmrData data;
+    
     // Iterate through the outer map (string to inner map)
     for (const auto& outer_pair : pressures_) {
         const std::string& s = outer_pair.first; //s refers only to the species for which LMR data is provided in yaml (e.g. 'H2O', 'M')
         const std::map<double, std::pair<size_t, size_t>>& inner_map = outer_pair.second;
         for (auto iter = ++inner_map.begin(); iter->first < 1000; iter++) { 
             data.update(T[0], exp(iter->first));
+            
             ilow1_ = iter->second.first;
             ilow2_ = iter->second.second;       
             for (size_t i=0; i < 6; i++) {

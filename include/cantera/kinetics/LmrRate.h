@@ -9,22 +9,23 @@
 namespace Cantera{
 struct LmrData : public ReactionData{
     LmrData() = default;
-    virtual void update(double T) override;
-    virtual void update(double T, double P) override {
-        ReactionData::update(T);
-        pressure = P;
-        logP = std::log(P);
-    }
     virtual bool update(const ThermoPhase& phase, const Kinetics& kin) override;
     using ReactionData::update;
     void perturbPressure(double deltaP);
     virtual void restore() override;
+
+    virtual void resize(size_t nSpecies, size_t nReactions, size_t nPhases) override {
+        moleFractions.resize(nReactions, NAN);
+        ready = true;
+    }
+
     virtual void invalidateCache() override {
         ReactionData::invalidateCache();
         pressure = NAN;
     }
     double pressure = NAN; //!< pressure
     double logP = 0.0; //!< logarithm of pressure
+    bool ready = false; //!< boolean indicating whether vectors are accessible
     vector<double> moleFractions;
     int mfNumber; 
 protected:

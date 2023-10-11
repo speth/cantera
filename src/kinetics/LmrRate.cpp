@@ -132,7 +132,11 @@ void LmrRate::setParameters(const AnyMap& node, const UnitStack& rate_units){
 // }
 
 void LmrRate::validate(const string& equation, const Kinetics& kin){
-    // STILL NEED TO FIGURE OUT HOW TO GET SPECIES NAME LIST FROM THERMOPHASE OBJECT
+    //Get the list of all species in yaml (not just the ones for which LMRR data exists)
+    ThermoPhase::Phase phase;
+    allSpecies_ = phase.speciesNames();
+
+    //Validate the LMRR input data for each species
     if (!valid()) {
         throw InputFileError("LmrRate::validate", m_input,
             "Rate object for reaction '{}' is not configured.", equation);
@@ -141,7 +145,6 @@ void LmrRate::validate(const string& equation, const Kinetics& kin){
     fmt::memory_buffer err_reactions2; //for eig0-related errors
     double T[] = {300.0, 500.0, 1000.0, 2000.0, 5000.0, 10000.0};
     LmrData data;
-    
     // Iterate through the outer map (string to inner map)
     for (const auto& outer_pair : pressures_) {
         const std::string& s = outer_pair.first; //s refers only to the species for which LMR data is provided in yaml (e.g. 'H2O', 'M')
@@ -218,24 +221,24 @@ double LmrRate::speciesPlogRate(const LmrData& shared_data){
 double LmrRate::evalFromStruct(const LmrData& shared_data){
     double eig0_mix;
     double eig0_M=eig0_["M"].evalRate(shared_data.logT, shared_data.recipT);
-    for (size_t i=0; i<shared_data.allSpecies.size(); i++){ //testing each species listed at the top of yaml file
+    for (size_t i=0; i<allSpecies_.size(); i++){ //testing each species listed at the top of yaml file
         double Xi = shared_data.moleFractions[i];
-        std::map<string, ArrheniusRate>::iterator it = eig0_.find(allSpecies[i]);
+        std::map<string, ArrheniusRate>::iterator it = eig0_.find(allSpecies_[i]);
         if (it != eig0_.end()) {//key found, i.e. species has corresponding LMR data  
-            eig0_mix += Xi*eig0_[allSpecies[i]].evalRate(shared_data.logT, shared_data.recipT);
+            eig0_mix += Xi*eig0_[allSpecies_[i]].evalRate(shared_data.logT, shared_data.recipT);
         } else {//no LMR data for this species, so use M data as default
             eig0_mix += Xi*eig0_M;
         }
     }
     double log_eig0_mix = std::log(eig0_mix);
-    for (size_t i=0; i<shared_data.allSpecies.size(); i++){ //testing each species listed at the top of yaml file
+    for (size_t i=0; i<allSpecies_.size(); i++){ //testing each species listed at the top of yaml file
         double Xi = shared_data.moleFractions[i];
         double eig0; //eig0 val of a single species
-        std::map<string, ArrheniusRate>::iterator it = eig0_.find(allSpecies[i]);
+        std::map<string, ArrheniusRate>::iterator it = eig0_.find(allSpecies_[i]);
         if (it != eig0_.end()) {
-            eig0 = eig0_[allSpecies[i]].evalRate(shared_data.logT, shared_data.recipT);
-            pressures_s_=pressures_[allSpecies[i]];
-            rates_s_=rates_[allSpecies[i]];
+            eig0 = eig0_[allSpecies_[i]].evalRate(shared_data.logT, shared_data.recipT);
+            pressures_s_=pressures_[allSpecies_[i]];
+            rates_s_=rates_[allSpecies_[i]];
         } else {
             eig0 = eig0_M;
             pressures_s_=pressures_["M"];

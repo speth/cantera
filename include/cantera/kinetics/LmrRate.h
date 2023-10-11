@@ -50,10 +50,10 @@ public:
     double evalFromStruct(const LmrData& shared_data);
     void validate(const string& equation, const Kinetics& kin);
 
+    vector<string> allSpecies_; //list of all yaml species (not just those for which LMRR data exists)
     map<string, map<double, pair<size_t, size_t>>> pressures_;
     map<string, vector<ArrheniusRate>> rates_;
     map<string,ArrheniusRate> eig0_;
-
     map<double, pair<size_t, size_t>> pressures_s_;
     vector<ArrheniusRate> rates_s_;
     double logPeff_;

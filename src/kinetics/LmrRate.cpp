@@ -216,20 +216,31 @@ double LmrRate::evalFromStruct(const LmrData& shared_data){
 }
 
 void LmrRate::getParameters(AnyMap& rateNode, const Units& rate_units) const{
+
+    //Create copies of existing variables
+    map<string, map<double, pair<size_t, size_t>>> pressures__ = pressures_;
+    map<string, vector<ArrheniusRate>> rates__ = rates_;
+    map<string,ArrheniusRate> eig0__ = eig0_;
+    
+    vector<string> colliderList;
+    for (const auto& entry : eig0__) {
+        colliderList.push_back(entry.first);
+    }
+
     vector<AnyMap> topLevelList;
-    for (const auto& entry : eig0_) {
+    for (size_t i=0; i<colliderList.size(); i++) {
+        AnyMap speciesNode; //will be filled with all LMR data for a single collider (species)
         if (!valid()) { //WHERE TO PUT THIS CONDITIONAL STATEMENT?
             return;
         }
-        const string& s = entry.first; //a species for which LMRR data exists (does NOT refer to all species in yaml in general)
-        AnyMap speciesNode; //will be filled with all LMR data for a single collider (species)
+        string& s = colliderList[i];
 
         //1) Save name of species to "name"
         speciesNode["name"]=s;
 
         //2) Save single set of arrhenius params for eig0 to "low-P-rate-constant"
         AnyMap tempNode;
-        eig0_[s].getRateParameters(tempNode);
+        eig0__[s].getRateParameters(tempNode);
         if (!tempNode.empty()){
             speciesNode["low-P-rate-constant"]=std::move(tempNode);
         }
@@ -237,9 +248,9 @@ void LmrRate::getParameters(AnyMap& rateNode, const Units& rate_units) const{
 
         //3) Save list of rate constant params to "rate-constants"
         std::multimap<double, ArrheniusRate> rateMap;
-        for (auto iter = ++pressures_[s].begin(); iter->first < 1000; ++iter) {
+        for (auto iter = ++pressures__[s].begin(); iter->first < 1000; ++iter) {
             for (size_t i = iter->second.first; i < iter->second.second; i++) {
-                rateMap.insert({std::exp(iter->first), rates_[s][i]});
+                rateMap.insert({std::exp(iter->first), rates__[s][i]});
             }
         }
         vector<AnyMap> rateList;

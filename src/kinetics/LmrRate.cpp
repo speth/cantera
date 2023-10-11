@@ -4,13 +4,14 @@
 
 #include "cantera/kinetics/LmrRate.h"
 #include "cantera/thermo/ThermoPhase.h"
-// @todo remove after Cantera 3.0 (only used for deprecation)
 #include "cantera/kinetics/Kinetics.h"
 
 namespace Cantera{
+
 LmrData::LmrData(){ //THIS METHOD WAS ADAPTED SOMEWHAT BLINDLY FROM FALLOFF.CPP, PLEASE VERIFY IF CORRECT
     moleFractions.resize(1, NAN);
 }
+
 bool LmrData::update(const ThermoPhase& phase, const Kinetics& kin){
     double T = phase.temperature();
     double P = phase.pressure(); //find out what units this is in
@@ -25,6 +26,7 @@ bool LmrData::update(const ThermoPhase& phase, const Kinetics& kin){
     }
     return false;
 }
+
 void LmrData::perturbPressure(double deltaP){
     if (m_pressure_buf > 0.) {
         throw CanteraError("LmrData::perturbPressure",
@@ -33,6 +35,7 @@ void LmrData::perturbPressure(double deltaP){
     m_pressure_buf = pressure;
     update(temperature, pressure * (1. + deltaP));
 }
+
 void LmrData::restore(){
     ReactionData::restore();
     // only restore if there is a valid buffered value
@@ -98,7 +101,6 @@ void LmrRate::validate(const string& equation, const Kinetics& kin){
     //Get the list of all species in yaml (not just the ones for which LMRR data exists)
     ThermoPhase::Phase phase;
     allSpecies_ = phase.speciesNames();
-
     //Validate the LMRR input data for each species
     if (!valid()) {
         throw InputFileError("LmrRate::validate", m_input,
@@ -113,8 +115,7 @@ void LmrRate::validate(const string& equation, const Kinetics& kin){
         const std::string& s = outer_pair.first; //s refers only to the species for which LMR data is provided in yaml (e.g. 'H2O', 'M')
         const std::map<double, std::pair<size_t, size_t>>& inner_map = outer_pair.second;
         for (auto iter = ++inner_map.begin(); iter->first < 1000; iter++) { 
-            data.update(T[0], exp(iter->first));
-            
+            data.update(T[0], exp(iter->first));        
             ilow1_ = iter->second.first;
             ilow2_ = iter->second.second;       
             for (size_t i=0; i < 6; i++) {
@@ -141,7 +142,6 @@ void LmrRate::validate(const string& equation, const Kinetics& kin){
                     "\nInvalid rate coefficient, eig0 (k at low-pressure limit), for reaction '{}'\n{}",equation, to_string(err_reactions2));
         }
     }
-
 }
 
 double LmrRate::speciesPlogRate(const LmrData& shared_data){ 
@@ -216,17 +216,14 @@ double LmrRate::evalFromStruct(const LmrData& shared_data){
 }
 
 void LmrRate::getParameters(AnyMap& rateNode, const Units& rate_units) const{
-
     //Create copies of existing variables
     map<string, map<double, pair<size_t, size_t>>> pressures__ = pressures_;
     map<string, vector<ArrheniusRate>> rates__ = rates_;
     map<string,ArrheniusRate> eig0__ = eig0_;
-    
     vector<string> colliderList;
     for (const auto& entry : eig0__) {
         colliderList.push_back(entry.first);
     }
-
     vector<AnyMap> topLevelList;
     for (size_t i=0; i<colliderList.size(); i++) {
         AnyMap speciesNode; //will be filled with all LMR data for a single collider (species)
@@ -234,10 +231,8 @@ void LmrRate::getParameters(AnyMap& rateNode, const Units& rate_units) const{
             return;
         }
         string& s = colliderList[i];
-
         //1) Save name of species to "name"
         speciesNode["name"]=s;
-
         //2) Save single set of arrhenius params for eig0 to "low-P-rate-constant"
         AnyMap tempNode;
         eig0__[s].getRateParameters(tempNode);
@@ -245,7 +240,6 @@ void LmrRate::getParameters(AnyMap& rateNode, const Units& rate_units) const{
             speciesNode["low-P-rate-constant"]=std::move(tempNode);
         }
         tempNode.clear();
-
         //3) Save list of rate constant params to "rate-constants"
         std::multimap<double, ArrheniusRate> rateMap;
         for (auto iter = ++pressures__[s].begin(); iter->first < 1000; ++iter) {

@@ -15,7 +15,7 @@ struct LmrData : public ReactionData{
         pressure = P;
         logP = std::log(P);
     }
-    virtual bool update(const ThermoPhase& phase, const Kinetics& kin);
+    virtual bool update(const ThermoPhase& phase, const Kinetics& kin) override;
     using ReactionData::update;
     void perturbPressure(double deltaP);
     virtual void restore() override;
@@ -23,7 +23,6 @@ struct LmrData : public ReactionData{
         ReactionData::invalidateCache();
         pressure = NAN;
     }
-    // double moleFraction = NAN;
     double pressure = NAN; //!< pressure
     double logP = 0.0; //!< logarithm of pressure
     vector<double> moleFractions;
@@ -48,7 +47,7 @@ public:
     // }
     double speciesPlogRate(const LmrData& shared_data);
     double evalFromStruct(const LmrData& shared_data);
-    void validate(const string& equation, const Kinetics& kin, const LmrData& data);
+    void validate(const string& equation, const Kinetics& kin);
 
     map<string, map<double, pair<size_t, size_t>>> pressures_;
     map<string, vector<ArrheniusRate>> rates_;

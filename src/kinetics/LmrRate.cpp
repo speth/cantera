@@ -130,21 +130,22 @@ void LmrRate::setParameters(const AnyMap& node, const UnitStack& rate_units){
 //     rateNode["data"].setQuantity(coeffs, converter);
 // }
 
-void LmrRate::validate(const string& equation, const Kinetics& kin, const LmrData& data){
+void LmrRate::validate(const string& equation, const Kinetics& kin){
     // STILL NEED TO FIGURE OUT HOW TO GET SPECIES NAME LIST FROM THERMOPHASE OBJECT
     if (!valid()) {
         throw InputFileError("LmrRate::validate", m_input,
             "Rate object for reaction '{}' is not configured.", equation);
     }
-    fmt::memory_buffer err_reactions;
+    fmt::memory_buffer err_reactions1; //for k-related errors
+    fmt::memory_buffer err_reactions2; //for eig0-related errors
     double T[] = {300.0, 500.0, 1000.0, 2000.0, 5000.0, 10000.0};
-
+    LmrData data;
     // Iterate through the outer map (string to inner map)
     for (const auto& outer_pair : pressures_) {
         const std::string& s = outer_pair.first; //s refers only to the species for which LMR data is provided in yaml (e.g. 'H2O', 'M')
         const std::map<double, std::pair<size_t, size_t>>& inner_map = outer_pair.second;
-        for (auto iter = ++inner_map.begin(); iter->first < 1000; iter++) {
-            data.update(T[0], exp(iter->first)); //WHY IS THERE AN ERROR HERE
+        for (auto iter = ++inner_map.begin(); iter->first < 1000; iter++) { 
+            data.update(T[0], exp(iter->first));
             ilow1_ = iter->second.first;
             ilow2_ = iter->second.second;       
             for (size_t i=0; i < 6; i++) {
@@ -152,16 +153,26 @@ void LmrRate::validate(const string& equation, const Kinetics& kin, const LmrDat
                 for (size_t p = ilow1_; p < ilow2_; p++) {
                     k += rates_[s].at(p).evalRate(log(T[i]), 1.0 / T[i]);
                 }
-                if (!(k > 0)) {
-                    fmt_append(err_reactions,
-                        "at P = {:.5g}, T = {:.1f}\n", std::exp(iter->first), T[i]);
+                double eig0 = eig0_[s].evalRate(log(T[i]), 1.0/T[i]);
+
+                if (!(k > 0)){ //flags error if k at a given T, P is not > 0
+                    fmt_append(err_reactions1,"at P = {:.5g}, T = {:.1f}\n", std::exp(iter->first), T[i]);
+                }
+                else if (!(eig0>0)){ //flags error if eig0 at a given T is not > 0
+                    fmt_append(err_reactions2,"at T = {:.1f}\n", T[i]);
                 }
             }
         }
-        if (err_reactions.size()) {
-            throw InputFileError("LmrRate::validate", m_input,"\nInvalid rate coefficient for reaction '{}'\n{}",equation, to_string(err_reactions));
+        if (err_reactions1.size()) {
+            throw InputFileError("LmrRate::validate", m_input,
+                    "\nInvalid rate coefficient, k, for reaction '{}'\n{}",equation, to_string(err_reactions1));
+        }
+        else if (err_reactions2.size()) {
+            throw InputFileError("LmrRate::validate", m_input,
+                    "\nInvalid rate coefficient, eig0 (k at low-pressure limit), for reaction '{}'\n{}",equation, to_string(err_reactions2));
         }
     }
+
 }
 
 //Similar to updateFromStruct, evalFromStruct in PlogRate.h but with minor modifications

@@ -146,6 +146,7 @@ void LmrRate::validate(const string& equation, const Kinetics& kin){
 
 double LmrRate::speciesPlogRate(const LmrData& shared_data){ 
     if (logPeff_ > logP1_ && logPeff_ < logP2_) {
+        // return 10;
         return;
     }
     auto iter = pressures_s_.upper_bound(logPeff_);
@@ -177,6 +178,7 @@ double LmrRate::speciesPlogRate(const LmrData& shared_data){
         }
         log_k2 = std::log(k);
     }
+    // double val = exp(log_k1 + (log_k2-log_k1)*rDeltaP_*(logPeff_-logP1_));
     return exp(log_k1 + (log_k2-log_k1)*rDeltaP_*(logPeff_-logP1_));
 }
 
@@ -210,6 +212,7 @@ double LmrRate::evalFromStruct(const LmrData& shared_data){
             logP_=shared_data.logP; 
             logPeff_=logP_+log_eig0_mix-log(eig0); //Peff is the effective pressure, formerly called "Ptilde"
             k_LMR_ += LmrRate::speciesPlogRate(shared_data)*eig0*Xi/eig0_mix; //Xtilde=eig0_s*Xi/eig0_mix
+            //k_LMR_ += 1; //placeholder, just used as a test
         }
     }
     return k_LMR_;

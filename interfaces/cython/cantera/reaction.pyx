@@ -622,40 +622,8 @@ cdef class LmrRate(ReactionRate):
                 raise TypeError("Invalid parameter 'rates'")
             self.set_cxx_object()
 
-    def __call__(self, double temperature, double pressure):
-        """
-        Evaluate rate expression based on temperature and pressure.
-        """
-        return self.rate.eval(temperature, pressure)
-
     cdef CxxLmrRate* cxx_object(self):
         return <CxxLmrRate*>self.rate
-
-    property rates:
-        """
-        Get/Set the rate coefficients for this reaction, which are given as a
-        list of (pressure, `Arrhenius`) tuples.
-        """
-        def __get__(self):
-            rates = []
-            cdef multimap[double, CxxArrheniusRate] cxxrates
-            cdef pair[double, CxxArrheniusRate] p_rate
-            cxxrates = self.cxx_object().getRates()
-            for p_rate in cxxrates:
-                rates.append((p_rate.first, copyArrhenius(&p_rate.second)))
-            return rates
-
-        def __set__(self, rates):
-            cdef multimap[double, CxxArrheniusRate] ratemap
-            cdef Arrhenius rate
-            cdef pair[double, CxxArrheniusRate] item
-            for p, rate in rates:
-                item.first = p
-                item.second = deref(rate.base)
-                ratemap.insert(item)
-
-            self._rate.reset(new CxxLmrRate(ratemap))
-            self.rate = self._rate.get()
 
 cdef class ChebyshevRate(ReactionRate):
     r"""

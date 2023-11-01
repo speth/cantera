@@ -8,7 +8,8 @@
 
 namespace Cantera{
 struct LmrData : public ReactionData{
-    LmrData() = default;
+    // LmrData() = default;
+    LmrData();
     virtual bool update(const ThermoPhase& phase, const Kinetics& kin) override;
     using ReactionData::update;
     void perturbPressure(double deltaP);

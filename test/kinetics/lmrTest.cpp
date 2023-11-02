@@ -1,5 +1,5 @@
-// #include "ext/googletest/googletest/include/gtest/gtest.h"
-#include "gtest/gtest.h"
+#include "googletest/googletest/include/gtest/gtest.h"
+// #include "gtest/gtest.h"
 #include "cantera/kinetics/Kinetics.h"
 #include "cantera/thermo/ThermoPhase.h"
 #include "cantera/base/Solution.h"
@@ -7,6 +7,7 @@
 
 // COMPILE/EXECUTE COMMANDS
 // gcc test/kinetics/lmrTest.cpp -o test/kinetics/lmrTest -lstdc++
+// g++ test/kinetics/lmrTest.cpp -o test/kinetics/lmrTest -lstdc++
 // lmrTest.exe
 
 namespace Cantera

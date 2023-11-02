@@ -145,10 +145,7 @@ void LmrRate::validate(const string& equation, const Kinetics& kin){
 }
 
 double LmrRate::speciesPlogRate(const LmrData& shared_data){ 
-    if (logPeff_ > logP1_ && logPeff_ < logP2_) {
-        // return 10;
-        return;
-    }
+
     auto iter = pressures_s_.upper_bound(logPeff_);
     AssertThrowMsg(iter != pressures_s_.end(), "LmrRate::speciesPlogRate","Reduced-pressure out of range: {}", logPeff_);
     AssertThrowMsg(iter != pressures_s_.begin(), "LmrRate::speciesPlogRate","Reduced-pressure out of range: {}", logPeff_); 
@@ -210,9 +207,11 @@ double LmrRate::evalFromStruct(const LmrData& shared_data){
         }
         if (shared_data.logP != logP_) { //WHAT IS THE PURPOSE OF THIS STEP?
             logP_=shared_data.logP; 
-            logPeff_=logP_+log_eig0_mix-log(eig0); //Peff is the effective pressure, formerly called "Ptilde"
+            logPeff_=logP_+log_eig0_mix-log(eig0); //Peff is the effective pressure, formerly called "Ptilde" 
+            // if (logP_ > logP1_ && logP_ < logP2_) {
+            //     return;
+            // }
             k_LMR_ += LmrRate::speciesPlogRate(shared_data)*eig0*Xi/eig0_mix; //Xtilde=eig0_s*Xi/eig0_mix
-            //k_LMR_ += 1; //placeholder, just used as a test
         }
     }
     return k_LMR_;

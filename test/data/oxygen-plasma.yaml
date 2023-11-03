@@ -12,8 +12,7 @@ phases:
   - nasa_gas.yaml/species: [O2, O2-]
 
   kinetics: gas
-  reactions:
-  - reactions: all
+  reactions: all
   transport: ionized-gas
   electron-energy-distribution:
     type: isotropic
@@ -29,8 +28,7 @@ phases:
   - nasa_gas.yaml/species: [O2, O2-]
 
   kinetics: gas
-  reactions:
-  - reactions: all
+  reactions: all
   transport: Ion
   electron-energy-distribution:
     type: discretized

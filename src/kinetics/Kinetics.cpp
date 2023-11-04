@@ -603,11 +603,19 @@ bool Kinetics::addReaction(shared_ptr<Reaction> r, bool resize)
         pstoich.push_back(stoich);
     }
 
-    // The default order for each reactant is its stoichiometric coefficient,
-    // which can be overridden by entries in the Reaction.orders map. rorder[i]
-    // is the order for species rk[i].
+    // The default forward order for each reactant is its stoichiometric coefficient,
+    // which can be overridden by entries in the Reaction.orders map. The default
+    // reverse orders are the product stoichiometric coefficients. Both forward and
+    // reverse orders can be modified by the reaction rate parameterization.
+
+    Composition reactantOrders = r->orders;
+    Composition productOrders;
+
+    r->rate()->modifyOrders(*r, *this, reactantOrders, productOrders);
+
+    // rorder[i] is the order for species rk[i].
     vector<double> rorder = rstoich;
-    for (const auto& [name, order] : r->orders) {
+    for (const auto& [name, order] : reactantOrders) {
         size_t k = kineticsSpeciesIndex(name);
         // Find the index of species k within rk
         auto rloc = std::find(rk.begin(), rk.end(), k);
@@ -624,12 +632,29 @@ bool Kinetics::addReaction(shared_ptr<Reaction> r, bool resize)
         }
     }
 
+    // porder[i] is the order for species pk[i].
+    vector<double> porder = pstoich;
+    for (const auto& [name, order] : productOrders) {
+        size_t k = kineticsSpeciesIndex(name);
+        // Find the index of species k within pk
+        auto ploc = std::find(pk.begin(), pk.end(), k);
+        if (ploc != pk.end()) {
+            porder[ploc - pk.begin()] = order;
+        } else {
+            // If the reaction order involves a non-product species, add an
+            // extra term to the products with zero stoichiometry so pk and pstoich
+            // remain consistent.
+            pk.push_back(k);
+            pstoich.push_back(0.0);
+            porder.push_back(order);
+        }
+    }
+
     m_reactantStoich.add(irxn, rk, rorder, rstoich);
-    // product orders = product stoichiometric coefficients
-    m_productStoich.add(irxn, pk, pstoich, pstoich);
+    m_productStoich.add(irxn, pk, porder, pstoich);
     if (r->reversible) {
         m_revindex.push_back(irxn);
-        m_revProductStoich.add(irxn, pk, pstoich, pstoich);
+        m_revProductStoich.add(irxn, pk, porder, pstoich);
     } else {
         m_irrev.push_back(irxn);
     }

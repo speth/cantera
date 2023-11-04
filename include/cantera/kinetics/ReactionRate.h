@@ -167,6 +167,29 @@ public:
     virtual void setContext(const Reaction& rxn, const Kinetics& kin) {
     }
 
+    //! Apply any modifications to the reactant and product orders when adding the
+    //! Reaction to a Kinetics object. Useful for reaction rate parameterizations that
+    //! do not follow mass action kinetics, such as the Butler-Volmer form.
+    //!
+    //! On input, the reactant and product orders are set based on the reaction equation
+    //! plus any reaction orders set explicitly on the Reaction.
+    //!
+    //! @param rxn  Reaction object associated with rate
+    //! @param kin  Kinetics object used for rate evaluation
+    //! @param[in, out] reactantIndices  Indices of species with non-zero orders to be
+    //!    used when calculating the forward rate of progress
+    //! @param[in, out] productIndices  Indices of species with non-zero orders to be
+    //!    used when calculating the reverse rate of progress
+    //! @param[in, out] reactantOrders  Reaction orders to be used to override the
+    //!    reactant stoichiometric coefficients when calculating the forward rate of
+    //!    progress. Initially populated with order overrides defined by the Reaction.
+    //! @param[in, out] productOrders  Reaction orders to be used to override the
+    //!    product stoichiometric coefficients when calculating the reverse rate of
+    //!    progress. Initially empty.
+    //! @since New in %Cantera 3.1
+    virtual void modifyOrders(const Reaction& rxn, const Kinetics& kin,
+        Composition& reactantOrders, Composition& productOrders) {}
+
     //! Evaluate reaction rate based on temperature
     //! @param T  temperature [K]
     //! Used in conjunction with MultiRateBase::evalSingle / ReactionRate::eval.

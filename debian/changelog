@@ -1,3 +1,9 @@
+cantera (3.0.0-1+mantic0) mantic; urgency=medium
+
+  * Build for Mantic
+
+ -- Raymond Speth <speth@mit.edu>  Sun, 03 Dec 2023 23:21:00 -0500
+
 cantera (3.0.0-1+lunar0) lunar; urgency=medium
 
   * New Upstream release

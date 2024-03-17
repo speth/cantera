@@ -1455,8 +1455,8 @@ class lxcat2yamlTest(utilities.CanteraTest):
 
         # verify the data
         self.assertEqual(len(rxn_list), 2)
-        self.assertEqual(rxn_list[0].equation, "O2 + e => O2(Total-Ionization)+ + e + e")
-        self.assertEqual(rxn_list[0].reaction_type, "three-body-electron-collision-plasma")
+        self.assertEqual(rxn_list[0].equation, "O2 + e => O2(Total-Ionization)+ + 2 e")
+        self.assertEqual(rxn_list[0].reaction_type, "electron-collision-plasma")
         self.assertArrayNear(rxn_list[0].rate.energy_levels, [15., 20.])
         self.assertArrayNear(rxn_list[0].rate.cross_sections, [0.0, 5.5e-22])
 

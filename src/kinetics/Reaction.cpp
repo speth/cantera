@@ -71,7 +71,9 @@ Reaction::Reaction(const string& equation,
                    shared_ptr<ThirdBody> tbody_)
     : m_third_body(tbody_)
 {
-    setEquation(equation);
+    // Get the rate type from rate first
+    const string rateType = rate_->type();
+    setEquation(equation, rateType);
     setRate(rate_);
     if (m_third_body && m_third_body->name() != "M") {
         m_third_body->explicit_3rd = true;
@@ -235,7 +237,7 @@ void Reaction::setParameters(const AnyMap& node, const Kinetics& kin)
 
     input = node;
     input.copyMetadata(node);
-    setEquation(node["equation"].asString(), &kin);
+    setEquation(node["equation"].asString(), "", &kin);
     // Non-stoichiometric reaction orders
     if (node.hasKey("orders")) {
         for (const auto& [name, order] : node["orders"].asMap<double>()) {
@@ -351,11 +353,11 @@ string Reaction::equation() const
     }
 }
 
-void Reaction::setEquation(const string& equation, const Kinetics* kin)
+void Reaction::setEquation(const string& equation, const string& rateType, const Kinetics* kin)
 {
     parseReactionEquation(*this, equation, input, kin);
-
-    string rate_type = input.getString("type", "");
+    // input might not have rate type
+    string rate_type = input.getString("type", rateType);
     if (ba::starts_with(rate_type, "three-body")) {
         // state type when serializing
         m_explicit_type = true;

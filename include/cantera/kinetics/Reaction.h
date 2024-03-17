@@ -47,7 +47,7 @@ public:
 
     //! Set the reactants and products based on the reaction equation. If a Kinetics
     //! object is provided, it is used to check that all reactants and products exist.
-    void setEquation(const string& equation, const Kinetics* kin=0);
+    void setEquation(const string& equation, const string& rateType, const Kinetics* kin=0);
 
     //! The type of reaction, including reaction rate information
     string type() const;

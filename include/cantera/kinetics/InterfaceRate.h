@@ -402,6 +402,11 @@ public:
         InterfaceRateBase::setContext(rxn, kin);
     }
 
+    //! Interface rates do not use default third-body handling
+    virtual bool detectThirdBodySpecies() override {
+        return false;
+    }
+
     //! Update reaction rate parameters
     //! @param shared_data  data shared by all reactions of a given type
     void updateFromStruct(const DataType& shared_data) {
@@ -520,6 +525,11 @@ public:
         RateType::setContext(rxn, kin);
         InterfaceRateBase::setContext(rxn, kin);
         StickingCoverage::setContext(rxn, kin);
+    }
+
+    //! Sticking rates do not use default third-body handling
+    virtual bool detectThirdBodySpecies() override {
+        return false;
     }
 
     void validate(const string &equation, const Kinetics& kin) override {

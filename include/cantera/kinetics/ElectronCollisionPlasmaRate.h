@@ -112,6 +112,11 @@ public:
 
     virtual void setContext(const Reaction& rxn, const Kinetics& kin) override;
 
+    //! Plasma rate does not use default third-body handling
+    virtual bool detectThirdBodySpecies() override {
+        return false;
+    }
+
     //! Evaluate reaction rate
     /*!
      *  @param shared_data  data shared by all reactions of a given type

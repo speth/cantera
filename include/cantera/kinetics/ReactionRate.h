@@ -204,6 +204,13 @@ public:
         return m_valid;
     }
 
+    //! Get flag indicating whether the reaction equation should be parsed for specific
+    //! third body colliders. Enabled by default, but can be overridden by certain
+    //! reaction types.
+    virtual bool detectThirdBodySpecies() {
+        return true;
+    }
+
     //! Boolean indicating whether rate has compositional dependence
     //! @since New in %Cantera 3.0
     bool compositionDependent() {

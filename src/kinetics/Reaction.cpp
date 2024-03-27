@@ -72,8 +72,7 @@ Reaction::Reaction(const string& equation,
     : m_third_body(tbody_)
 {
     // Get the rate type from rate first
-    const string rateType = rate_->type();
-    setEquation(equation, rateType);
+    setEquation(equation);
     setRate(rate_);
     if (m_third_body && m_third_body->name() != "M") {
         m_third_body->explicit_3rd = true;
@@ -237,7 +236,7 @@ void Reaction::setParameters(const AnyMap& node, const Kinetics& kin)
 
     input = node;
     input.copyMetadata(node);
-    setEquation(node["equation"].asString(), "", &kin);
+    setEquation(node["equation"].asString(), &kin);
     // Non-stoichiometric reaction orders
     if (node.hasKey("orders")) {
         for (const auto& [name, order] : node["orders"].asMap<double>()) {
@@ -306,6 +305,9 @@ void Reaction::setRate(shared_ptr<ReactionRate> rate)
             m_third_body = make_shared<ThirdBody>("(+M)");
         }
     }
+    if (!m_from_composition) {
+        parseThirdBody();
+    }
 }
 
 string Reaction::reactantString() const
@@ -353,11 +355,11 @@ string Reaction::equation() const
     }
 }
 
-void Reaction::setEquation(const string& equation, const string& rateType, const Kinetics* kin)
+void Reaction::setEquation(const string& equation, const Kinetics* kin)
 {
     parseReactionEquation(*this, equation, input, kin);
     // input might not have rate type
-    string rate_type = input.getString("type", rateType);
+    string rate_type = input.getString("type", "");
     if (ba::starts_with(rate_type, "three-body")) {
         // state type when serializing
         m_explicit_type = true;
@@ -365,14 +367,14 @@ void Reaction::setEquation(const string& equation, const string& rateType, const
         // user override
         m_explicit_type = true;
         return;
-    } else if (kin && kin->thermo(0).nDim() != 3) {
-        // interface reactions
-        return;
-    } else if (rate_type == "electron-collision-plasma") {
-        // does not support third body
-        return;
     }
+    if (m_rate) {
+        parseThirdBody();
+    }
+}
 
+void Reaction::parseThirdBody()
+{
     string third_body;
     size_t count = 0;
     size_t countM = 0;
@@ -391,8 +393,8 @@ void Reaction::setEquation(const string& equation, const string& rateType, const
         }
     }
 
-    if (count == 0) {
-        if (ba::starts_with(rate_type, "three-body")) {
+    if (count == 0 && !m_third_body) {
+        if (ba::starts_with(m_rate->type(), "three-body")) {
             throw InputFileError("Reaction::setEquation", input,
                 "Reactants for reaction '{}'\n"
                 "do not contain a valid third body collider", equation);
@@ -436,7 +438,7 @@ void Reaction::setEquation(const string& equation, const string& rateType, const
                 "Detected ambiguous third body colliders in reaction '{}'\n"
                 "Third-body definition requires specification of efficiencies",
                 equation);
-        } else if (ba::starts_with(rate_type, "three-body")) {
+        } else if (ba::starts_with(m_rate->type(), "three-body")) {
             // no disambiguation of third bodies
             throw InputFileError("Reaction::setEquation", input,
                 "Detected ambiguous third body colliders in reaction '{}'\n"
@@ -446,8 +448,8 @@ void Reaction::setEquation(const string& equation, const string& rateType, const
             return;
         }
 
-    } else if (third_body != "M" && !ba::starts_with(rate_type, "three-body")
-            && !ba::starts_with(third_body, "(+"))
+    } else if (third_body != "M" && !ba::starts_with(m_rate->type(), "three-body")
+            && !ba::starts_with(third_body, "(+") && m_rate->detectThirdBodySpecies())
     {
         // check for conditions of three-body reactions:
         // - integer stoichiometric conditions

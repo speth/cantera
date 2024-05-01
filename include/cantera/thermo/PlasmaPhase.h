@@ -15,6 +15,8 @@
 namespace Cantera
 {
 
+class Kinetics;
+
 /**
  * Base class for a phase with plasma properties. This class manages the
  * plasma properties such as electron energy distribution function (EEDF).
@@ -344,6 +346,8 @@ protected:
 
     //! Flag of normalizing electron energy distribution
     bool m_do_normalizeElectronEnergyDist = true;
+
+    shared_ptr<Kinetics> m_collsions;
 
 private:
     //! Electron energy distribution change variable. Whenever

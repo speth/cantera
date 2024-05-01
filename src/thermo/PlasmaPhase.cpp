@@ -8,6 +8,7 @@
 #include "cantera/thermo/Species.h"
 #include "cantera/base/global.h"
 #include "cantera/numerics/funcs.h"
+#include "cantera/kinetics/KineticsFactory.h"
 
 namespace Cantera {
 
@@ -270,6 +271,9 @@ void PlasmaPhase::initThermo()
         throw CanteraError("PlasmaPhase::initThermo",
                            "No electron species found.");
     }
+
+    m_collsions = newKinetics("bulk");
+    m_collsions->addThermo(shared_from_this());
 }
 
 void PlasmaPhase::updateThermo() const

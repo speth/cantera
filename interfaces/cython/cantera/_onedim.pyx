@@ -905,6 +905,12 @@ cdef class Sim1D:
         """
         self.sim.eval(rdt)
 
+    def jacobian(self, rdt=0.0):
+        """
+        Get the Jacobian for the system using the specified reciprocal time step.
+        """
+        return get_from_sparse(self.sim.jacobian(rdt), self.sim.size(), self.sim.size())
+
     def work_value(self, domain, component, point):
         """
         Internal work array value at one point. After calling `eval`, this array

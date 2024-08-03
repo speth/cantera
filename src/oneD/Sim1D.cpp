@@ -889,6 +889,22 @@ double Sim1D::jacobian(int i, int j)
     return OneDim::jacobian().value(i,j);
 }
 
+Eigen::SparseMatrix<double> Sim1D::jacobian(double rdt) {
+    for (auto& D : m_dom) {
+        D->forceFullUpdate(true);
+    }
+    if (rdt == 0.0) {
+        evalSSJacobian();
+    } else {
+        evalTransientJacobian(rdt, m_state->data(), m_xnew.data());
+    }
+
+    for (auto& D : m_dom) {
+        D->forceFullUpdate(false);
+    }
+    return m_jac->asSparse();
+}
+
 void Sim1D::evalSSJacobian()
 {
     OneDim::evalSSJacobian(m_state->data(), m_xnew.data());

@@ -12,6 +12,7 @@
 #define CT_BANDMATRIX_H
 
 #include "GeneralMatrix.h"
+#include "eigen_sparse.h"
 
 namespace Cantera
 {
@@ -130,6 +131,9 @@ public:
 
     //! Return the number of rows of storage needed for the band storage
     size_t ldim() const;
+
+    //! Return a copy of the matrix stored in a sparse format
+    Eigen::SparseMatrix<double> asSparse() const;
 
     //! Multiply A*b and write result to @c prod.
     void mult(const double* b, double* prod) const override;

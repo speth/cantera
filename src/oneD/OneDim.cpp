@@ -221,6 +221,16 @@ int OneDim::solve(double* x, double* xnew, int loglevel)
     return m_newt->solve(x, xnew, *this, *m_jac, loglevel);
 }
 
+void OneDim::evalTransientJacobian(double rdt, double* x, double* xnew)
+{
+    double rdt_save = m_rdt;
+    m_jac_ok = false;
+    initTimeInteg(1 / rdt, x);
+    eval(npos, x, xnew, rdt, 0);
+    m_jac->eval(x, xnew, rdt);
+    m_rdt = rdt_save;
+}
+
 void OneDim::evalSSJacobian(double* x, double* xnew)
 {
     double rdt_save = m_rdt;

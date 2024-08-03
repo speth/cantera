@@ -271,6 +271,9 @@ public:
 
     double jacobian(int i, int j);
 
+    //! Get the system Jacobian with the specified reciprocal time step.
+    Eigen::SparseMatrix<double> jacobian(double rdt=0.0);
+
     void evalSSJacobian();
 
     //! Solve the equation @f$ J^T \lambda = b @f$.

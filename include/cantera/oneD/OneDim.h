@@ -321,7 +321,13 @@ public:
     }
 
 protected:
+    //! Evaluate the steady state Jacobian at the system state `x`, using `xnew` as a
+    //! work array.
     void evalSSJacobian(double* x, double* xnew);
+
+    //! Evaluate the transient Jacobian with reciprocal timestep `rdt` at the system
+    //! state `x`, using `xnew` as a work array.
+    void evalTransientJacobian(double rdt, double*x, double* xnew);
 
     double m_tmin = 1e-16; //!< minimum timestep size
     double m_tmax = 1e+08; //!< maximum timestep size

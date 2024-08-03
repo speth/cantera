@@ -123,6 +123,7 @@ cdef extern from "cantera/oneD/Sim1D.h":
         CxxAnyMap restore(string&, string&) except +translate_exception
         void writeStats(int) except +translate_exception
         void clearStats()
+        CxxSparseMatrix jacobian(double) except +translate_exception
         void resize() except +translate_exception
         vector[size_t]& gridSizeStats()
         vector[double]& jacobianTimeStats()

@@ -197,6 +197,21 @@ size_t BandMatrix::ldim() const
     return 2*m_kl + m_ku + 1;
 }
 
+Eigen::SparseMatrix<double> BandMatrix::asSparse() const
+{
+    SparseTriplets vals;
+    for (size_t m = 0; m < m_n; m++) {
+        size_t start = (m > m_kl) ? m - m_kl : 0;
+        size_t stop = std::min(m + m_ku + 1, m_n);
+        for (size_t j = start; j < stop; j++) {
+            vals.emplace_back(m, j, _value(m,j));
+        }
+    }
+    Eigen::SparseMatrix<double> out(m_n, m_n);
+    out.setFromTriplets(vals.begin(), vals.end());
+    return out;
+}
+
 void BandMatrix::mult(const double* b, double* prod) const
 {
     for (size_t m = 0; m < m_n; m++) {

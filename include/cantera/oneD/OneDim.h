@@ -121,6 +121,10 @@ public:
         return m_loc[jg];
     }
 
+    //! Get the index of local point `pt` for component `comp` in domain `dom` in
+    //! the global state vector.
+    size_t index(size_t dom, size_t comp, size_t pt) const;
+
     //! Return the domain, local point index, and component name for the i-th
     //! component of the global solution vector
     std::tuple<string, size_t, string> component(size_t i);

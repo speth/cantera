@@ -858,6 +858,35 @@ cdef class Sim1D:
 
         return idom, kcomp
 
+    def index(self, domain, component, point):
+        """
+        Get the index of a variable in the global state vector.
+
+        :param domain:
+            `Domain1D` object, name, or index
+        :param component:
+            component name or index
+        :param point:
+            grid point number within ``domain`` starting with 0 on the left
+        """
+        dom, comp = self._get_indices(domain, component)
+        return self.sim.index(dom, comp, point)
+
+    @property
+    def component_names(self):
+        """
+        Get an array that contains, for each global solution element, a tuple consisting
+        of the domain name, the local grid point index, and the component name.
+        """
+        names = []
+        for dom in self.domains:
+            dname = dom.name
+            comps = dom.component_names
+            for i in range(dom.n_points):
+                for cname in comps:
+                    names.append((dname, i, cname))
+        return names
+
     def value(self, domain, component, point):
         """
         Solution value at one point
@@ -902,8 +931,34 @@ cdef class Sim1D:
 
         :param rdt:
            Reciprocal of the time-step
+
+        .. deprecated:: 3.1
+
+            To be removed after Cantera 3.1; Use `residual` instead.
         """
+        warnings.warn("Sim1D.eval: Deprecated in Cantera 3.1. Use Sim1D.residual "
+            "instead", DeprecationWarning)
         self.sim.eval(rdt)
+
+    def residual(self, rdt=0.0):
+        """
+        Evaluate the residual of the governing equations using the current solution
+        estimate.
+
+        :param rdt:
+           Reciprocal of the time step [1/s]
+        """
+        cdef np.ndarray[np.double_t, ndim=1] data = np.empty(self.sim.size())
+        self.sim.getResidual(rdt, &data[0])
+        return data
+
+    def state(self):
+        """
+        Get the current global state vector for the system.
+        """
+        cdef np.ndarray[np.double_t, ndim=1] data = np.empty(self.sim.size())
+        self.sim.getState(&data[0])
+        return data
 
     def jacobian(self, rdt=0.0):
         """
@@ -924,7 +979,13 @@ cdef class Sim1D:
             grid point number in the domain, starting with zero at the left
 
         >>> t = s.value(flow, 'T', 6)
+
+        .. deprecated:: 3.1
+
+            To be removed after Cantera 3.1; Use `residual` instead.
         """
+        warnings.warn("Sim1D.work_value: Deprecated in Cantera 3.1. Use Sim1D.residual "
+            "instead", DeprecationWarning)
         dom, comp = self._get_indices(domain, component)
         return self.sim.workValue(dom, comp, point)
 

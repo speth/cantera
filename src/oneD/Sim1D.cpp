@@ -54,26 +54,17 @@ void Sim1D::setInitialGuess(const string& component, vector<double>& locs,
 
 void Sim1D::setValue(size_t dom, size_t comp, size_t localPoint, double value)
 {
-    size_t iloc = domain(dom).loc() + domain(dom).index(comp, localPoint);
-    AssertThrowMsg(iloc < m_state->size(), "Sim1D::setValue",
-                   "Index out of bounds: {} > {}", iloc, m_state->size());
-    (*m_state)[iloc] = value;
+    (*m_state)[index(dom, comp, localPoint)] = value;
 }
 
 double Sim1D::value(size_t dom, size_t comp, size_t localPoint) const
 {
-    size_t iloc = domain(dom).loc() + domain(dom).index(comp, localPoint);
-    AssertThrowMsg(iloc < m_state->size(), "Sim1D::value",
-                   "Index out of bounds: {} > {}", iloc, m_state->size());
-    return (*m_state)[iloc];
+    return (*m_state)[index(dom, comp, localPoint)];
 }
 
 double Sim1D::workValue(size_t dom, size_t comp, size_t localPoint) const
 {
-    size_t iloc = domain(dom).loc() + domain(dom).index(comp, localPoint);
-    AssertThrowMsg(iloc < m_state->size(), "Sim1D::workValue",
-                   "Index out of bounds: {} > {}", iloc, m_state->size());
-    return m_xnew[iloc];
+    return m_xnew[index(dom, comp, localPoint)];
 }
 
 void Sim1D::setProfile(size_t dom, size_t comp,

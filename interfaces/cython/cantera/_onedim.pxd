@@ -133,12 +133,14 @@ cdef extern from "cantera/oneD/Sim1D.h":
         vector[int]& timeStepStats()
 
         int domainIndex(string) except +translate_exception
+        size_t index(size_t, size_t, size_t) except +translate_exception
         double value(size_t, size_t, size_t) except +translate_exception
         double workValue(size_t, size_t, size_t) except +translate_exception
         void eval(double ) except +translate_exception
         size_t size()
         void solveAdjoint(const double*, double*) except +translate_exception
         void getResidual(double, double*) except +translate_exception
+        void getState(double*)
         void setJacAge(int, int)
         void setTimeStepFactor(double)
         void setMinTimeStep(double)

@@ -47,6 +47,13 @@ size_t OneDim::domainIndex(const string& name)
     throw CanteraError("OneDim::domainIndex","no domain named >>"+name+"<<");
 }
 
+size_t OneDim::index(size_t dom, size_t comp, size_t pt) const {
+    size_t iGlobal = domain(dom).loc() + domain(dom).index(comp, pt);
+    AssertThrowMsg(iGlobal < m_state->size(), "OneDim::index",
+                   "Index out of bounds: {} > {}", iGlobal, m_state->size());
+    return iGlobal;
+}
+
 std::tuple<string, size_t, string> OneDim::component(size_t i) {
     size_t n;
     for (n = nDomains()-1; n != npos; n--) {

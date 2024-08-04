@@ -97,6 +97,46 @@ class TestOnedim(utilities.CanteraTest):
             with self.assertRaises(AttributeError):
                 x.foobar
 
+    def test_component_indices(self):
+        gas = ct.Solution('h2o2.yaml')
+        gas.set_equivalence_ratio(0.9, 'H2', 'O2:0.21, N2:0.79')
+        flame = ct.FreeFlame(gas, width=0.1)
+
+        state = flame.state()
+        for i, (dom, point, comp) in enumerate(flame.component_names):
+            assert flame.index(dom, comp, point) == i
+            assert flame.value(dom, comp, point) == state[i]
+
+    def test_jacobian(self):
+        gas = ct.Solution('h2o2.yaml')
+        gas.set_equivalence_ratio(0.9, 'H2', 'O2:0.21, N2:0.79')
+        flame = ct.FreeFlame(gas, width=0.1)
+        flame.set_initial_guess()
+
+        # Steady Jacobian
+        J = flame.jacobian()
+        state0 = flame.state()
+        res0 = flame.residual()
+
+        dT = 1e-3
+        i = flame.index('flame', 'T', 3)
+        flame.set_value('flame', 'T', 3, state0[i] + dT)
+        res1 = flame.residual()
+
+        assert (res1-res0) / dT == approx(J[:,i], rel=1e-4, abs=1e-8)
+
+        # Transient Jacobian
+        rdt = 1e6
+        J = flame.jacobian(rdt)
+        state0 = flame.state()
+        res0 = flame.residual(rdt)
+        dY = 1e-6
+        i = flame.index('flame', 'O2', 1)
+        flame.set_value('flame', 'O2', 1, state0[i] + dY)
+        res1 = flame.residual(rdt)
+
+        assert (res1-res0) / dY == approx(J[:,i], rel=1e-4, abs=1e-9)
+
     def test_tolerances(self):
         gas = ct.Solution("h2o2.yaml")
         left = ct.Inlet1D(gas)

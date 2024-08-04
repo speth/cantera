@@ -183,6 +183,11 @@ public:
         OneDim::eval(npos, m_state->data(), resid, rdt, 0);
     }
 
+    //! Get the current global state vector. `x` must be of length size().
+    void getState(double* x) {
+        copy(m_state->begin(), m_state->end(), x);
+    }
+
     //! Refine the grid in all domains.
     int refine(int loglevel=0);
 

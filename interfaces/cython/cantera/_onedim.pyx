@@ -1301,6 +1301,19 @@ cdef class Sim1D:
         """
         self.sim.refine(loglevel)
 
+    def step(self, n_steps, dt, loglevel=1):
+        """
+        Take time steps using the backward Euler method
+
+        :param n_steps:
+            Number of steps to take
+        :param dt:
+            Initial step size to try [s]
+        :param loglevel:
+            Controls the amount of printed diagnostics
+        """
+        return self.sim.timeStep(n_steps, dt, loglevel)
+
     def set_refine_criteria(self, domain, ratio=10.0, slope=0.8, curve=0.8,
                           prune=0.05):
         """

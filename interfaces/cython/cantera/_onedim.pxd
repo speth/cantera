@@ -114,6 +114,7 @@ cdef extern from "cantera/oneD/Sim1D.h":
         void restoreSteadySolution() except +translate_exception
         void setMaxTimeStepCount(int)
         int maxTimeStepCount()
+        double timeStep(int, double, int) except +translate_exception
         void getInitialSoln() except +translate_exception
         void solve(int, cbool) except +translate_exception
         void refine(int) except +translate_exception

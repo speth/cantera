@@ -385,6 +385,11 @@ void Sim1D::setTimeStep(double stepsize, size_t n, const int* tsteps)
     }
 }
 
+double Sim1D::timeStep(int nsteps, double dt, int loglevel)
+{
+    return OneDim::timeStep(nsteps, dt, m_state->data(), m_xnew.data(), loglevel);
+}
+
 int Sim1D::newtonSolve(int loglevel)
 {
     int m = OneDim::solve(m_state->data(), m_xnew.data(), loglevel);
@@ -459,7 +464,7 @@ void Sim1D::solve(int loglevel, bool refine_grid)
                 if (loglevel > 0) {
                     writelog("Take {} timesteps   ", nsteps);
                 }
-                dt = timeStep(nsteps, dt, m_state->data(), m_xnew.data(), loglevel-1);
+                dt = timeStep(nsteps, dt, loglevel-1);
                 m_xlast_ts = *m_state;
                 if (loglevel > 6) {
                     save("debug_sim1d.yaml", "solution", "After timestepping", true);

@@ -172,6 +172,14 @@ public:
 
     void setTimeStep(double stepsize, size_t n, const int* tsteps);
 
+    //! Take time steps using the backward Euler method
+    //!
+    //! @param nsteps number of steps
+    //! @param dt initial step size
+    //! @param loglevel controls amount of printed diagnostics
+    //! @returns size of last time step taken
+    double timeStep(int nsteps, double dt, int loglevel);
+
     void solve(int loglevel = 0, bool refine_grid = true);
 
     void eval(double rdt=-1.0, int count = 1) {

@@ -76,11 +76,10 @@ void Sim1D::setProfile(size_t dom, size_t comp,
             "[{}, {}] instead.", pos.front(), pos.back());
     }
     Domain1D& d = domain(dom);
-    double z0 = d.zmin();
-    double z1 = d.zmax();
+    const auto& z = d.grid();
     for (size_t n = 0; n < d.nPoints(); n++) {
         double zpt = d.z(n);
-        double frac = (zpt - z0)/(z1 - z0);
+        double frac = (zpt - z.front()) / (z.back() - z.front());
         double v = linearInterp(frac, pos, values);
         setValue(dom, comp, n, v);
     }

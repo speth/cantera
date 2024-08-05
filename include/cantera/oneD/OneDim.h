@@ -196,6 +196,8 @@ public:
     /*!
      * The domains are scanned right-to-left, and the first one with starting
      * location less or equal to i is returned.
+     *
+     * @deprecated Unused. To be removed after Cantera 3.1.
      */
     Domain1D* pointDomain(size_t i);
 

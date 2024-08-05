@@ -426,14 +426,12 @@ public:
     }
 
     //! Return a pointer to the left neighbor.
-    Domain1D* left() const {
-        return m_left;
-    }
+    //! @deprecated Unused. To be removed after Cantera 3.1.
+    Domain1D* left() const;
 
     //! Return a pointer to the right neighbor.
-    Domain1D* right() const {
-        return m_right;
-    }
+    //! @deprecated Unused. To be removed after Cantera 3.1.
+    Domain1D* right() const;
 
     //! Value of component n at point j in the previous solution.
     double prevSoln(size_t n, size_t j) const {
@@ -462,12 +460,11 @@ public:
     double z(size_t jlocal) const {
         return m_z[jlocal];
     }
-    double zmin() const {
-        return m_z[0];
-    }
-    double zmax() const {
-        return m_z[m_points - 1];
-    }
+
+    //! @deprecated Unused. To be removed after Cantera 3.1.
+    double zmin() const;
+    //! @deprecated Unused. To be removed after Cantera 3.1.
+    double zmax() const;
 
     void setProfile(const string& name, double* values, double* soln);
 

@@ -211,8 +211,8 @@ void OneDim::resize()
     m_jac = make_unique<MultiJac>(*this);
     m_jac_ok = false;
 
-    for (size_t i = 0; i < nDomains(); i++) {
-        m_dom[i]->setJac(m_jac.get());
+    for (auto& dom : m_dom) {
+        dom->setJac(m_jac.get());
     }
 }
 
@@ -250,6 +250,7 @@ void OneDim::evalSSJacobian(double* x, double* xnew)
 
 Domain1D* OneDim::pointDomain(size_t i)
 {
+    warn_deprecated("OneDim::pointDomain", "Unused. To be removed after Cantera 3.1.");
     Domain1D* d = right();
     while (d) {
         if (d->loc() <= i) {
@@ -314,10 +315,8 @@ void OneDim::initTimeInteg(double dt, double* x)
     }
 
     // iterate over all domains, preparing each one to begin time stepping
-    Domain1D* d = left();
-    while (d) {
+    for (auto& d : m_dom) {
         d->initTimeInteg(dt, x);
-        d = d->right();
     }
 }
 
@@ -331,20 +330,16 @@ void OneDim::setSteadyMode()
     m_jac->updateTransient(m_rdt, m_mask.data());
 
     // iterate over all domains, preparing them for steady-state solution
-    Domain1D* d = left();
-    while (d) {
+    for (auto& d : m_dom) {
         d->setSteadyMode();
-        d = d->right();
     }
 }
 
 void OneDim::init()
 {
     if (!m_init) {
-        Domain1D* d = left();
-        while (d) {
+        for (auto d : m_dom) {
             d->init();
-            d = d->right();
         }
     }
     m_init = true;

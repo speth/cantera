@@ -202,6 +202,16 @@ void Domain1D::setMeta(const AnyMap& meta)
     }
 }
 
+Domain1D* Domain1D::left() const {
+    warn_deprecated("Domain1D::left", "Unused. To be removed after Cantera 3.1.");
+    return m_left;
+}
+
+Domain1D* Domain1D::right() const {
+    warn_deprecated("Domain1D::right", "Unused. To be removed after Cantera 3.1.");
+    return m_right;
+}
+
 void Domain1D::locate()
 {
     if (m_left) {
@@ -266,6 +276,16 @@ void Domain1D::show(const double* x)
         }
     }
     writelog("\n");
+}
+
+double Domain1D::zmin() const {
+    warn_deprecated("Domain1D::zmin", "Unused. To be removed after Cantera 3.1.");
+    return m_z[0];
+}
+
+double Domain1D::zmax() const {
+    warn_deprecated("Domain1D::zmax", "Unused. To be removed after Cantera 3.1.");
+    return m_z[m_points - 1];
 }
 
 void Domain1D::setProfile(const string& name, double* values, double* soln)

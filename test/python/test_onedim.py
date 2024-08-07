@@ -470,6 +470,16 @@ class TestFreeFlame(utilities.CanteraTest):
         self.run_mix(phi=0.8, T=180, width=0.05, p=1.0, refine=False)
         assert self.sim.flame.bounds('T')[0] < 190
 
+    def test_steady_only(self):
+        self.create_sim(p=ct.one_atm, Tin=400, reactants='H2:0.8, O2:0.5', width=0.1)
+        self.sim.set_initial_guess()
+        initial_state = self.sim.state()
+        self.sim.max_time_step_count = 0
+        with pytest.raises(ct.CanteraError, match='Steady Newton solve failed'):
+            self.sim.solve(loglevel=0, refine_grid=False)
+        final_state = self.sim.state()
+        assert list(initial_state) == list(final_state)
+
     def test_adjoint_sensitivities(self):
         self.run_mix(phi=0.5, T=300, width=0.1, p=1.0, refine=True)
         self.sim.flame.set_steady_tolerances(default=(1e-10, 1e-15))

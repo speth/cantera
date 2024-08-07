@@ -242,8 +242,9 @@ public:
         m_tfactor = tfactor;
     }
 
-    //! Set the maximum number of timeteps allowed before successful
-    //! steady-state solve
+    //! Set the maximum number of timeteps allowed before successful steady-state solve.
+    //!
+    //! Setting this to zero disables the automatic use of the time stepping solver.
     void setMaxTimeStepCount(int nmax) {
         m_nsteps_max = nmax;
     }

@@ -142,6 +142,8 @@ cdef extern from "cantera/oneD/Sim1D.h":
         void solveAdjoint(const double*, double*) except +translate_exception
         void getResidual(double, double*) except +translate_exception
         void getState(double*)
+        void getTrial(double*)
+        void acceptTrial()
         void setJacAge(int, int)
         void setTimeStepFactor(double)
         void setMinTimeStep(double)

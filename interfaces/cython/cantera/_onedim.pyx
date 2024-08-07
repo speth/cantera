@@ -1072,7 +1072,9 @@ cdef class Sim1D:
     property max_time_step_count:
         """
         Get/Set the maximum number of time steps allowed before reaching the
-        steady-state solution
+        steady-state solution.
+
+        Setting this to zero disables the automatic use of the time stepping solver.
         """
         def __get__(self):
             return self.sim.maxTimeStepCount()

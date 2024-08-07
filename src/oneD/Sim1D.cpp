@@ -450,7 +450,7 @@ void Sim1D::solve(int loglevel, bool refine_grid)
                                  "After successful Newton solve", true);
                 }
                 ok = true;
-            } else {
+            } else if (m_nsteps_max > 0) {
                 debuglog("    failure. \n", loglevel);
                 if (loglevel > 6) {
                     save("debug_sim1d.yaml", "solution",
@@ -484,6 +484,10 @@ void Sim1D::solve(int loglevel, bool refine_grid)
                     nsteps = m_steps[istep];
                 }
                 dt = std::min(dt, m_tmax);
+            } else {
+                debuglog("    failure. \n", loglevel);
+                throw CanteraError("Sim1D::solve", "Steady Newton solve failed and "
+                    "time stepping is disabled.");
             }
         }
         if (loglevel > 0) {

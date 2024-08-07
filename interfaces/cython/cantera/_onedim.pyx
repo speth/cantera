@@ -960,6 +960,14 @@ cdef class Sim1D:
         self.sim.getState(&data[0])
         return data
 
+    def trial(self):
+        cdef np.ndarray[np.double_t, ndim=1] data = np.empty(self.sim.size())
+        self.sim.getTrial(&data[0])
+        return data
+
+    def accept_trial(self):
+        self.sim.acceptTrial()
+
     def jacobian(self, rdt=0.0):
         """
         Get the Jacobian for the system using the specified reciprocal time step.

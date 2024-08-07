@@ -196,6 +196,14 @@ public:
         copy(m_state->begin(), m_state->end(), x);
     }
 
+    void getTrial(double* x) const {
+        copy(m_xnew.begin(), m_xnew.end(), x);
+    }
+
+    void acceptTrial() {
+        copy(m_xnew.begin(), m_xnew.end(), m_state->begin());
+    }
+
     //! Refine the grid in all domains.
     int refine(int loglevel=0);
 

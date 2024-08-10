@@ -119,9 +119,16 @@ cdef class Domain1D:
         keywords and (relative tolerance, absolute tolerance) tuples as the values.
         The keyword ``default`` may be used to specify default bounds for all
         unspecified components. The keyword ``Y`` can be used to stand for all
-        species mass fractions in flow domains. Alternatively, the keywords
-        ``abs`` and ``rel`` can be used to specify arrays for the absolute and
-        relative tolerances for each solution component.
+        species mass fractions in flow domains.
+
+        >>> d.set_steady_tolerances(default=(1e-5, 1e-11), T=(1e-6, 1e-9))
+        >>> d.set_steady_tolerances(H2=(1e-6, 1e-12), CH4=(1e-5, 1e-10))
+
+        Alternatively, the keywords ``abs`` and ``rel`` can be used to specify arrays
+        for the absolute and relative tolerances for each solution component:
+
+        >>> d.set_steady_tolerances(abs=[2e-10] * d.n_components,
+        ...                         rel=[1e-5] * d.n_components)
         """
         self.have_user_tolerances = True
         if default is not None:
@@ -154,9 +161,16 @@ cdef class Domain1D:
         keywords and (relative tolerance, absolute tolerance) tuples as the values.
         The keyword ``default`` may be used to specify default bounds for all
         unspecified components. The keyword ``Y`` can be used to stand for all
-        species mass fractions in flow domains. Alternatively, the keywords
-        ``abs`` and ``rel`` can be used to specify arrays for the absolute and
-        relative tolerances for each solution component.
+        species mass fractions in flow domains.
+
+        >>> d.set_transient_tolerances(default=(1e-5, 1e-11), T=(1e-6, 1e-9))
+        >>> d.set_steady_tolerances(H2=(1e-6, 1e-12), CH4=(1e-5, 1e-10))
+
+        Alternatively, the keywords ``abs`` and ``rel`` can be used to specify arrays
+        for the absolute and relative tolerances for each solution component:
+
+        >>> d.set_transient_tolerances(abs=[2e-10] * d.n_components,
+        ...                            rel=[1e-5] * d.n_components)
         """
         self.have_user_tolerances = True
         if default is not None:

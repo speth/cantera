@@ -185,6 +185,7 @@ void Inlet1D::eval(size_t jg, double* xg, double* rg,
     if (jg != npos && (jg + 2 < firstPoint() || jg > lastPoint() + 2)) {
         return;
     }
+    size_t nc = m_flow->nComponents();
 
     if (m_ilr == LeftInlet) {
         // Array elements corresponding to the first point of the flow domain
@@ -232,7 +233,12 @@ void Inlet1D::eval(size_t jg, double* xg, double* rg,
         // add the convective term to the species residual equations
         for (size_t k = 0; k < m_nsp; k++) {
             if (k != m_flow_right->leftExcessSpecies()) {
-                rb[c_offset_Y+k] += m_mdot*m_yin[k];
+                if (m_mdot >= 0) {
+                    rb[c_offset_Y+k] += m_mdot*m_yin[k];
+                } else {
+                    // Use zero mass fraction gradient in case of outflow
+                    rb[c_offset_Y+k] = xb[c_offset_Y+k] - xb[c_offset_Y+k+nc];
+                }
             }
         }
 
@@ -261,7 +267,12 @@ void Inlet1D::eval(size_t jg, double* xg, double* rg,
 
         for (size_t k = 0; k < m_nsp; k++) {
             if (k != m_flow_left->rightExcessSpecies()) {
-                rb[c_offset_Y+k] += m_mdot * m_yin[k];
+                if (m_mdot >= 0) {
+                    rb[c_offset_Y+k] += m_mdot*m_yin[k];
+                } else {
+                    // Use zero mass fraction gradient in case of outflow
+                    rb[c_offset_Y+k] = xb[c_offset_Y+k] - xb[c_offset_Y+k-nc];
+                }
             }
         }
     }

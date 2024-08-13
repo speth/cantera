@@ -970,6 +970,7 @@ void Flow1D::fromArray(SolutionArray& arr, double* soln)
 
     const auto grid = arr.getComponent("grid").as<vector<double>>();
     setupGrid(nPoints(), &grid[0]);
+    setMeta(arr.meta()); // can affect which components are active
 
     for (size_t i = 0; i < nComponents(); i++) {
         if (!componentActive(i)) {
@@ -988,7 +989,6 @@ void Flow1D::fromArray(SolutionArray& arr, double* soln)
     }
 
     updateProperties(npos, soln + loc(), 0, m_points - 1);
-    setMeta(arr.meta());
 }
 
 void Flow1D::setMeta(const AnyMap& state)

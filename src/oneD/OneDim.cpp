@@ -376,11 +376,11 @@ double OneDim::timeStep(int nsteps, double dt, double* x, double* r, int logleve
             n += 1;
             debuglog("\n", loglevel);
             copy(r, r + m_size, x);
-            if (m == 100) {
-                dt *= 1.5;
-            }
             if (m_time_step_callback) {
                 m_time_step_callback->eval(dt);
+            }
+            if (m == 100) {
+                dt *= 1.5;
             }
             dt = std::min(dt, m_tmax);
             if (m_nsteps >= m_nsteps_max) {

@@ -58,14 +58,14 @@ jobs:
         run: |
           python3 `which scons` build env_vars=all -j4 debug=n --debug=time \
           cc_flags=-D_GLIBCXX_ASSERTIONS
+      - name: Set up MATLAB
+        uses: matlab-actions/setup-matlab@718d4320188c73c86eb94ce76b553cbf89778487 # v2.5.0
       - name: Set LD_PRELOAD environment variable for MATLAB
         run: |
           LIB_STDCXX=$(ldconfig -p | grep libstdc++.so.6 | awk '{print $4}' | head -n 1)
           LIB_OPENBLAS=$(ldconfig -p | grep libopenblas.so.0 | awk '{print $4}' | head -n 1)
           LIB_LAPACK=$(ldconfig -p | grep liblapack.so.3 | awk '{print $4}' | head -n 1)
           echo "LD_PRELOAD=$LIB_STDCXX:$LIB_OPENBLAS:$LIB_LAPACK" >> $GITHUB_ENV
-      - name: Set up MATLAB
-        uses: matlab-actions/setup-matlab@718d4320188c73c86eb94ce76b553cbf89778487 # v2.5.0
       - name: Run tests
         uses: matlab-actions/run-tests@f9fc3d8ca29fadef6227fa52884b144b9011fa2f # v2.1.1
         with:
@@ -357,14 +357,14 @@ jobs:
         dotnet tool install --local dotnet-reportgenerator-globaltool
         dotnet reportgenerator -reports:"coverage.cobertura.xml" -targetdir:"coveragereport" -reporttypes:Html
       working-directory: interfaces/dotnet
+    - name: Set up MATLAB
+      uses: matlab-actions/setup-matlab@718d4320188c73c86eb94ce76b553cbf89778487 # v2.5.0
     - name: Set environment variables for MATLAB
       run: |
         LIB_STDCXX=$(ldconfig -p | grep libstdc++.so.6 | awk '{print $4}' | head -n 1)
         LIB_OPENBLAS=$(ldconfig -p | grep libopenblas.so.0 | awk '{print $4}' | head -n 1)
         LIB_LAPACK=$(ldconfig -p | grep liblapack.so.3 | awk '{print $4}' | head -n 1)
         echo "LD_PRELOAD=$LIB_STDCXX:$LIB_OPENBLAS:$LIB_LAPACK" >> $GITHUB_ENV
-    - name: Set up MATLAB
-      uses: matlab-actions/setup-matlab@718d4320188c73c86eb94ce76b553cbf89778487 # v2.5.0
     - name: Test the MATLAB interface and generate coverage report
       uses: matlab-actions/run-command@67f012f1ee4bc1627a7a95a0ccdeec745c9f6f36 # v2.2.1
       env:

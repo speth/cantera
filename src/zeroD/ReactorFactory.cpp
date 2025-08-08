@@ -15,6 +15,8 @@
 #include "cantera/zeroD/IdealGasConstPressureReactor.h"
 #include "cantera/zeroD/ReactorDelegator.h"
 #include "cantera/zeroD/IdealGasConstPressureMoleReactor.h"
+#include "cantera/zeroD/PlasmaReactor.h"
+
 
 namespace Cantera
 {
@@ -81,6 +83,9 @@ ReactorFactory::ReactorFactory()
     reg("ReactorSurface",
         [](shared_ptr<Solution> sol, const string& name)
         { return new ReactorSurface(sol, name); });
+    reg("PlasmaReactor",
+        [](shared_ptr<Solution> sol, const string& name)
+        { return new PlasmaReactor(sol, name); });
 }
 
 ReactorFactory* ReactorFactory::factory() {

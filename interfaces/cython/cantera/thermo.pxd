@@ -214,6 +214,8 @@ cdef extern from "cantera/thermo/PlasmaPhase.h":
         double reducedElectricField()
         void updateElectronEnergyDistribution() except +translate_exception
         double elasticPowerLoss() except +translate_exception
+        double electronMobility()
+        size_t nsp_evib()
 
 
 cdef extern from "cantera/cython/thermo_utils.h":

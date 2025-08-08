@@ -52,3 +52,4 @@ environment.y*
 coverage/
 coverage.info
 .coverage
+INSTALL_DIR/

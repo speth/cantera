@@ -21,6 +21,7 @@
 #include "cantera/zeroD/IdealGasConstPressureReactor.h"
 #include "cantera/zeroD/IdealGasConstPressureMoleReactor.h"
 #include "cantera/zeroD/IdealGasMoleReactor.h"
+#include "cantera/zeroD/PlasmaReactor.h"
 
 // flow devices
 #include "cantera/zeroD/flowControllers.h"

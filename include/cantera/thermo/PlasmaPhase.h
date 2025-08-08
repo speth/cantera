@@ -369,6 +369,61 @@ public:
      */
     double elasticPowerLoss();
 
+        ///////////////////////////////////////////////////////////////////////// WHAT WAS ADDED TO SET UP VIBRATIONAL ENERGY ROUTINES AND PLASMA REACTOR ///////////////////////////////////////////////////////////
+
+     //! list of number densities
+    mutable vector<double> m_nDensity;
+
+    void compute_nDensity() const;
+
+        // number density of electron
+    double nElectron() const {
+        compute_nDensity();
+        return m_nDensity[speciesIndex("Electron")];
+    }
+
+    // electron mobility
+    double electronMobility() const {
+        compute_electronMobility();
+        return m_electronMobility;
+    }
+
+    void compute_electronMobility() const;
+
+    size_t nr_evib();
+
+    size_t nsp_evib();
+
+    //! Sets the number of vibrationally excited species as the size of the m_evib array
+    void setMsp_evib(size_t m_nspevib);
+
+    //! Get the species vibrational energies
+    //!     @param[out] evib Array of species vibrational energies, length m_nspevib
+    void getVibrationalEnergies(double* const evib) const;
+
+    //! Set the species vibrational energies to the specified values.
+    //!     @param[in] evib Array of species vibrational energy values.
+    virtual void setVibrationalEnergies(const double* const evib);
+
+    double getDuvib(int n);
+
+    string getTarget(int n){
+        return m_vibTarget[n];
+    }
+
+    void countVibSpecies();
+
+    std::vector<std::string> getVibSpecies() {
+        for (const auto& s : vib_species) {
+            std::cout << s << std::endl;
+        }
+        return vib_species;
+}
+
+
+    std::vector<std::string> vib_species; // a vector to store the names of vibrational species
+
+
 protected:
     void updateThermo() const override;
 
@@ -498,6 +553,24 @@ protected:
         updateElasticElectronEnergyLossCoefficient()
     */
     void updateElasticElectronEnergyLossCoefficients();
+
+    ///////////////////////////////////////////////////////////////////////// WHAT WAS ADDED TO SET UP VIBRATIONAL ENERGY ROUTINES AND PLASMA REACTOR ///////////////////////////////////////////////////////////
+
+    //! Electron mobility
+    mutable double m_electronMobility;
+
+    //! number of species with vibrational excitation
+    size_t m_nspevib;
+    size_t m_nrevib;
+
+    //! species energy delta going into vibrationnal energy
+    vector<double> m_duvib;
+
+    //! species energy delta going into vibrationnal energy
+    vector<string> m_vibTarget;
+
+    //! species vibrational energies
+    vector<double> m_evib;
 
 private:
 

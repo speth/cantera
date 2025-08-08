@@ -37,6 +37,7 @@ PlasmaPhase::PlasmaPhase(const string& inputFile, const string& id_)
     m_nPoints = nGridCells + 1;
     m_eedfSolver->setLinearGrid(kTe_max, nGridCells);
     m_electronEnergyLevels = MappedVector(m_eedfSolver->getGridEdge().data(), m_nPoints);
+    // setupVib(inputFile, id_);
 }
 
 PlasmaPhase::~PlasmaPhase()
@@ -674,6 +675,66 @@ void PlasmaPhase::getGibbs_RT(double* grt) const
         } else {
             grt[k] += log(electronPressure() / refPressure());
         }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////// WHAT I ADDED ///////////////////////////////////////////////////////////
+
+void PlasmaPhase::compute_nDensity() const {
+    m_nDensity.resize(m_kk);
+    const double* Y = massFractions();
+    const vector<double>& mw = molecularWeights();
+    double dens = density();
+    for (size_t j = 0; j < m_kk; j++) {
+        m_nDensity[j] = Y[j] / mw[j] * Avogadro * dens;
+    }
+}
+
+void PlasmaPhase::compute_electronMobility() const {
+    if (m_distributionType == "TwoTermApproximation") {
+        m_electronMobility = m_eedfSolver->getElectronMobility();
+    } else {
+        throw NotImplementedError("PlasmaPhase::compute_electronMobility");
+    }
+}
+
+size_t PlasmaPhase::nsp_evib() { 
+    countVibSpecies();
+    return m_nspevib;
+}
+
+size_t PlasmaPhase::nr_evib() { 
+    return m_nrevib;
+}
+
+void PlasmaPhase::setMsp_evib(size_t m_nspevib_to_set){
+    m_evib.resize(m_nspevib_to_set);
+} 
+
+void PlasmaPhase::getVibrationalEnergies(double* const evib) const{
+    copy(m_evib.begin(), m_evib.end(), evib);
+}
+
+void PlasmaPhase::setVibrationalEnergies(const double* const evib){
+    copy(evib, evib + m_nspevib, m_evib.begin());
+}
+
+double PlasmaPhase::getDuvib(int n){
+    return m_duvib[n];
+}
+
+void PlasmaPhase::countVibSpecies() {
+    int count = 0;
+    if (input().hasKey("vib_species")) {
+        auto vib = input()["vib_species"].asVector<std::string>();
+        for (const auto& s : vib) {
+            count++;
+        }
+        m_nspevib = count;
+        vib_species = vib;
+    } else {
+        printf("No vibrational species declared.");
+        m_nspevib = 0;
     }
 }
 

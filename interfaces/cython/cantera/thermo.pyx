@@ -1941,6 +1941,22 @@ cdef class ThermoPhase(_SolutionBase):
             if not self._enable_plasma:
                 raise ThermoModelMethodError(self.thermo_model)
             return self.plasma.elasticPowerLoss()
+    
+    property nsp_evib:
+        """ number of vibrational species delared in the phase"""
+        def __get__(self):
+            if not self._enable_plasma:
+                raise ThermoModelMethodError(self.thermo_model)
+            
+            return self.plasma.nsp_evib()
+
+    property electron_mobility:
+        """ Electron mobility [m^2/(V.s)]"""
+        def __get__(self):
+            if not self._enable_plasma:
+                raise ThermoModelMethodError(self.thermo_model)
+            
+            return self.plasma.electronMobility()
 
 cdef class InterfacePhase(ThermoPhase):
     """ A class representing a surface, edge phase """

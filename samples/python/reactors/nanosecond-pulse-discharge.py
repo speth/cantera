@@ -23,8 +23,10 @@ def gaussian_EN(t):
     return EN_peak * np.exp(-((t - pulse_center)**2) / (2 * pulse_width**2))
 
 # setup
-gas = ct.Solution('example_data/methane-plasma-pavan-2023.yaml')
-gas.TPX = 300., 101325., 'CH4:0.095, O2:0.19, N2:0.715, e:1E-11'
+#gas = ct.Solution('example_data/methane-plasma-pavan-2023.yaml')
+gas = ct.Solution('./air-plasma-test-vib.yaml')
+gas.TPX = 300., 101325., 'N2:0.79, O2:0.21, O2+:1E-9, Electron:1E-9'
+#gas.TPX = 300., 101325., 'CH4:0.095, O2:0.19, N2:0.715, e:1E-11'
 gas.reduced_electric_field = gaussian_EN(0)
 gas.update_EEDF()
 

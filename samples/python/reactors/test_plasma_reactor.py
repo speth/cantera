@@ -1,10 +1,13 @@
 """
+Plasma Reactor test
+==============
+Loads a very simple plasma chemistry into a PlasmaReactor and applies one pulse within it by turning on a constant E/N, then turning it off.
+For now, this test crashes.
 
 Requires: cantera >= XX.
 
 .. tags:: Python, plasma
 """
-
 
 import cantera as ct
 import numpy as np
@@ -13,7 +16,7 @@ import sys
 
 
 # solution
-gas = ct.Solution('./air-plasma-test-vib.yaml')
+gas = ct.Solution('data/example_data/air-plasma-test-vib.yaml')
 gas.TPX = 300., 101325., 'N2:0.79, O2:0.21, O2+:1E-9, Electron:1E-9'
 gas.reduced_electric_field = 200.0 * 1e-21 # Reduced electric field [V.m^2]
 gas.update_EEDF()
@@ -23,7 +26,7 @@ print("Number of vibrational species loaded in the phase:", gas.nsp_evib)
 r = ct.PlasmaReactor(gas)
 r.dis_vol = 1
 print("Discharge volume : ", r.dis_vol)
-print(type(r))
+print("Check that the reactor is well declared: ", type(r))
 
 sim = ct.ReactorNet([r])
 sim.verbose = True
@@ -36,9 +39,7 @@ states = ct.SolutionArray(gas, extra=['t'])
 print('{:10s} {:10s} {:10s} {:14s}'.format(
     't [s]', 'T [K]', 'P [Pa]', 'u [J/kg]'))
 while sim.time < t_end:
-    print(sim.time)
     sim.advance(sim.time + dt_max)
-    print("hoy advance worked")
     states.append(r.thermo.state, t=sim.time)
     print('{:10.3e} {:10.3f} {:10.3f} {:14.6f}'.format(
             sim.time, r.T, r.thermo.P, r.thermo.u))
@@ -79,5 +80,5 @@ ax[0].set_ylabel('Mole fraction [-]')
 ax[1].set_ylabel('Temperature [K]')
 
 plt.tight_layout()
-plt.savefig("species.png")
+plt.savefig("test_plasma_reactor_output.png")
 plt.close(fig)

@@ -106,39 +106,17 @@ void ReactorNet::initialize()
 {
     m_nv = 0;
     debuglog("Initializing reactor network.\n", m_verbose);
-    // debuglog("i am here just to check you see me", m_verbose);
-    // printf("checking printf works well\n");
-    //std::cout << m_reactors.size() << std::endl;
-    // std::cout << m_reactors.empty() << std::endl;
-    // printf("I SURVIVED");
-    // if (m_reactors.empty()) {
-    //     printf("hello there");
-    //     throw CanteraError("ReactorNet::initialize",
-    //                        "no reactors in network!");
-    // }
-    // writelog("TOTO");
-    printf("HEY 1");
-    printf("HOLA");
-    printf("HOLA");
-    printf("HOLA");
-    printf("HOLA");
-    printf("HOLA");
-    printf("HOLA");
-    printf("HOLA");
-    printf("HOLA");
-    printf("HOLA");
-
-    printf("HOLA");
+    if (m_reactors.empty()) {
+        throw CanteraError("ReactorNet::initialize",
+                           "no reactors in network!");
+    }
     m_start.assign(1, 0);
-    printf("i enter the loop on reactors");
     for (size_t n = 0; n < m_reactors.size(); n++) {
-        printf("HEY 2");
 
         Reactor& r = *m_reactors[n];
-        printf("HEY 3");
+ 
 
         r.initialize(m_time);
-        printf("HEY 4");
 
         size_t nv = r.neq();
         m_nv += nv;

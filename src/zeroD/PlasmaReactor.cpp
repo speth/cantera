@@ -34,11 +34,6 @@ void PlasmaReactor::setThermo(ThermoPhase& thermo)
     Reactor::setThermo(thermo);
     m_plasma = &dynamic_cast<PlasmaPhase&>(thermo);
     compute_disVPower();
-    m_nspevib = m_plasma->nsp_evib();
-    m_nv += m_nspevib;
-    disVibVPower.resize(m_nspevib);
-    RvtVPower.resize(m_nspevib);
-    recoverVibSpecies(); // get all the vibrationnal species declared in the plasma phase
 }
 
 void PlasmaReactor::getState(double* y)
@@ -73,18 +68,18 @@ void PlasmaReactor::getState(double* y)
 
 void PlasmaReactor::initialize(double t0) {
     writelog("Entering initialize function");
-    // if (m_plasma == 0) {
-    //     throw CanteraError("IdealGasReactor::getState",
-    //                         "Error: reactor is empty.");
-    // }
+    if (m_plasma == 0) {
+        throw CanteraError("PlasmaReactor::initialize",
+                            "Error: m_plasma pointer is not initialised. This PlasmaReactor has no PlasmaPhase...");
+    }
     IdealGasReactor::initialize(t0);
 
     // Equations for vibrational energy density are initialised here.
-    // m_nspevib = m_plasma->nsp_evib();
-    // m_nv += m_nspevib;
-    // disVibVPower.resize(m_nspevib);
-    // RvtVPower.resize(m_nspevib);
-    // recoverVibSpecies(); // get all the vibrationnal species declared in the plasma phase
+    m_nspevib = m_plasma->nsp_evib();
+    m_nv += m_nspevib;
+    disVibVPower.resize(m_nspevib);
+    RvtVPower.resize(m_nspevib);
+    recoverVibSpecies(); // get all the vibrationnal species declared in the plasma phase
 }
 
 void PlasmaReactor::updateState(double* y)

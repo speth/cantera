@@ -3,6 +3,7 @@ EEDF calculation
 ==============
 Compute EEDF with two term approximation solver at constant E/N.
 Compare with results from BOLOS.
+The goal of this file is to check whether the new implementations impacted the resolving of the EEDF.
 
 Requires: cantera >= XX.
 
@@ -13,7 +14,7 @@ Requires: cantera >= XX.
 import matplotlib.pyplot as plt
 import cantera as ct
 
-gas = ct.Solution('./air-plasma.yaml')
+gas = ct.Solution('data/example_data/air-plasma.yaml')
 gas.TPX = 300., 101325., 'N2:0.79, O2:0.21, N2+:1E-10, Electron:1E-10'
 gas.reduced_electric_field = 200.0 * 1e-21 # Reduced electric field [V.m^2]
 gas.update_EEDF()

@@ -66,8 +66,6 @@ public:
 
 
 protected:
-    void setThermo(ThermoPhase& thermo) override;
-
     double m_dis_vol = 1; //!< Discharge volume
 
     double m_disVPower = 0; //!< Volumetric discharge power

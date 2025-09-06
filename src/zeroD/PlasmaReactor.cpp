@@ -24,18 +24,6 @@
 namespace Cantera
 {
 
-void PlasmaReactor::setThermo(ThermoPhase& thermo)
-{
-    writelog("entering set thermofunction");
-    if (thermo.type() != "plasma") {
-        throw CanteraError("PlasmaReactor::setThermo",
-                           "Incompatible phase type provided");
-    }
-    Reactor::setThermo(thermo);
-    m_plasma = &dynamic_cast<PlasmaPhase&>(thermo);
-    compute_disVPower();
-}
-
 void PlasmaReactor::getState(double* y)
 {
     writelog("entering getState");
@@ -68,11 +56,12 @@ void PlasmaReactor::getState(double* y)
 
 void PlasmaReactor::initialize(double t0) {
     writelog("Entering initialize function");
-    if (m_plasma == 0) {
-        throw CanteraError("PlasmaReactor::initialize",
-                            "Error: m_plasma pointer is not initialised. This PlasmaReactor has no PlasmaPhase...");
-    }
     IdealGasReactor::initialize(t0);
+    m_plasma = dynamic_cast<PlasmaPhase*>(m_thermo);
+    if (m_plasma == nullptr) {
+        throw CanteraError("PlasmaReactor::initialize",
+                           "Incompatible phase type '{}' provided", m_thermo->type());
+    }
 
     // Equations for vibrational energy density are initialised here.
     m_nspevib = m_plasma->nsp_evib();
@@ -80,6 +69,7 @@ void PlasmaReactor::initialize(double t0) {
     disVibVPower.resize(m_nspevib);
     RvtVPower.resize(m_nspevib);
     recoverVibSpecies(); // get all the vibrationnal species declared in the plasma phase
+    compute_disVPower();
 }
 
 void PlasmaReactor::updateState(double* y)

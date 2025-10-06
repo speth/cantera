@@ -11,6 +11,7 @@
 #include "cantera/base/stringUtils.h"
 #include "cantera/thermo/Species.h"
 #include "cantera/thermo/ThermoFactory.h"
+#include "cantera/numerics/eigen_dense.h"
 
 using namespace std;
 
@@ -499,6 +500,11 @@ double Phase::massFraction(const string& nameSpec) const
 void Phase::getMassFractions(double* const y) const
 {
     copy(m_y.begin(), m_y.end(), y);
+}
+
+void Phase::getMassFractions(std::span<double> y) const
+{
+    y = m_y;
 }
 
 double Phase::concentration(const size_t k) const

@@ -21,18 +21,34 @@
 #include "cantera/kinetics/Reaction.h"
 #include "cantera/base/global.h" // provides Cantera::writelog
 #include <iostream>
+#include <span>
 
 // All Cantera kernel names are in namespace Cantera. You can either
 // reference everything as Cantera::<name>, or include the following
 // 'using namespace' line.
 using namespace Cantera;
+using std::span;
 
 // The program is put into a function so that error handling code can
 // be conveniently put around the whole thing. See main() below.
 
+int f(span<double> x)
+{
+    int ret = 0;
+    for (size_t i = 0; i < 13; i++) {
+        writelog("    x[{}] = {}\n", i, x[i]);
+        if (x[i] > 1.0) {
+            ret = i;
+        }
+    }
+    return ret;
+}
+
 void demoprog()
 {
     writelog("\n**** C++ Test Program ****\n");
+
+
 
     auto sol = newSolution("h2o2.yaml", "ohmech");
     auto gas = sol->thermo();
@@ -40,6 +56,21 @@ void demoprog()
     double pres = OneAtm;
     gas->setState_TPX(temp, pres, "H2:1, O2:1, AR:2");
 
+    size_t K = gas->nSpecies();
+
+    double* ss = new double[2*K];
+    gas->getMoleFractions(ss);
+    writelog("f(ss) = {}\n", f(span<double>(ss, K)));
+    delete[] ss;
+
+    vector<double> yy(K);
+    gas->getPartialMolarCp(yy.data());
+    writelog("f(yy) = {}\n", f(yy));
+
+    Eigen::ArrayXd ee(K);
+    gas->getPartialMolarEnthalpies(ee.data());
+    writelog("f(ee) = {}\n", f(ee)); // Works starting in Eigen 5.0.0
+    writelog("f(ee) = {}\n", f(span<double>(ee.data(), ee.data() + ee.size()))); // Works for all Eigen
 
     // Thermodynamic properties
 

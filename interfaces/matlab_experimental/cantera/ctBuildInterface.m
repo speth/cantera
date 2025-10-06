@@ -41,7 +41,7 @@ function ctBuildInterface(ctDir, includeDir, ctLibDir)
     % Build C++ Interface
     libDef = feval("definectMatlab");
     build(libDef);
-    addpath(fullfile(libDef.OutputFolder,libDef.InterfaceName));
+    addpath(fullfile(libDef.OutputFolder,libDef.PackageName));
     libDef.copyRuntimeDependencies(Verbose=true);
     savepath;
 end

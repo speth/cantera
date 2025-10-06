@@ -13,6 +13,8 @@
 #include "cantera/thermo/Elements.h"
 #include "cantera/base/ValueCache.h"
 
+#include <span>
+
 namespace Cantera
 {
 
@@ -462,6 +464,8 @@ public:
     //! Get the species mass fractions.
     //!     @param[out] y Array of mass fractions, length nSpecies()
     void getMassFractions(double* const y) const;
+
+    void getMassFractions(std::span<double> y) const;
 
     //! Return a const pointer to the mass fraction array
     const double* massFractions() const {

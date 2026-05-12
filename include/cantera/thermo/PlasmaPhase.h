@@ -113,7 +113,10 @@ public:
     //! Get electron energy levels.
     //! @param  levels The vector of electron energy levels (eV). Length: #m_nPoints
     void getElectronEnergyLevels(span<double> levels) const {
-        Eigen::Map<Eigen::ArrayXd>(levels.data(), levels.size()) = m_electronEnergyLevels;
+        checkArraySize("PlasmaPhase::getElectronEnergyLevels",
+            levels.size(), m_nPoints);
+        Eigen::Map<Eigen::ArrayXd>(levels.data(), levels.size()) =
+            m_electronEnergyLevels;
     }
 
     //! Set discretized electron energy distribution.
@@ -128,7 +131,10 @@ public:
     //! @param  distrb The vector of electron energy distribution.
     //!                Length: #m_nPoints.
     void getElectronEnergyDistribution(span<double> distrb) const {
-        Eigen::Map<Eigen::ArrayXd>(distrb.data(), distrb.size()) = m_electronEnergyDist;
+        checkArraySize("PlasmaPhase::getElectronEnergyDistribution",
+            distrb.size(), m_nPoints);
+        Eigen::Map<Eigen::ArrayXd>(distrb.data(), distrb.size()) =
+            m_electronEnergyDist;
     }
 
     //! Set the shape factor of isotropic electron energy distribution.
@@ -368,6 +374,10 @@ public:
 
     //! Set the absolute electric field strength [V/m]
     void setElectricField(double E) {
+        if (!std::isfinite(E) || E < 0.0) {
+            throw CanteraError("PlasmaPhase::setElectricField",
+                "Electric field must be finite and non-negative.");
+        }
         m_electricField = E;
     }
 
@@ -383,9 +393,20 @@ public:
         return m_electricField / (molarDensity() * Avogadro);
     }
 
-    //! Set reduced electric field given in [V·m²]
+    //! Get the reduced electric field strength [V·m²]
     void setReducedElectricField(double EN) {
-        m_electricField = EN * molarDensity() * Avogadro; // [V/m]
+        if (!std::isfinite(EN) || EN < 0.0) {
+            throw CanteraError("PlasmaPhase::setReducedElectricField",
+                "Reduced electric field must be finite and non-negative.");
+        }
+
+        const double nDensity = molarDensity() * Avogadro;
+        if (!std::isfinite(nDensity) || nDensity <= 0.0) {
+            throw CanteraError("PlasmaPhase::setReducedElectricField",
+                "Cannot set reduced electric field with non-positive number density.");
+        }
+
+        m_electricField = EN * nDensity;
     }
 
     virtual void setSolution(std::weak_ptr<Solution> soln) override;

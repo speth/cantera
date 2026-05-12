@@ -100,9 +100,7 @@ public:
         return m_f0_edge;
     }
 
-    double getElectronMobility() const {
-        return m_electronMobility;
-    }
+    double getElectronMobility() const;
 
 protected:
 
@@ -316,6 +314,8 @@ protected:
 
     void updateGrid(double maxEnergy);
 
+    const double EN_min = 1e-21; // Reduced electric field below which the EEDF is not computed.
+                             // Instead, a Maxwellian at the gas temperature is imposed.
 
 }; // end of class EEDFTwoTermApproximation
 

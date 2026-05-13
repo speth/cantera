@@ -22,7 +22,7 @@ class ElectronCollisionPlasmaRate;
 //! Base class for handling plasma properties, specifically focusing on the
 //! electron energy distribution.
 /*!
- * This class provides functionality to manage the the electron energy distribution
+ * This class provides functionality to manage the electron energy distribution
  * using two primary methods for defining the electron distribution and electron
  * temperature.
  *
@@ -192,6 +192,7 @@ public:
         return m_do_normalizeElectronEnergyDist;
     }
 
+    //! adds a species to the phase. Override from IdealGasPhase to take into account electrons.
     bool addSpecies(shared_ptr<Species> spec) override;
 
     //! Electron Temperature (K)
@@ -343,7 +344,7 @@ public:
         return m_levelNum;
     }
 
-    //! Get the indicies for inelastic electron collisions
+    //! Get the indices for inelastic electron collisions
     //! @since New in %Cantera 3.2.
     const vector<size_t>& kInelastic() const {
         return m_kInelastic;
@@ -381,7 +382,8 @@ public:
         m_electricField = E;
     }
 
-    //! Calculate the degree of ionization
+    // @todo Add the method to compute the degree of ionization of the plasma.
+    //!Calculate the degree of ionization
     //double ionDegree() const {
     //    double ne = concentration(m_electronSpeciesIndex); // [kmol/m³]
     //    double n_total = molarDensity();                   // [kmol/m³]
@@ -393,7 +395,7 @@ public:
         return m_electricField / (molarDensity() * Avogadro);
     }
 
-    //! Get the reduced electric field strength [V·m²]
+    //! Set reduced electric field given in [V·m²]
     void setReducedElectricField(double EN) {
         if (!std::isfinite(EN) || EN < 0.0) {
             throw CanteraError("PlasmaPhase::setReducedElectricField",
@@ -449,8 +451,10 @@ public:
 
     void endEquilibrate() override;
 
+    //! Calculates the intrinsic heating power (W/m³) of the plasma.
     double intrinsicHeating() override;
 
+    //! Calculates the power losses (W/m³) of the plasma electrons through inelastic collisions.
     double inelasticPower();
 
 protected:
@@ -461,7 +465,7 @@ protected:
     void electronEnergyDistributionChanged();
 
     //! When electron energy level changed, plasma properties such as
-    //! electron-collision reaction rates need to be re-evaluate.
+    //! electron-collision reaction rates need to be re-evaluated.
     //! In addition, the cross-sections need to be interpolated at
     //! the new level.
     void electronEnergyLevelChanged();
@@ -475,7 +479,7 @@ protected:
 
     //! Check the electron energy distribution
     /*!
-     *  This method check the electron energy distribution for the criteria
+     *  This method checks the electron energy distribution for the criteria
      *  below.
      *
      *  1. The values of electron energy distribution cannot be negative.
@@ -550,6 +554,7 @@ protected:
     //! where i is the specific process, j is the index of vector. Unit: [eV]
     vector<vector<double>> m_energyLevels;
 
+    // @todo Add a variable to track the ionization degree of the plasma.
     //! ionization degree for the electron-electron collisions (tmp is the previous one)
     //double m_ionDegree = 0.0;
 
@@ -582,6 +587,11 @@ protected:
         updateElasticElectronEnergyLossCoefficient()
     */
     void updateElasticElectronEnergyLossCoefficients();
+
+    //! Add an electron collision with respect to the old formats of electron collision. Function made for compatibility.
+    void addStandaloneElectronCollision(const AnyMap& item);
+
+    string inferElectronCollisionKind(const shared_ptr<Reaction>& collision) const;
 
 private:
 
@@ -623,6 +633,13 @@ private:
 
     //! Work array
     mutable std::vector<double> m_work;
+
+    //! The array containing the names of the electron collisions
+    map<string, AnyMap> m_electronCollisionDefinitions;
+
+    //! The array containing the references of each electron collision.
+    set<string> m_referencedElectronCollisions;
+
 };
 
 }

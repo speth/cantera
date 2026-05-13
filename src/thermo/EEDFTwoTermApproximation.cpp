@@ -21,7 +21,7 @@ typedef Eigen::SparseMatrix<double> SparseMat;
 
 EEDFTwoTermApproximation::EEDFTwoTermApproximation(PlasmaPhase* s)
 {
-    // store a pointer to s.
+    // Store the PlasmaPhase context used by the solver (pointer to s).
     m_phase = s;
     m_first_call = true;
     m_has_EEDF = false;
@@ -42,7 +42,6 @@ void EEDFTwoTermApproximation::setLinearGrid(double& kTe_max, size_t& ncell)
     m_gridEdge[m_points] = kTe_max;
     setGridCache();
 }
-
 
 void EEDFTwoTermApproximation::setQuadraticGrid(double& kTe_max, size_t& ncell)
 {
@@ -146,6 +145,7 @@ int EEDFTwoTermApproximation::calculateDistributionFunction()
 
     const double EN = m_phase->reducedElectricField();
 
+    // Helper used to impose a Maxwellian EEDF.
     auto setMaxwellian = [&](double kTe_eV) {
         if (!std::isfinite(kTe_eV) || kTe_eV <= 0.0) {
             throw CanteraError("EEDFTwoTermApproximation::calculateDistributionFunction",
@@ -177,7 +177,8 @@ int EEDFTwoTermApproximation::calculateDistributionFunction()
     };
 
     // At very low reduced electric field, force a Maxwellian at the gas
-    // temperature and skip the Boltzmann convergence.
+    // temperature and skip the Boltzmann convergence to avoid wrong EEDF convergence and numerical instabilities 
+    // when integrating over time.
     if (EN <= EN_min) {
         setMaxwellian(Boltzmann * m_phase->temperature() / ElectronCharge);
     } else {
@@ -193,6 +194,11 @@ int EEDFTwoTermApproximation::calculateDistributionFunction()
         }
 
         converge(m_f0);
+
+        // Grid adaptation based on EEDF tail decay. If enabled, this will iteratively adjust the grid 
+        // until the EEDF tail decays within the specified bounds given in the YAML file.
+        // @todo Implement a more robust version which also varies the number of grid points if necessary. 
+        // The current version only adjusts the maximum energy of the grid.
 
         if (m_adaptGrid) {
             const double fFloor = 1e-300;
@@ -259,7 +265,7 @@ int EEDFTwoTermApproximation::calculateDistributionFunction()
     m_has_EEDF = true;
 
     // Update electron mobility.
-    m_electronMobility = electronMobility(m_f0);
+    m_electronMobility = computeElectronMobility(m_f0);
 
     return 0;
 }
@@ -298,7 +304,7 @@ void EEDFTwoTermApproximation::converge(Eigen::VectorXd& f0)
         if (err1 < m_rtol) {
             break;
         } else if (n == m_maxn - 1) {
-            throw CanteraError("WeaklyIonizedGas::converge", "Convergence failed");
+            throw CanteraError("EEDFTwoTermApproximation::converge", "Convergence failed");
         }
     }
 }
@@ -315,7 +321,7 @@ Eigen::VectorXd EEDFTwoTermApproximation::iterate(const Eigen::VectorXd& f0, dou
     for (size_t k : m_phase->kInelastic()) {
         SparseMat Q_k = matrix_Q(g, k);
         SparseMat P_k = matrix_P(g, k);
-        PQ += (matrix_Q(g, k) - matrix_P(g, k)) * m_X_targets[m_klocTargets[k]];
+        PQ += (Q_k - P_k) * m_X_targets[m_klocTargets[k]];
     }
 
     SparseMat A = matrix_A(f0);
@@ -461,7 +467,7 @@ SparseMat EEDFTwoTermApproximation::matrix_A(const Eigen::VectorXd& f0)
     double alpha;
     double E = m_phase->electricField();
     if (m_growth == "spatial") {
-        double mu = electronMobility(f0);
+        double mu = computeElectronMobility(f0);
         double D = electronDiffusivity(f0);
         alpha = (mu * E - sqrt(pow(mu * E, 2) - 4 * D * nu * nDensity)) / 2.0 / D / nDensity;
     } else {
@@ -525,7 +531,7 @@ SparseMat EEDFTwoTermApproximation::matrix_A(const Eigen::VectorXd& f0)
     SparseMat A(m_points, m_points);
     A.setFromTriplets(tripletList.begin(), tripletList.end());
 
-    //plus G
+    // plus G
     SparseMat G(m_points, m_points);
     if (m_growth == "temporal") {
         for (size_t i = 0; i < m_points; i++) {
@@ -577,7 +583,7 @@ double EEDFTwoTermApproximation::electronDiffusivity(const Eigen::VectorXd& f0)
     return 1./3. * m_gamma * simpson(f, x) / nDensity;
 }
 
-double EEDFTwoTermApproximation::electronMobility(const Eigen::VectorXd& f0)
+double EEDFTwoTermApproximation::computeElectronMobility(const Eigen::VectorXd& f0)
 {
     double nu = netProductionFrequency(f0);
     vector<double> y(m_points + 1, 0.0);
@@ -590,7 +596,9 @@ double EEDFTwoTermApproximation::electronMobility(const Eigen::VectorXd& f0)
         }
     }
     double nDensity = m_phase->molarDensity() * Avogadro;
-    return -1./3. * m_gamma * simpson(asVectorXd(y), asVectorXd(m_gridEdge)) / nDensity;
+    auto f = ConstMappedVector(y.data(), y.size());
+    auto x = ConstMappedVector(m_gridEdge.data(), m_gridEdge.size()); 
+    return -1./3. * m_gamma * simpson(f, x) / nDensity;
 }
 
 void EEDFTwoTermApproximation::initSpeciesIndexCrossSections()
@@ -647,6 +655,7 @@ void EEDFTwoTermApproximation::updateCrossSections()
 }
 
 // Update the species mole fractions used for EEDF computation
+// Renormalize over species with electron-collision cross-section data.
 void EEDFTwoTermApproximation::updateMoleFractions()
 {
     double tmp_sum = 0.0;
@@ -779,7 +788,6 @@ double EEDFTwoTermApproximation::norm(const Eigen::VectorXd& f, const Eigen::Vec
     return numericalQuadrature(m_quadratureMethod, p, grid);
 }
 
-
 void EEDFTwoTermApproximation::setGridType(const string& gridType)
 {
     if (gridType != "Linear" &&
@@ -864,6 +872,7 @@ void EEDFTwoTermApproximation::updateGrid(double maxEnergy)
             "Unknown energy grid type '{}'.", m_gridType);
     }
 
+    // put back the flag at false because since the grid has changed the EEDF must be computed again.
     m_has_EEDF = false;
 }
 
@@ -874,6 +883,16 @@ double EEDFTwoTermApproximation::getElectronMobility() const
             "Electron mobility is not available before a valid EEDF has been computed.");
     }
     return m_electronMobility;
+}
+
+// Set the reduced electric field threshold below which the EEDF is forced to be Maxwellian at the gas temperature. 
+// The input to this function is expected to be in Townsend.
+void EEDFTwoTermApproximation::setReducedFieldThresholdBeforeMaxwellianTd(double threshold){
+    if (!std::isfinite(threshold) || threshold < 0.0) {
+        throw CanteraError("EEDFTwoTermApproximation::setReducedFieldThresholdBeforeMaxwellianTd",
+            "Reduced field threshold must be finite and non-negative.");
+    }
+    EN_min = threshold*1e-21;
 }
 
 }

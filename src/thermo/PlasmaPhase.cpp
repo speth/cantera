@@ -75,6 +75,9 @@ void PlasmaPhase::updateElectronEnergyDistribution()
     } else if (m_distributionType == "isotropic") {
         setIsotropicElectronEnergyDistribution();
     } else if (m_distributionType == "Boltzmann-two-term") {
+        // The two-term Boltzmann solver may adapt the electron energy grid, so both
+        // the grid and the distribution are copied back before invalidating dependent
+        // cross-section data.
         auto ierr = m_eedfSolver->calculateDistributionFunction();
         if (ierr == 0) {
             auto levels = m_eedfSolver->getGridEdge();
@@ -94,22 +97,24 @@ void PlasmaPhase::updateElectronEnergyDistribution()
                 y.data(), m_nPoints);
 
             electronEnergyLevelChanged();
-
-            bool validEEDF = (
-                static_cast<size_t>(m_electronEnergyDist.size()) == m_nPoints &&
-                m_electronEnergyDist.allFinite() &&
-                m_electronEnergyDist.maxCoeff() > 0.0 &&
-                m_electronEnergyDist.sum() > 0.0
-            );
-
-            if (validEEDF) {
-                updateElectronTemperatureFromEnergyDist();
-            } else {
-                writelog("Skipping Te update: EEDF is empty, non-finite, or unnormalized.\n");
-            }
         } else {
             throw CanteraError("PlasmaPhase::updateElectronEnergyDistribution",
                 "Call to calculateDistributionFunction failed.");
+        }
+        bool validEEDF = (
+            static_cast<size_t>(m_electronEnergyDist.size()) == m_nPoints &&
+            m_electronEnergyDist.allFinite() &&
+            m_electronEnergyDist.maxCoeff() > 0.0 &&
+            m_electronEnergyDist.sum() > 0.0
+        );
+
+        if (validEEDF) {
+            updateElectronTemperatureFromEnergyDist();
+        } else {
+            // Keep the previous electron temperature if the solver did not return a usable
+            // distribution. This avoids replacing Te with a value derived from invalid data.
+            // The user will be warned of this behaviour.
+            writelog("Skipping Te update: EEDF is empty, non-finite, or unnormalized.\n");
         }
     } else {
         throw CanteraError("PlasmaPhase::updateElectronEnergyDistribution",
@@ -263,6 +268,7 @@ void PlasmaPhase::checkElectronEnergyLevels() const
     }
 }
 
+
 void PlasmaPhase::checkElectronEnergyDistribution() const
 {
     if (m_nPoints < 2 ||
@@ -304,7 +310,6 @@ void PlasmaPhase::checkElectronEnergyDistribution() const
     }
 }
 
-
 void PlasmaPhase::setDiscretizedElectronEnergyDist(span<const double> levels,
                                                   span<const double> dist)
 {
@@ -318,14 +323,12 @@ void PlasmaPhase::setDiscretizedElectronEnergyDist(span<const double> levels,
         throw CanteraError("PlasmaPhase::setDiscretizedElectronEnergyDist",
             "A discretized electron energy distribution requires at least two points.");
     }
-
     m_distributionType = "discretized";
     m_nPoints = levels.size();
     m_electronEnergyLevels =
         Eigen::Map<const Eigen::ArrayXd>(levels.data(), m_nPoints);
     m_electronEnergyDist =
         Eigen::Map<const Eigen::ArrayXd>(dist.data(), m_nPoints);
-
     checkElectronEnergyLevels();
     if (m_do_normalizeElectronEnergyDist) {
         normalizeElectronEnergyDistribution();
@@ -504,6 +507,15 @@ void PlasmaPhase::setParameters(const AnyMap& phaseNode, const AnyMap& rootNode)
                         "energy_levels_distribution should be Linear, Quadratic or Geometric.");
                 }
 
+                if (eedf.hasKey("reduced_field_threshold_before_maxwellian_Td")){
+                    double maxwellian_threshold = eedf["reduced_field_threshold_before_maxwellian_Td"].asDouble();
+                    if (!std::isfinite(maxwellian_threshold) || maxwellian_threshold < 0.0) {
+                        throw CanteraError("PlasmaPhase::setParameters",
+                            "reduced_field_threshold_before_maxwellian_Td must be finite and non-negative.");
+                    }
+                    m_eedfSolver->setReducedFieldThresholdBeforeMaxwellianTd(maxwellian_threshold); // The input to this function is expected to be in Townsend.
+                }
+
                 if (eedf.hasKey("energy_grid_adaptation")) {
                     const AnyMap adapt = eedf["energy_grid_adaptation"].as<AnyMap>();
 
@@ -561,25 +573,98 @@ void PlasmaPhase::setParameters(const AnyMap& phaseNode, const AnyMap& rootNode)
 
     if (rootNode.hasKey("electron-collisions")) {
         for (const auto& item : rootNode["electron-collisions"].asVector<AnyMap>()) {
-            auto rate = make_shared<ElectronCollisionPlasmaRate>(item);
-            Composition reactants, products;
-            reactants[item["target"].asString()] = 1;
-            reactants[electronSpeciesName()] = 1;
-            if (item.hasKey("product")) {
-                products[item["product"].asString()] = 1;
-            } else {
-                products[item["target"].asString()] = 1;
+            if (item.hasKey("name")) {
+                string name = item["name"].asString();
+                if (name.empty()) {
+                    throw InputFileError("setParameters", rootNode, "Empty electron-collision name.");
+                }
+                if (m_electronCollisionDefinitions.count(name)) {
+                    throw InputFileError("setParameters", rootNode, "Duplicate electron-collision name '{}'.", name);
+                }
+                m_electronCollisionDefinitions[name] = item;
             }
-            products[electronSpeciesName()] = 1;
-            if (rate->kind() == "ionization") {
-                products[electronSpeciesName()] += 1;
-            } else if (rate->kind() == "attachment") {
-                products[electronSpeciesName()] -= 1;
-            }
-            auto R = make_shared<Reaction>(reactants, products, rate);
-            addCollision(R);
         }
     }
+
+    // in the case of a wrong combination of the two entry formats (should the user mix new and old formats somehow), ensure that each collision is only loaded once
+    if (rootNode.hasKey("reactions")) {
+        for (const auto& rxnNode : rootNode["reactions"].asVector<AnyMap>()) {
+            if (rxnNode.hasKey("type")
+                && rxnNode["type"].asString() == "electron-collision-plasma"
+                && rxnNode.hasKey("collision")) {
+                string name = rxnNode["collision"].asString();
+
+                if (!m_electronCollisionDefinitions.count(name)) {
+                    throw InputFileError("setParameters", rootNode,
+                        "Reaction references unknown electron collision '{}'.", name);
+                }
+                m_referencedElectronCollisions.insert(name);
+            }
+        }
+    }
+
+    if (rootNode.hasKey("electron-collisions")) {
+        for (const auto& item : rootNode["electron-collisions"].asVector<AnyMap>()) {
+            if (item.hasKey("name")) {
+                string name = item["name"].asString();
+
+                if (m_referencedElectronCollisions.count(name)) {
+                     continue;
+                 }
+
+            }
+            bool hasName = item.hasKey("name");
+
+            if (hasName) {
+                string name = item["name"].asString();
+
+                // New YAML format: if the collision is referenced by a reaction, do not create a synthetic reaction here.
+                if (m_referencedElectronCollisions.count(name)) {
+                    continue;
+                }
+            }
+
+            // Old YAML format for anonymous collisions or unreferenced named collisions: they remain as standalone EEDF collisions.
+            addStandaloneElectronCollision(item);
+            
+        }
+    }
+}
+
+
+void PlasmaPhase::addStandaloneElectronCollision(const AnyMap& item)
+{
+    auto rate = make_shared<ElectronCollisionPlasmaRate>(item);
+
+    if (!rate->hasCrossSectionData()) {
+        throw InputFileError("addStandaloneElectronCollision", item,
+            "Cross-sections are required in the reaction if you are using the deprecated input format!");
+    }
+
+    Composition reactants;
+    Composition products;
+
+    string target = item["target"].asString();
+
+    reactants[target] = 1;
+    reactants[electronSpeciesName()] = 1;
+
+    if (item.hasKey("product")) {
+        products[item["product"].asString()] = 1;
+    } else {
+        products[target] = 1;
+    }
+
+    products[electronSpeciesName()] = 1;
+
+    if (rate->kind() == "ionization") {
+        products[electronSpeciesName()] += 1;
+    } else if (rate->kind() == "attachment") {
+        products[electronSpeciesName()] -= 1;
+    }
+
+    auto R = make_shared<Reaction>(reactants, products, rate);
+    addCollision(R);
 }
 
 bool PlasmaPhase::addSpecies(shared_ptr<Species> spec)
@@ -660,6 +745,7 @@ void PlasmaPhase::setCollisions()
 
 void PlasmaPhase::addCollision(shared_ptr<Reaction> collision)
 {
+
     size_t i = nCollisions();
 
     // setup callback to signal updating the cross-section-related
@@ -685,6 +771,63 @@ void PlasmaPhase::addCollision(shared_ptr<Reaction> collision)
             " collision with equation '{}'", collision->equation());
     }
 
+    // management of the new data file format
+
+    auto ratePtr = std::dynamic_pointer_cast<ElectronCollisionPlasmaRate>(collision->rate());
+
+    if (!ratePtr) {
+        throw CanteraError("addCollision", "The rate is not initialised");
+    }
+
+    if (!ratePtr->collisionName().empty() && !ratePtr->hasCrossSectionData()) {
+        auto it = m_electronCollisionDefinitions.find(ratePtr->collisionName());
+        if (it == m_electronCollisionDefinitions.end()) {
+            throw CanteraError("addCollision", "Unknown electron collision '{}'.", ratePtr->collisionName());
+        }
+
+        ratePtr->applyCollisionData(it->second);
+    }
+
+    if (!ratePtr->hasCrossSectionData()) {
+        throw CanteraError("addCollision",
+            "ElectronCollisionPlasmaRate requires either inline cross-section data "
+            "or a valid 'collision' reference.");
+    }
+
+    if (!ratePtr->target().empty() && ratePtr->target() != target) {
+        throw CanteraError("PlasmaPhase::addCollision",
+            "Electron collision '{}' targets '{}', but reaction '{}' uses target '{}'.",
+            ratePtr->collisionName(), ratePtr->target(),
+            collision->equation(), target);
+    }
+
+    string kindFromReaction = inferElectronCollisionKind(collision);
+    string kindFromCollision = ratePtr->kind();
+
+    bool compatibleKind = kindFromReaction == kindFromCollision;
+
+    if ((kindFromReaction == "elastic" || kindFromReaction == "effective") &&
+        (kindFromCollision == "elastic" || kindFromCollision == "effective")) {
+        compatibleKind = true;
+    }
+
+    // Allow collapsed inelastic channels.
+    // Example:
+    //   reaction:  Electron + N2 => Electron + N2
+    //   collision: kind: excitation, product: N2(rot)
+    if (!compatibleKind &&
+        (kindFromReaction == "effective" || kindFromReaction == "elastic") &&
+        kindFromCollision == "excitation") {
+        compatibleKind = true;
+    }
+
+    if (!compatibleKind) {
+        throw CanteraError("PlasmaPhase::addCollision",
+            "Electron collision '{}' has kind '{}', but reaction '{}' is inferred as '{}'.",
+            ratePtr->collisionName(), kindFromCollision,
+            collision->equation(), kindFromReaction);
+    }
+
     m_collisions.emplace_back(collision);
     m_collisionRates.emplace_back(
         std::dynamic_pointer_cast<ElectronCollisionPlasmaRate>(collision->rate()));
@@ -695,7 +838,6 @@ void PlasmaPhase::addCollision(shared_ptr<Reaction> collision)
     updateInterpolatedCrossSection(i);
 
     // Set up data used by Boltzmann solver
-    auto& rate = *m_collisionRates.back();
     string kind = m_collisionRates.back()->kind();
 
     if ((kind == "effective" || kind == "elastic")) {
@@ -713,11 +855,50 @@ void PlasmaPhase::addCollision(shared_ptr<Reaction> collision)
         m_kInelastic.push_back(i);
     }
 
-    auto levels = rate.energyLevels();
+
+    auto levels = ratePtr->energyLevels();
     m_energyLevels.emplace_back(levels.begin(), levels.end());
-    auto sections = rate.crossSections();
+    auto sections = ratePtr->crossSections();
     m_crossSections.emplace_back(sections.begin(), sections.end());
     m_eedfSolver->setGridCache();
+
+}
+
+// Infer the collision kind from the electron balance: producing electrons
+// indicates ionization, consuming electrons indicates attachment, unchanged
+// reactants/products indicate elastic scattering, and the remaining case is
+// treated as excitation.
+string PlasmaPhase::inferElectronCollisionKind(
+    const shared_ptr<Reaction>& collision) const
+{
+    const string eName = electronSpeciesName();
+
+    double nReactantElectrons = 0.0;
+    double nProductElectrons = 0.0;
+
+    auto reactantElectron = collision->reactants.find(eName);
+    if (reactantElectron != collision->reactants.end()) {
+        nReactantElectrons = reactantElectron->second;
+    }
+
+    auto productElectron = collision->products.find(eName);
+    if (productElectron != collision->products.end()) {
+        nProductElectrons = productElectron->second;
+    }
+
+    if (nProductElectrons > nReactantElectrons) {
+        return "ionization";
+    }
+
+    if (nProductElectrons < nReactantElectrons) {
+        return "attachment";
+    }
+
+    if (collision->reactants == collision->products) {
+        return "elastic";
+    }
+
+    return "excitation";
 }
 
 bool PlasmaPhase::updateInterpolatedCrossSection(size_t i)
@@ -764,7 +945,7 @@ void PlasmaPhase::updateElasticElectronEnergyLossCoefficients()
     static const int cacheId = m_cache.getId();
     CachedScalar last_stateNum = m_cache.getScalar(cacheId);
 
-    // combine the distribution and energy level number
+    // combine the distribution and energy level number to get a single cache variable.
     int stateNum = m_distNum + m_levelNum;
 
     vector<bool> interpChanged(m_collisions.size());

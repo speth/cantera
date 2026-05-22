@@ -430,6 +430,21 @@ public:
 
     double intrinsicHeating() override;
 
+    struct VibrationalReservoirSpecies {
+        size_t reservoirIndex = npos;
+        size_t baseSpeciesIndex = npos;
+    };
+
+    std::vector<VibrationalReservoirSpecies> m_vibrationalReservoirSpecies;
+
+    bool m_vibrationalReservoirSpeciesNeedUpdate = true;
+
+    double m_vibrationalMoleFractionThreshold = 1e-2;
+    double m_vibrationalAbsoluteMoleFractionThreshold = 1e-20;
+
+    void updateVibrationalReservoirSpecies();
+    void checkVibrationalReservoirMoleFractions();
+
 protected:
     void updateThermo() const override;
 

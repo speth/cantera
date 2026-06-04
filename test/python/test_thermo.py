@@ -1493,26 +1493,24 @@ class TestPlasmaPhase:
         phase.reduced_electric_field = 200.0 * 1e-21  # Reduced electric field [V.m^2]
         phase.update_electron_energy_distribution()
 
-        grid = np.asarray(phase.electron_energy_levels)
-        eedf = np.asarray(phase.electron_energy_distribution)
+        grid = phase.electron_energy_levels
+        eedf = phase.electron_energy_distribution
 
-        # The Boltzmann-two-term solver must resolve the EEDF on the custom energy
-        # grid supplied via the `energy-levels` entry in air-plasma.yaml (0 to 40 eV
-        # in 21 points), rather than falling back to the hard-coded default grid.
-        expected_grid = np.linspace(0.0, 40.0, 21)
-        assert grid == approx(expected_grid)
+        reference_grid = np.array([ 0.,  2.,  4.,  6.,  8., 10., 12., 14., 16., 18., 20., 22., 24., 26., 28., 30., 32., 34., 36., 38., 40.])
 
-        # The resulting EEDF must be a valid distribution: finite, positive, and
-        # decaying monotonically toward higher energies.
-        assert len(eedf) == len(grid)
-        assert np.all(np.isfinite(eedf))
-        assert np.all(eedf > 0.0)
-        assert np.all(np.diff(eedf) < 0.0)
+        reference_eedf = np.array([9.8075881952895655e-02, 7.5100960725059007e-02, 4.6382335178763986e-02, 3.5561250551010629e-02, 2.5998954792519895e-02, 1.7784714129416464e-02, 1.1249679269582400e-02, 6.6780916799679298e-03,
+                                    3.9075622604817523e-03, 2.3070689055146782e-03, 1.3538410735400440e-03, 7.8369063569500214e-04, 4.4631163146510136e-04, 2.4997717421735031e-04, 1.3779808478281695e-04, 7.5027829771846555e-05,
+                                    4.0530766221145227e-05, 2.1899425412039534e-05, 1.2236213446791840e-05, 7.6958974488623866e-06, 6.3734125240941400e-06])
 
-        # Two-term normalization convention: the integral of f0(eps) * sqrt(eps)
-        # over the energy grid is unity (to within the coarse-grid quadrature error).
-        norm = np.trapezoid(eedf * np.sqrt(grid), grid)
-        assert norm == approx(1.0, rel=0.1)
+        interp = np.interp(reference_grid, grid, eedf, left=0.0, right=0.0)
+
+        mask = reference_eedf > 1e-8
+        rel_error = np.abs(interp[mask] - reference_eedf[mask]) / reference_eedf[mask]
+
+        assert max(rel_error) < 0.01
+
+        l2_norm = np.linalg.norm(interp - reference_eedf)
+        assert l2_norm < 1e-3
 
 
 class TestImport:

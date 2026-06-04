@@ -210,14 +210,12 @@ TEST(zerodim, plasma_reactor_energy)
     ReactorNet net(reactor);
     net.initialize();
     const double t_end = 1e-3;
-    // The plasma reactor must integrate the corrected (Joule-only) intrinsic
-    // heating without error. Without the EEDF correction the electron mobility
-    // (and thus the conductivity driving jouleHeatingPower()) is small, so the
-    // temperature rise is negligible here; the quantitative temperature-rise
-    // regression is validated in the EEDF-correction branch.
     ASSERT_NO_THROW(net.advance(t_end));
     const double T_final = reactor->temperature();
-    EXPECT_NEAR(T_final, T0, 1.0);
+    const double T_expected = 300.07632822936;
+    const double rtol = 1e-6;
+    // Simple regression test
+    EXPECT_NEAR(T_final, T_expected, rtol * T_expected);
 }
 
 TEST(MoleReactorTestSet, test_mole_reactor_get_state)
